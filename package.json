@@ -1,0 +1,18 @@
+{
+  "name": "rdui",
+  "version": "1.0.0",
+  "description": "Reaction-diffusion UI toolkit: contraptions and GUIs built from live RD simulations",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@webgpu/types": "^0.1.74",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "private": true
+}
