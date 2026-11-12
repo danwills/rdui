@@ -1,18 +1,28 @@
 /**
  * Whole-field snapshot file (.rdui):
  *   "RDUI" | u32 version | u32 headerBytes | header JSON (utf-8, padded to 4) |
- *   params f32[w*h*4] | state f32[w*h*2]
+ *   params f32[w*h*P*4] | state f32[w*h*S*4]
+ *
+ * v1 (Gray-Scott only) had no rule in the header and stored params as
+ * (feed, kill, diffusion, wall) and state as (u, v) per cell; it's upgraded on load.
  */
 
 import type { Rect } from './probes';
+import type { RuleDef } from './rule';
 
 const MAGIC = 0x49554452; // "RDUI" little-endian
-const VERSION = 1;
+const VERSION = 2;
 
 export interface SnapshotHeader {
   width: number;
   height: number;
   probes: (Rect & { name: string })[];
+  rule: RuleDef;
+  globals: Record<string, number>;
+  reagents: string[];
+  paramNames: string[];
+  S: number;
+  P: number;
 }
 
 export interface Snapshot {
@@ -38,16 +48,28 @@ export function decodeSnapshot(buf: ArrayBuffer): Snapshot {
   const dv = new DataView(buf);
   if (buf.byteLength < 12 || dv.getUint32(0, true) !== MAGIC) throw new Error('not an rdui snapshot');
   const version = dv.getUint32(4, true);
-  if (version !== VERSION) throw new Error(`unsupported snapshot version ${version}`);
+  if (version !== 1 && version !== VERSION) throw new Error(`unsupported snapshot version ${version}`);
   const hb = dv.getUint32(8, true);
   const header = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 12, hb))) as SnapshotHeader;
   const cells = header.width * header.height;
   const off = 12 + hb;
-  if (buf.byteLength !== off + cells * 24) throw new Error('snapshot is truncated or corrupt');
+  if (version === 1) {
+    if (buf.byteLength !== off + cells * 24) throw new Error('snapshot is truncated or corrupt');
+    const s2 = new Float32Array(buf, off + cells * 16, cells * 2);
+    const state = new Float32Array(cells * 4);
+    for (let i = 0; i < cells; i++) state.set(s2.subarray(i * 2, i * 2 + 2), i * 4);
+    return {
+      header: { ...header, reagents: ['a', 'b'], paramNames: ['F', 'k', 'D', 'wall'], S: 1, P: 1 } as SnapshotHeader,
+      params: new Float32Array(buf, off, cells * 4),
+      state,
+    };
+  }
+  const { S, P } = header;
+  if (buf.byteLength !== off + cells * (S + P) * 16) throw new Error('snapshot is truncated or corrupt');
   return {
     header,
-    params: new Float32Array(buf, off, cells * 4),
-    state: new Float32Array(buf, off + cells * 16, cells * 2),
+    params: new Float32Array(buf, off, cells * P * 4),
+    state: new Float32Array(buf, off + cells * P * 16, cells * S * 4),
   };
 }
 

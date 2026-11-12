@@ -1,10 +1,14 @@
 import { el, section, button, type Settings } from './ui';
 import { stampThumbnail, type StampLibrary } from './stamps';
-import { HISTORY, type ProbeSet, type Probe } from './probes';
+import { HISTORY, ProbeSet, type Probe } from './probes';
 import { probeColor } from './overlay';
 
 /** Stamp library: thumbnail grid, placement options, import/export. */
-export function stampSection(lib: StampLibrary, s: Settings, select: (id: string) => void, io: { export(): void; import(): void }) {
+export function stampSection(lib: StampLibrary, s: Settings, select: (id: string) => void, io: { export(): void; import(): void }, shownReagent: () => string) {
+  const starters = () => {
+    const n = lib.addStarters();
+    if (!n) alert('All starter stamps are already in your library.');
+  };
   const grid = el('div', { class: 'stamps' });
   const empty = el('p', { class: 'hint' }, 'No stamps yet — use Capture (5) and drag over the field.');
   const error = el('p', { class: 'hint error' });
@@ -22,13 +26,14 @@ export function stampSection(lib: StampLibrary, s: Settings, select: (id: string
     empty.hidden = lib.stamps.length > 0;
     error.textContent = lib.saveError ?? '';
     for (const st of lib.stamps) {
-      let thumb = thumbs.get(st.id);
-      if (!thumb) thumbs.set(st.id, (thumb = stampThumbnail(st, 56)));
+      const key = `${st.id}:${shownReagent()}`;
+      let thumb = thumbs.get(key);
+      if (!thumb) thumbs.set(key, (thumb = stampThumbnail(st, 56, shownReagent())));
       const del = button('×', () => lib.remove(st.id), 'delete stamp');
       del.classList.add('del');
       del.addEventListener('click', (e) => e.stopPropagation());
       const name = el('span', { class: 'name' }, st.name);
-      const tile = el('div', { class: 'tile', title: `${st.name} · ${st.w}×${st.h} · double-click to rename` }, thumb, name, del);
+      const tile = el('div', { class: 'tile', title: `${st.name} · ${st.w}×${st.h} · ${st.rule} · double-click to rename` }, thumb, name, del);
       tile.classList.toggle('active', s.stampId === st.id);
       tile.addEventListener('click', () => select(st.id));
       tile.addEventListener('dblclick', () => {
@@ -43,14 +48,14 @@ export function stampSection(lib: StampLibrary, s: Settings, select: (id: string
     grid, empty, error,
     el('div', { class: 'checks' }, checkbox('params + walls', 'placeParams'), checkbox('chemistry', 'placeChem')),
     el('p', { class: 'hint' }, 'Q/E rotate · X mirror while placing'),
-    el('div', { class: 'buttons' }, button('Export…', io.export), button('Import…', io.import)),
+    el('div', { class: 'buttons' }, button('Export…', io.export), button('Import…', io.import), button('+ Starters', starters, 'add the stamps that ship with rdui')),
   );
   render();
   return { node, render };
 }
 
-/** Probe list with live value and sparkline per probe. */
-export function probeSection(probes: ProbeSet) {
+/** Probe list with live value and sparkline per probe, for the displayed reagent. */
+export function probeSection(probes: ProbeSet, shown: () => { index: number; name: string }) {
   const list = el('div', { class: 'probes' });
   const empty = el('p', { class: 'hint' }, 'No probes — use Probe (7) and drag a rectangle.');
   const rows = new Map<number, { value: HTMLElement; spark: HTMLCanvasElement }>();
@@ -83,15 +88,22 @@ export function probeSection(probes: ProbeSet) {
     const { width: W, height: H } = c;
     ctx.clearRect(0, 0, W, H);
     if (p.filled < 2) return;
-    let max = 0.05;
-    for (let i = 0; i < p.filled; i++) max = Math.max(max, p.history[i]);
+    const series = ProbeSet.series(p, shown().index);
+    let lo = Infinity, hi = -Infinity;
+    for (const v of series) {
+      lo = Math.min(lo, v);
+      hi = Math.max(hi, v);
+    }
+    // Autoscale, but don't magnify flat noise into a full-height scribble.
+    const span = Math.max(hi - lo, 0.02);
+    lo = (lo + hi) / 2 - span / 2;
     ctx.strokeStyle = probeColor(p);
     ctx.lineWidth = dpr;
     ctx.beginPath();
-    for (let i = 0; i < p.filled; i++) {
-      const v = p.history[(p.head - p.filled + i + HISTORY) % HISTORY];
+    for (let i = 0; i < series.length; i++) {
+      const v = series[i];
       const x = (i / (HISTORY - 1)) * W;
-      const y = H - 1 - (v / max) * (H - 2);
+      const y = H - 1 - ((v - lo) / span) * (H - 2);
       if (i === 0) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
@@ -102,7 +114,8 @@ export function probeSection(probes: ProbeSet) {
     for (const p of probes.probes) {
       const r = rows.get(p.id);
       if (!r) continue;
-      r.value.textContent = `v ${p.v.toFixed(3)} ↑${p.maxV.toFixed(2)}`;
+      const { index, name } = shown();
+      r.value.textContent = `${name} ${p.mean[index].toFixed(3)} ↑${p.max[index].toFixed(2)}`;
       drawSpark(r.spark, p);
     }
   }

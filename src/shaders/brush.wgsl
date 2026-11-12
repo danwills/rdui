@@ -1,4 +1,8 @@
 // Applies a capsule-shaped brush stroke (segment a→b) to state and/or params.
+// S / P: vec4s per cell of state / params (pipeline-overridable).
+
+override S: u32 = 1u;
+override P: u32 = 1u;
 
 struct Brush {
   a: vec2<f32>,
@@ -7,8 +11,15 @@ struct Brush {
   mode: u32,
   strength: f32,
   hardness: f32,
-  // param mode: (feed, kill, diffusionScale, _); seed mode: w = random salt
-  value: vec4<f32>,
+  salt: f32,
+  _p0: f32,
+  _p1: f32,
+  _p2: f32,
+  seed: array<vec4<f32>, 2>,      // seed target per reagent
+  seedMask: array<vec4<f32>, 2>,  // 1 where the seed brush touches that reagent
+  seedNoise: array<vec4<f32>, 2>, // noise amplitude added to the seed target
+  rest: array<vec4<f32>, 2>,      // erase / wall value per reagent
+  paint: array<vec4<f32>, 2>,     // per-cell param slot values (slot 0 = wall, ignored)
 };
 
 struct Size {
@@ -25,7 +36,7 @@ const MODE_UNWALL: u32 = 4u;
 @group(0) @binding(0) var<uniform> brush: Brush;
 @group(0) @binding(1) var<uniform> size: Size;
 @group(0) @binding(2) var<storage, read_write> params: array<vec4<f32>>;
-@group(0) @binding(3) var<storage, read_write> state: array<vec2<f32>>;
+@group(0) @binding(3) var<storage, read_write> state: array<vec4<f32>>;
 
 fn segDist(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
   let pa = p - a;
@@ -52,31 +63,47 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let falloff = clamp(t / max(1.0 - brush.hardness, 1e-3), 0.0, 1.0);
   let k = brush.strength * falloff;
   let i = gid.y * size.width + gid.x;
+  let sb = i * S;
+  let pb = i * P;
+  let wall = params[pb].x > 0.5;
 
   switch brush.mode {
     case MODE_SEED: {
-      if (params[i].w < 0.5) {
-        let n = hash(cell + brush.value.w);
-        let goal = vec2<f32>(0.5, 0.25 + 0.25 * n);
-        state[i] = mix(state[i], goal, k);
+      if (!wall) {
+        let n = hash(cell + brush.salt) - 0.5;
+        for (var s = 0u; s < S; s++) {
+          let goal = brush.seed[s] + brush.seedNoise[s] * n;
+          state[sb + s] = mix(state[sb + s], goal, k * brush.seedMask[s]);
+        }
       }
     }
     case MODE_ERASE: {
-      state[i] = mix(state[i], vec2<f32>(1.0, 0.0), k);
+      if (!wall) {
+        for (var s = 0u; s < S; s++) {
+          state[sb + s] = mix(state[sb + s], brush.rest[s], k);
+        }
+      }
     }
     case MODE_PARAMS: {
-      let p = params[i];
-      params[i] = vec4<f32>(mix(p.xyz, brush.value.xyz, k), p.w);
+      for (var p = 0u; p < P; p++) {
+        var v = mix(params[pb + p], brush.paint[p], k);
+        if (p == 0u) {
+          v.x = params[pb].x; // keep the wall flag
+        }
+        params[pb + p] = v;
+      }
     }
     case MODE_WALL: {
       if (falloff > 0.5) {
-        params[i].w = 1.0;
-        state[i] = vec2<f32>(1.0, 0.0);
+        params[pb].x = 1.0;
+        for (var s = 0u; s < S; s++) {
+          state[sb + s] = brush.rest[s];
+        }
       }
     }
     case MODE_UNWALL: {
       if (falloff > 0.5) {
-        params[i].w = 0.0;
+        params[pb].x = 0.0;
       }
     }
     default: {}

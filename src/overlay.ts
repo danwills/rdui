@@ -24,7 +24,7 @@ export class Overlay {
     this.ctx = canvas.getContext('2d')!;
   }
 
-  draw(gridW: number, gridH: number, probes: Probe[], drag: Rect | null, dragColor: string, ghost: Ghost | null) {
+  draw(gridW: number, gridH: number, probes: Probe[], reagent: number, drag: Rect | null, dragColor: string, ghost: Ghost | null) {
     const { ctx, canvas } = this;
     const sx = canvas.width / gridW;
     const sy = canvas.height / gridH;
@@ -49,7 +49,7 @@ export class Overlay {
       const c = probeColor(p);
       ctx.strokeStyle = c;
       ctx.strokeRect(p.x * sx + 0.5, p.y * sy + 0.5, p.w * sx, p.h * sy);
-      const label = `${p.name} ${p.v.toFixed(3)}`;
+      const label = `${p.name} ${p.mean[reagent].toFixed(3)}`;
       const tw = ctx.measureText(label).width;
       const ly = p.y * sy > 14 * dpr ? p.y * sy - 2 * dpr : (p.y + p.h) * sy + 13 * dpr;
       ctx.fillStyle = '#000a';

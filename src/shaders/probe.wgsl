@@ -1,6 +1,11 @@
 // Per-region statistics: one workgroup per probe, strided accumulation then a
 // shared-memory tree reduction. Wall cells are excluded.
-// out[i] = (mean u, mean v, max v, non-wall cell count)
+// out[i*5 + 0..1] = mean of reagents 0-3 / 4-7
+// out[i*5 + 2..3] = max of reagents 0-3 / 4-7
+// out[i*5 + 4].x  = non-wall cell count
+
+override S: u32 = 1u;
+override P: u32 = 1u;
 
 struct Region {
   x: i32,
@@ -16,48 +21,74 @@ struct Info {
   _p1: u32,
 };
 
-const WG: u32 = 256u;
+const WG: u32 = 128u;
+const LOW: f32 = -3.0e38;
 
 @group(0) @binding(0) var<uniform> info: Info;
 @group(0) @binding(1) var<storage, read> regions: array<Region>;
 @group(0) @binding(2) var<storage, read> params: array<vec4<f32>>;
-@group(0) @binding(3) var<storage, read> state: array<vec2<f32>>;
+@group(0) @binding(3) var<storage, read> state: array<vec4<f32>>;
 @group(0) @binding(4) var<storage, read_write> out: array<vec4<f32>>;
 
-var<workgroup> acc: array<vec4<f32>, WG>;
+var<workgroup> sumA: array<vec4<f32>, WG>;
+var<workgroup> sumB: array<vec4<f32>, WG>;
+var<workgroup> maxA: array<vec4<f32>, WG>;
+var<workgroup> maxB: array<vec4<f32>, WG>;
+var<workgroup> cnt: array<f32, WG>;
 
-@compute @workgroup_size(256)
+@compute @workgroup_size(128)
 fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) li: u32) {
   let r = regions[wg.x];
   let w = i32(info.width);
   let h = i32(info.height);
   let n = u32(max(r.w * r.h, 0));
 
-  var a = vec4<f32>(0.0);
+  var sa = vec4<f32>(0.0);
+  var sb = vec4<f32>(0.0);
+  var ma = vec4<f32>(LOW);
+  var mb = vec4<f32>(LOW);
+  var c = 0.0;
   for (var k = li; k < n; k += WG) {
     let x = (r.x + i32(k % u32(r.w)) + w) % w;
     let y = (r.y + i32(k / u32(r.w)) + h) % h;
     let i = u32(y * w + x);
-    if (params[i].w < 0.5) {
-      let s = state[i];
-      a = vec4<f32>(a.x + s.x, a.y + s.y, max(a.z, s.y), a.w + 1.0);
+    if (params[i * P].x < 0.5) {
+      let a = state[i * S];
+      sa += a;
+      ma = max(ma, a);
+      if (S > 1u) {
+        let b = state[i * S + 1u];
+        sb += b;
+        mb = max(mb, b);
+      }
+      c += 1.0;
     }
   }
-  acc[li] = a;
+  sumA[li] = sa;
+  sumB[li] = sb;
+  maxA[li] = ma;
+  maxB[li] = mb;
+  cnt[li] = c;
   workgroupBarrier();
 
   for (var stride = WG / 2u; stride > 0u; stride = stride / 2u) {
     if (li < stride) {
-      let b = acc[li + stride];
-      let c = acc[li];
-      acc[li] = vec4<f32>(c.x + b.x, c.y + b.y, max(c.z, b.z), c.w + b.w);
+      sumA[li] += sumA[li + stride];
+      sumB[li] += sumB[li + stride];
+      maxA[li] = max(maxA[li], maxA[li + stride]);
+      maxB[li] = max(maxB[li], maxB[li + stride]);
+      cnt[li] += cnt[li + stride];
     }
     workgroupBarrier();
   }
 
   if (li == 0u) {
-    let t = acc[0];
-    let cnt = max(t.w, 1.0);
-    out[wg.x] = vec4<f32>(t.x / cnt, t.y / cnt, t.z, t.w);
+    let total = max(cnt[0], 1.0);
+    let o = wg.x * 5u;
+    out[o] = sumA[0] / total;
+    out[o + 1u] = sumB[0] / total;
+    out[o + 2u] = select(maxA[0], vec4<f32>(0.0), cnt[0] == 0.0);
+    out[o + 3u] = select(maxB[0], vec4<f32>(0.0), cnt[0] == 0.0);
+    out[o + 4u] = vec4<f32>(cnt[0], 0.0, 0.0, 0.0);
   }
 }

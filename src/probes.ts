@@ -3,6 +3,8 @@ import type { Simulation } from './sim';
 
 export const MAX_PROBES = 64;
 export const HISTORY = 240;
+const OUT_VEC4S = 5;
+const OUT_BYTES = OUT_VEC4S * 16;
 
 export interface Rect {
   x: number;
@@ -14,11 +16,10 @@ export interface Rect {
 export interface Probe extends Rect {
   id: number;
   name: string;
-  /** Latest reading. */
-  u: number;
-  v: number;
-  maxV: number;
-  /** Ring buffer of mean v, newest at `head - 1`. */
+  /** Latest reading per reagent (layout order, up to 8). */
+  mean: Float32Array;
+  max: Float32Array;
+  /** Ring buffer of per-reagent means, HISTORY × 8, newest at `head - 1`. */
   history: Float32Array;
   head: number;
   filled: number;
@@ -34,7 +35,8 @@ export class ProbeSet {
   onSample?: () => void;
 
   private device: GPUDevice;
-  private pipeline: GPUComputePipeline;
+  private pipeline: GPUComputePipeline | null = null;
+  private pipelineKey = '';
   private info: GPUBuffer;
   private regions: GPUBuffer;
   private out: GPUBuffer;
@@ -45,14 +47,10 @@ export class ProbeSet {
 
   constructor(device: GPUDevice) {
     this.device = device;
-    this.pipeline = device.createComputePipeline({
-      layout: 'auto',
-      compute: { module: device.createShaderModule({ code: probeWGSL, label: 'probe' }), entryPoint: 'main' },
-    });
     this.info = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
     this.regions = device.createBuffer({ size: MAX_PROBES * 16, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
-    this.out = device.createBuffer({ size: MAX_PROBES * 16, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
-    this.staging = device.createBuffer({ size: MAX_PROBES * 16, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+    this.out = device.createBuffer({ size: MAX_PROBES * OUT_BYTES, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
+    this.staging = device.createBuffer({ size: MAX_PROBES * OUT_BYTES, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
   }
 
   add(r: Rect, name?: string): Probe | null {
@@ -60,8 +58,8 @@ export class ProbeSet {
     const id = this.nextId++;
     const p: Probe = {
       ...r, id, name: name ?? `p${id}`,
-      u: 1, v: 0, maxV: 0,
-      history: new Float32Array(HISTORY), head: 0, filled: 0,
+      mean: new Float32Array(8), max: new Float32Array(8),
+      history: new Float32Array(HISTORY * 8), head: 0, filled: 0,
     };
     this.probes.push(p);
     this.dirty = true;
@@ -87,10 +85,28 @@ export class ProbeSet {
     return undefined;
   }
 
+  /** Mean of reagent `r` over the probe's history, oldest first. */
+  static series(p: Probe, r: number): Float32Array {
+    const out = new Float32Array(p.filled);
+    for (let i = 0; i < p.filled; i++) out[i] = p.history[((p.head - p.filled + i + HISTORY) % HISTORY) * 8 + r];
+    return out;
+  }
+
   sample(sim: Simulation) {
     const n = this.probes.length;
     if (this.busy || n === 0) return;
     this.busy = true;
+
+    const { S, P } = sim.layout;
+    const key = `${S}:${P}`;
+    if (!this.pipeline || key !== this.pipelineKey) {
+      this.pipeline = this.device.createComputePipeline({
+        layout: 'auto',
+        compute: { module: this.device.createShaderModule({ code: probeWGSL, label: 'probe' }), entryPoint: 'main', constants: { S, P } },
+      });
+      this.pipelineKey = key;
+    }
+    const pipeline = this.pipeline;
 
     const q = this.device.queue;
     q.writeBuffer(this.info, 0, new Uint32Array([sim.width, sim.height, 0, 0]));
@@ -102,7 +118,7 @@ export class ProbeSet {
     }
     // Bind group per sample: the state buffer ping-pongs and the sim may be replaced.
     const group = this.device.createBindGroup({
-      layout: this.pipeline.getBindGroupLayout(0),
+      layout: pipeline.getBindGroupLayout(0),
       entries: [
         { binding: 0, resource: { buffer: this.info } },
         { binding: 1, resource: { buffer: this.regions } },
@@ -113,22 +129,22 @@ export class ProbeSet {
     });
     const enc = this.device.createCommandEncoder();
     const pass = enc.beginComputePass();
-    pass.setPipeline(this.pipeline);
+    pass.setPipeline(pipeline);
     pass.setBindGroup(0, group);
     pass.dispatchWorkgroups(n);
     pass.end();
-    enc.copyBufferToBuffer(this.out, 0, this.staging, 0, n * 16);
+    enc.copyBufferToBuffer(this.out, 0, this.staging, 0, n * OUT_BYTES);
     q.submit([enc.finish()]);
 
     const measured = this.probes.slice();
-    this.staging.mapAsync(GPUMapMode.READ, 0, n * 16).then(() => {
-      const d = new Float32Array(this.staging.getMappedRange(0, n * 16).slice(0));
+    this.staging.mapAsync(GPUMapMode.READ, 0, n * OUT_BYTES).then(() => {
+      const d = new Float32Array(this.staging.getMappedRange(0, n * OUT_BYTES).slice(0));
       this.staging.unmap();
       measured.forEach((p, i) => {
-        p.u = d[i * 4];
-        p.v = d[i * 4 + 1];
-        p.maxV = d[i * 4 + 2];
-        p.history[p.head] = p.v;
+        const o = i * OUT_VEC4S * 4;
+        p.mean.set(d.subarray(o, o + 8));
+        p.max.set(d.subarray(o + 8, o + 16));
+        p.history.set(p.mean, p.head * 8);
         p.head = (p.head + 1) % HISTORY;
         p.filled = Math.min(p.filled + 1, HISTORY);
       });

@@ -8,9 +8,15 @@ export interface Stamp {
   name: string;
   w: number;
   h: number;
-  /** 4 floats per cell: feed, kill, diffusionScale, wall. */
+  /** Rule it was captured from (informational; placement matches by name). */
+  rule: string;
+  reagents: string[];
+  /** Per-cell param names, [0] = 'wall'. */
+  paramNames: string[];
+  /** vec4s per cell in `state` / `params`. */
+  S: number;
+  P: number;
   params: Float32Array;
-  /** 2 floats per cell: u, v. */
   state: Float32Array;
 }
 
@@ -31,8 +37,8 @@ export function transformStamp(s: Stamp, t: Transform): Stamp {
   if (rot === 0 && !t.flip) return s;
   const W = rot % 2 ? s.h : s.w;
   const H = rot % 2 ? s.w : s.h;
-  const params = new Float32Array(W * H * 4);
-  const state = new Float32Array(W * H * 2);
+  const params = new Float32Array(W * H * s.P * 4);
+  const state = new Float32Array(W * H * s.S * 4);
   for (let y = 0; y < s.h; y++) {
     for (let x = 0; x < s.w; x++) {
       const sx = t.flip ? s.w - 1 - x : x;
@@ -45,30 +51,43 @@ export function transformStamp(s: Stamp, t: Transform): Stamp {
       }
       const src = y * s.w + sx;
       const dst = dy * W + dx;
-      params.set(s.params.subarray(src * 4, src * 4 + 4), dst * 4);
-      state.set(s.state.subarray(src * 2, src * 2 + 2), dst * 2);
+      const ps = s.P * 4, ss = s.S * 4;
+      params.set(s.params.subarray(src * ps, src * ps + ps), dst * ps);
+      state.set(s.state.subarray(src * ss, src * ss + ss), dst * ss);
     }
   }
   return { ...s, w: W, h: H, params, state };
 }
 
-/** Small preview image: chemistry brightness over a dim parameter-map tint, walls hatched grey. */
-export function stampThumbnail(s: Stamp, maxSide = 72): HTMLCanvasElement {
+/**
+ * Small preview image: one reagent (by name, else the second) auto-ranged to
+ * the stamp's own min/max, walls hatched grey.
+ */
+export function stampThumbnail(s: Stamp, maxSide = 72, reagent = 'b'): HTMLCanvasElement {
   const img = new ImageData(s.w, s.h);
+  let r = s.reagents.indexOf(reagent);
+  if (r < 0) r = Math.min(1, s.reagents.length - 1);
+  const ss = s.S * 4, ps = s.P * 4, wallSlot = s.paramNames.indexOf('wall');
+  let lo = Infinity, hi = -Infinity;
   for (let i = 0; i < s.w * s.h; i++) {
-    const f = s.params[i * 4], k = s.params[i * 4 + 1], d = s.params[i * 4 + 2], wall = s.params[i * 4 + 3];
-    const v = Math.min(1, s.state[i * 2 + 1] * 2.5);
-    let r: number, g: number, b: number;
-    if (wall > 0.5) {
+    const v = s.state[i * ss + r];
+    lo = Math.min(lo, v);
+    hi = Math.max(hi, v);
+  }
+  const span = hi - lo > 1e-6 ? hi - lo : 1;
+  for (let i = 0; i < s.w * s.h; i++) {
+    const wall = wallSlot >= 0 && s.params[i * ps + wallSlot] > 0.5;
+    const v = (s.state[i * ss + r] - lo) / span;
+    let cr: number, cg: number, cb: number;
+    if (wall) {
       const stripe = ((i % s.w) + Math.floor(i / s.w)) % 4 < 2;
-      r = g = b = stripe ? 90 : 110;
+      cr = cg = cb = stripe ? 90 : 110;
     } else {
-      const tr = (f / 0.1) * 60, tg = ((k - 0.03) / 0.045) * 60, tb = (d / 1.2) * 60;
-      r = tr + v * 200;
-      g = tg + v * 220;
-      b = tb + 20 + v * 235;
+      cr = 10 + v * 200;
+      cg = 14 + v * 220;
+      cb = 30 + v * 225;
     }
-    img.data.set([r, g, b, 255], i * 4);
+    img.data.set([cr, cg, cb, 255], i * 4);
   }
   const src = document.createElement('canvas');
   src.width = s.w;
@@ -108,21 +127,52 @@ interface StampJSON {
   h: number;
   params: string;
   state: string;
+  // absent in v1 stamps (Gray-Scott u,v / feed,kill,diffusion,wall)
+  rule?: string;
+  reagents?: string[];
+  paramNames?: string[];
+  S?: number;
+  P?: number;
 }
 
 export function stampToJSON(s: Stamp): StampJSON {
-  return { id: s.id, name: s.name, w: s.w, h: s.h, params: f32ToB64(s.params), state: f32ToB64(s.state) };
+  return {
+    id: s.id, name: s.name, w: s.w, h: s.h, rule: s.rule, reagents: s.reagents, paramNames: s.paramNames, S: s.S, P: s.P,
+    params: f32ToB64(s.params), state: f32ToB64(s.state),
+  };
 }
 
 export function stampFromJSON(j: StampJSON): Stamp {
-  const s = { id: j.id || newStampId(), name: j.name, w: j.w, h: j.h, params: b64ToF32(j.params), state: b64ToF32(j.state) };
-  if (s.params.length !== s.w * s.h * 4 || s.state.length !== s.w * s.h * 2) throw new Error(`stamp ${j.name}: bad size`);
+  const cells = j.w * j.h;
+  let state = b64ToF32(j.state);
+  if (!j.reagents) {
+    // v1: 2 floats per cell → one vec4
+    const s4 = new Float32Array(cells * 4);
+    for (let i = 0; i < cells; i++) s4.set(state.subarray(i * 2, i * 2 + 2), i * 4);
+    state = s4;
+  }
+  const s: Stamp = {
+    id: j.id || newStampId(), name: j.name, w: j.w, h: j.h,
+    rule: j.rule ?? 'Gray-Scott',
+    reagents: j.reagents ?? ['a', 'b'],
+    paramNames: j.paramNames ?? ['F', 'k', 'D', 'wall'],
+    S: j.S ?? 1,
+    P: j.P ?? 1,
+    params: b64ToF32(j.params),
+    state,
+  };
+  if (s.params.length !== cells * s.P * 4 || s.state.length !== cells * s.S * 4) throw new Error(`stamp ${j.name}: bad size`);
   return s;
 }
 
 // --- library
 
 const STORAGE_KEY = 'rdui.stamps.v1';
+
+const bundledPacks = import.meta.glob('../stamps/*.json', { eager: true, import: 'default' }) as Record<string, StampJSON[]>;
+
+/** Stamps shipped with rdui (stamps/*.json), by id. */
+export const STARTER_STAMPS: Stamp[] = Object.values(bundledPacks).flat().map(stampFromJSON);
 
 /** Ordered collection of stamps, persisted to localStorage when possible. */
 export class StampLibrary {
@@ -132,16 +182,30 @@ export class StampLibrary {
   saveError: string | null = null;
 
   constructor() {
+    let stored = false;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) this.stamps = (JSON.parse(raw) as StampJSON[]).map(stampFromJSON);
+      if (raw) {
+        this.stamps = (JSON.parse(raw) as StampJSON[]).map(stampFromJSON);
+        stored = true;
+      }
     } catch (e) {
       console.warn('could not load stamp library', e);
     }
+    if (!stored) this.stamps = STARTER_STAMPS.map((s) => ({ ...s }));
   }
 
   get(id: string | null) {
     return this.stamps.find((s) => s.id === id);
+  }
+
+  /** Add any starter stamps not already in the library; returns how many were added. */
+  addStarters() {
+    const have = new Set(this.stamps.map((s) => s.id));
+    const missing = STARTER_STAMPS.filter((s) => !have.has(s.id));
+    this.stamps.push(...missing.map((s) => ({ ...s })));
+    if (missing.length) this.changed();
+    return missing.length;
   }
 
   add(s: Stamp) {

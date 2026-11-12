@@ -1,0 +1,20 @@
+{
+  "name": "Glider → lamp",
+  "description": "A History+Wave glider runs into a lamp: a region painted with c_damp = 0, so the glider's history trail (c) never fades there. The lamp lights up and stays lit after the glider has gone; the same trail elsewhere decays. Shown as b, tinted by the hidden reagent c. A one-shot latch: switching it back off needs a bistable memory.",
+  "rule": "builtin:1",
+  "size": 256,
+  "paintable": ["F", "k", "c_damp"],
+  "start": "rest",
+  "paint": [
+    { "rect": [110, 46, 40, 36], "values": { "c_damp": 0 } }
+  ],
+  "stamps": [
+    { "stamp": "starter-glider-hw", "x": 30, "y": 64 }
+  ],
+  "probes": [
+    { "name": "trail", "x": 64, "y": 54, "w": 24, "h": 20 },
+    { "name": "lamp", "x": 114, "y": 48, "w": 32, "h": 32 }
+  ],
+  "view": { "reagent": "b", "low": 0, "high": 0.5, "tint": "c", "tintLow": 0, "tintHigh": 0.3 },
+  "stepsPerFrame": 40
+}
