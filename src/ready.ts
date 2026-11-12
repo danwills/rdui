@@ -53,7 +53,6 @@ export async function importReady(text: string, fileName: string): Promise<Ready
     const [min, max] = name === 'F' ? [0, 0.1] : name === 'k' ? [0.03, 0.075] : guessRange(value);
     return { name, value, min: Math.min(min, value), max: Math.max(max, value) };
   });
-  if (params.some((p) => p.name === 'dx')) warnings.push('a "dx" parameter is present but the Laplacian is not divided by dx²');
 
   // --- extents
   const imageEl = doc.querySelector('ImageData');

@@ -20,10 +20,14 @@ A **rule** is a set of named reagents (up to 8), named parameters and an update
 formula written in [Ready](https://github.com/GollyGang/ready)'s formula language,
 compiled to a WebGPU compute shader (`src/rule.ts`). Semantics match Ready: Laplacians
 use the 9-point stencil (1, 4, −20)/6 on the old values, the formula may reassign
-reagents and sets `delta_x`, then `x += timestep * delta_x`.
+reagents and sets `delta_x`, then `x += timestep * delta_x`. Formulas can also use
+`bilaplacian_x` (Ready's 21-point stencil), `x_gradient_x`, `y_gradient_x` and
+`gradient_mag_squared_x`; all are scaled by a `dx` parameter when the rule has one.
 
 - **Built-in:** Gray-Scott, and Gray-Scott with History and Wave (a, b Gray-Scott; c a
   diffusing history; d, e a damped wave) with the "moreLifelike" parameters.
+- **Phyllotaxis (Pennybacker):** a one-reagent Swift–Hohenberg-type model ported
+  from Ready's hand-written kernel.
 - **Ready patterns:** Dan's History-Wave family is bundled in `patterns/ready/` and
   any formula-rule `.vti` can be imported (formula, params, initial-pattern
   generator, render settings, zlib image data).
@@ -104,6 +108,12 @@ Findings so far (GS History+Wave):
   band) and stay intact, repeatedly.
 - A soup search (all bundled patterns + F/k variants) found one glider family,
   14–20 px/k depending on the medium; no other spaceships yet.
+- No breathing oscillators in History+Wave across F/k or history-feedback media.
+- Natural glider sources: one soliton in F=0.054, k=0.064 (or k=0.0635) grows into a
+  cluster that keeps shedding gliders — not periodic or aimed yet.
+- Phyllotaxis medium (β = 3): at mu −0.2…−0.3 a lone spot is stable (a one-reagent
+  still / bit); at mu −0.1…−0.02 one seed spot nucleates neighbours and a hexagonal
+  crystal grows outward.
 
 In dev builds, `window.rdui` exposes `sim`, `rule`, `globals`, `settings`, `probes`,
 `stamps`, `applyRule` and `selectRule` for console tinkering.

@@ -150,6 +150,29 @@ export function translateFormula(formula: string, known: Set<string>): { code: s
 
 // --- shader generation
 
+/** Neighbourhood operators a formula can use on any reagent, as in Ready. */
+const STENCIL_OPS = ['laplacian', 'bilaplacian', 'x_gradient', 'y_gradient', 'gradient_mag_squared'];
+
+/** Ready's 21-point bilaplacian, RotationallySymmetric5x5(0, 1, 1, -2, -10, 36) / 3. */
+const BILAP_5X5 = [
+  [0, 1, 1, 1, 0],
+  [1, -2, -10, -2, 1],
+  [1, -10, 36, -10, 1],
+  [1, -2, -10, -2, 1],
+  [0, 1, 1, 1, 0],
+];
+
+/**
+ * Extra stencils (the 9-point Laplacian is generated separately, with
+ * membranes). Points are [dx, dy, weight] in rdui's y-down grid; Ready's +y
+ * points up, so its y_gradient samples the row above as positive.
+ */
+const STENCILS: { op: string; v: string; points: [number, number, number][]; div: number; dxPower: number }[] = [
+  { op: 'bilaplacian', v: 'BL', div: 3, dxPower: 4, points: BILAP_5X5.flatMap((row, j) => row.map((w, i) => [i - 2, j - 2, w] as [number, number, number])).filter((p) => p[2] !== 0) },
+  { op: 'x_gradient', v: 'GX', div: 2, dxPower: 1, points: [[1, 0, 1], [-1, 0, -1]] },
+  { op: 'y_gradient', v: 'GY', div: 2, dxPower: 1, points: [[0, -1, 1], [0, 1, -1]] },
+];
+
 export interface CompiledRule {
   rule: RuleDef;
   layout: Layout;
@@ -171,7 +194,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (mem && !rule.params.some((p) => p.name === mem.param)) throw new RuleError(`membrane param '${mem.param}' isn't a parameter`);
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
-    ...R, ...R.map((r) => `delta_${r}`), ...R.map((r) => `laplacian_${r}`),
+    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => STENCIL_OPS.map((op) => `${op}_${r}`)),
     ...rule.params.map((p) => p.name), 'timestep',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
@@ -182,6 +205,17 @@ export function compileRule(rule: RuleDef): CompiledRule {
 
   const lapSlots = new Set<number>();
   R.forEach((r, i) => used.has(`laplacian_${r}`) && lapSlots.add(i >> 2));
+  // other stencils: which state slots need each one
+  const needs = (op: string) => {
+    const set = new Set<number>();
+    R.forEach((r, i) => {
+      if (used.has(`${op}_${r}`) || (op.endsWith('_gradient') && used.has(`gradient_mag_squared_${r}`))) set.add(i >> 2);
+    });
+    return set;
+  };
+  const dxIndex = rule.params.findIndex((p) => p.name === 'dx');
+  const dxSlot = layout.paramNames.indexOf('dx');
+  const dxExpr = dxSlot > 0 ? slotRef('params', 'pb', dxSlot) : dxIndex >= 0 ? `g[${dxIndex >> 2}].${COMP[dxIndex & 3]}` : '1.0';
 
   const L: string[] = [];
   const add = (s: string) => L.push(s);
@@ -230,6 +264,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   const memValue = (cell: string) =>
     memSlot > 0 ? slotRef('params', `${cell} * ${P}u`, memSlot) : `g[${(rule.params.findIndex((p) => p.name === mem!.param)) >> 2}].${COMP[rule.params.findIndex((p) => p.name === mem!.param) & 3]}`;
 
+  add(`  let rd_dx = ${dxExpr};`);
   if (lapSlots.size) {
     if (mem) add(`  let myCell = ${memValue('ci')};`);
     for (const k of lapSlots) {
@@ -248,13 +283,27 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         add(`  L${k} += ${w.toFixed(1)} * select(src[n${n} * ${S}u + ${k}u], s${k}, ${cond});`);
       }
     });
-    for (const k of lapSlots) add(`  L${k} = L${k} / 6.0;`);
+    for (const k of lapSlots) add(`  L${k} = L${k} / (6.0 * rd_dx * rd_dx);`);
+  }
+  for (const st of STENCILS) {
+    const slots = needs(st.op);
+    if (!slots.size) continue;
+    for (const k of slots) add(`  var ${st.v}${k} = vec4<f32>(0.0);`);
+    st.points.forEach(([dx, dy, w], n) => {
+      add(`  let ${st.v}n${n} = cellIndex(x + ${dx}, y + ${dy}); let ${st.v}w${n} = isWall(${st.v}n${n});`);
+      for (const k of slots) add(`  ${st.v}${k} += ${w.toFixed(1)} * select(src[${st.v}n${n} * ${S}u + ${k}u], s${k}, ${st.v}w${n});`);
+    });
+    for (const k of slots) add(`  ${st.v}${k} = ${st.v}${k} / (${st.div.toFixed(1)} * pow(rd_dx, ${st.dxPower.toFixed(1)}));`);
   }
 
   R.forEach((r, i) => {
     add(`  var v_${r} = s${i >> 2}.${COMP[i & 3]};`);
     add(`  var v_delta_${r} = 0.0;`);
     if (used.has(`laplacian_${r}`)) add(`  let v_laplacian_${r} = L${i >> 2}.${COMP[i & 3]};`);
+    const c = `${i >> 2}.${COMP[i & 3]}`;
+    const gm = used.has(`gradient_mag_squared_${r}`);
+    for (const st of STENCILS) if (used.has(`${st.op}_${r}`) || (gm && st.op.endsWith('_gradient'))) add(`  let v_${st.op}_${r} = ${st.v}${c};`);
+    if (gm) add(`  let v_gradient_mag_squared_${r} = v_x_gradient_${r} * v_x_gradient_${r} + v_y_gradient_${r} * v_y_gradient_${r};`);
   });
   rule.params.forEach((p, i) => {
     if (!used.has(p.name) && p.name !== 'timestep') return;
@@ -478,7 +527,77 @@ m = clamp(m, -1.0, 2.0);`,
   view: { reagent: 'b', low: 0, high: 0.5, tint: 'm', stepsPerFrame: 40 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY];
+/**
+ * Three-component FitzHugh–Nagumo (Purwins, Bode, Schenk et al.): an activator
+ * u with a local inhibitor v and a long-range inhibitor w. Its localized spots
+ * behave like particles: they can sit still, travel (slow v: large tau),
+ * breathe (slow w: large theta), scatter, bind and annihilate. `rate` scales
+ * the reactions so a spot is several cells wide on the lattice.
+ * Status: parameters from memory of the paper; spots don't survive yet.
+ */
+export const FHN3: RuleDef = {
+  name: 'Three-component FHN',
+  description:
+    'Three-component FitzHugh–Nagumo after Schenk, Or-Guil, Bode & Purwins (1997): activator u, local inhibitor v, long-range inhibitor w. ' +
+    'Spots are dissipative solitons: still, travelling (raise tau), or breathing (raise theta), and they collide like particles.',
+  reagents: ['u', 'v', 'w'],
+  params: [
+    { name: 'timestep', value: 0.02, min: 0, max: 0.05 },
+    { name: 'D_u', value: 1, min: 0, max: 2 },
+    { name: 'D_v', value: 0, min: 0, max: 10 },
+    { name: 'D_w', value: 8.76, min: 0, max: 15 },
+    { name: 'rate', value: 0.04, min: 0.005, max: 0.2 },
+    { name: 'lambda', value: 2, min: 0, max: 4 },
+    { name: 'kappa1', value: -6.92, min: -10, max: 0 },
+    { name: 'kappa3', value: 1, min: 0, max: 4 },
+    { name: 'kappa4', value: 8.5, min: 0, max: 15 },
+    { name: 'tau', value: 1, min: 0.1, max: 100 },
+    { name: 'theta', value: 0.5, min: 0.1, max: 20 },
+  ],
+  paintable: ['tau', 'theta', 'kappa1'],
+  formula: `delta_u = D_u * laplacian_u + rate * (lambda*u - u*u*u - kappa3*v - kappa4*w + kappa1);
+delta_v = (D_v * laplacian_v + rate * (u - v)) / tau;
+delta_w = (D_w * laplacian_w + rate * (u - w)) / theta;`,
+  rest: [-0.8, -0.8, -0.8],
+  seed: [1, null, null],
+  seedNoise: [0, 0, 0],
+  initial: [
+    { chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'spots', count: 10, minSize: 4, maxSize: 6, seed: 3 } },
+  ],
+  view: { reagent: 'u', low: -1, high: 1.2, tint: 'w', stepsPerFrame: 100 },
+};
+
+/**
+ * Pennybacker & Newell's single-field phyllotaxis model (auxin transport):
+ * a Swift–Hohenberg-type equation with quadratic gradient terms. Ported from
+ * Ready's Pennybacker2013 kernel (there a hand-written OpenCL kernel).
+ */
+export const PHYLLOTAXIS: RuleDef = {
+  name: 'Phyllotaxis (Pennybacker)',
+  description:
+    'Single-reagent phyllotaxis model of auxin transport after Pennybacker & Newell (2013): ' +
+    'delta_a = mu a − (∇⁴a + 2∇²a + a) − β/3 (|∇a|² + 2a∇²a) − a³. Spots (hexagons), stripes or mixtures depending on mu and β.',
+  reagents: ['a'],
+  params: [
+    { name: 'timestep', value: 0.002, min: 0, max: 0.003 },
+    { name: 'dx', value: 0.55, min: 0.3, max: 1 },
+    { name: 'mu', value: 0.001, min: -0.2, max: 0.5 },
+    { name: 'beta', value: 3, min: 0, max: 6 },
+  ],
+  paintable: ['mu', 'beta'],
+  formula: `delta_a = mu*a - (bilaplacian_a + 2.0*laplacian_a + a) - (beta/3.0)*(gradient_mag_squared_a + 2.0*a*laplacian_a) - a*a*a;`,
+  rest: [0],
+  seed: [1],
+  seedNoise: [0],
+  initial: [
+    { chem: 'a', op: 'overwrite', fill: { type: 'white_noise', low: -0.1, high: 0.1 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'a', low: -0.6, high: 1.2, stepsPerFrame: 100 },
+};
+
+// FHN3 is exported for lab experiments but not listed until its parameters
+// are pinned down (spots don't survive on this lattice scaling yet).
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));

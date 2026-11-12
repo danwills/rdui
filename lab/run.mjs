@@ -25,7 +25,10 @@ try {
   const page = await browser.newPage();
   page.on('pageerror', (e) => console.log('pageerror:', e.message));
   await page.exposeFunction('__log', (line) => console.log(line));
-  await page.exposeFunction('__save', (name, url) => fs.writeFileSync(path.join(outDir, name), Buffer.from(url.split(',')[1], 'base64')));
+  await page.exposeFunction('__save', (name, url) => {
+    fs.mkdirSync(path.dirname(path.join(outDir, name)), { recursive: true });
+    fs.writeFileSync(path.join(outDir, name), Buffer.from(url.split(',')[1], 'base64'));
+  });
   await page.exposeFunction('__saveText', (name, text) => fs.writeFileSync(path.join(outDir, name), text));
   await page.goto(new URL('lab/blank.html', base).href);
   const result = await page.evaluate(async (exp, cfg) => {
