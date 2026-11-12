@@ -1,12 +1,11 @@
 // Do solitons bind? Place two (and rows of 3) at various spacings in the
 // stable medium; report count and spacing after a long settle.
 import { GS_HISTORY_WAVE } from '../src/rule';
-import { stampFromJSON } from '../src/stamps';
-import { makeLab, runAll, blobs, saveFrame, log, type Lab } from './lab';
+import { makeLab, runAll, blobs, saveFrame, log, type Lab , STARTERS } from './lab';
 
 export default async function (cfg: { F?: number; k?: number; ds?: number[]; steps?: number }) {
   const N = 192, c = 96, g = { F: cfg.F ?? 0.054, k: cfg.k ?? 0.065 };
-  const sol = stampFromJSON(await (await fetch('/lab/out/still-hit/soliton.json')).json());
+  const sol = STARTERS('starter-soliton-hw65');
   const ds = cfg.ds ?? [10, 12, 14, 16, 18, 20, 24, 28];
   const runs: { name: string; lab: Lab }[] = [];
   for (const d of ds) {

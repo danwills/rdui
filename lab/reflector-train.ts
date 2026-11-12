@@ -1,12 +1,11 @@
 // Reusability: a train of gliders at the soliton-chain 90° reflector.
 import { GS_HISTORY_WAVE } from '../src/rule';
-import { stampFromJSON } from '../src/stamps';
-import { makeLab, blobs, saveFrame, log } from './lab';
+import { makeLab, blobs, saveFrame, log , STARTERS } from './lab';
 
 export default async function (cfg: { eaters?: { y: number; x0: number; x1: number; s: number }; s?: number; th?: number; off?: number; gap?: number; count?: number; steps?: number; every?: number; frames?: boolean }) {
   const N = 256, c = 128, g = { F: 0.054, k: 0.065 };
-  const sol = stampFromJSON(await (await fetch('/lab/out/still-hit/soliton.json')).json());
-  const gl = stampFromJSON(await (await fetch('/lab/out/still-hit/glider.json')).json());
+  const sol = STARTERS('starter-soliton-hw65');
+  const gl = STARTERS('starter-glider-hw65');
   const s = cfg.s ?? 16, th = cfg.th ?? 65, off = cfg.off ?? 10;
   const lab = await makeLab(GS_HISTORY_WAVE, N, g);
   const a = (th * Math.PI) / 180;

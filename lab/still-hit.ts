@@ -1,13 +1,13 @@
 // Collisions against a still soliton in a medium where it's truly stable.
 import { GS_HISTORY_WAVE } from '../src/rule';
-import { stampFromJSON, stampToJSON } from '../src/stamps';
+import { stampToJSON } from '../src/stamps';
 import { makeLab, runAll, blobs, capture, saveFrame, log, STARTERS, type Lab } from './lab';
 
 export default async function (cfg: { F?: number; k?: number; offsets?: number[]; steps?: number; frames?: boolean }) {
   const N = 256, c = 128, g = { F: cfg.F ?? 0.054, k: cfg.k ?? 0.065 };
   // settle the soliton in this medium and re-capture its native shape
   const s0 = await makeLab(GS_HISTORY_WAVE, N, g);
-  s0.place(stampFromJSON(await (await fetch('/lab/out/soliton/soliton.json')).json()), c, c);
+  s0.place(STARTERS('starter-soliton-hw65'), c, c);
   await s0.run(20000);
   const [sb] = blobs((await s0.read()).state, N, s0.layout.S, 1, 0.2);
   const sol = await capture(s0, sb.x, sb.y, 28, 28, `soliton-F${g.F}-k${g.k}`, `HW soliton F=${g.F} k=${g.k}`);

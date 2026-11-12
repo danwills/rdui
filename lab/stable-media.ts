@@ -1,11 +1,10 @@
 // Which media hold both a stable lone soliton and a working glider?
 import { GS_HISTORY_WAVE } from '../src/rule';
-import { stampFromJSON } from '../src/stamps';
 import { makeLab, runAll, blobs, log, STARTERS, type Lab } from './lab';
 
 export default async function (cfg: { Fs?: number[]; ks?: number[]; steps?: number }) {
   const N = 192, c = 96;
-  const sol = stampFromJSON(await (await fetch('/lab/out/soliton/soliton.json')).json());
+  const sol = STARTERS('starter-soliton-hw65');
   const media = (cfg.Fs ?? [0.05, 0.052, 0.054, 0.056]).flatMap((F) => (cfg.ks ?? [0.062, 0.063, 0.064, 0.065]).map((k) => ({ F, k })));
   const runs: { F: number; k: number; s: Lab; g: Lab; counts: number[]; gl: string[] }[] = [];
   for (const { F, k } of media) {

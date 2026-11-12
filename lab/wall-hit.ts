@@ -2,13 +2,12 @@
 // perpendicular to the glider), glider lateral offset. Looks for reflections
 // that leave the wall intact.
 import { GS_HISTORY_WAVE } from '../src/rule';
-import { stampFromJSON } from '../src/stamps';
-import { makeLab, runAll, blobs, saveFrame, log, type Lab, type Blob } from './lab';
+import { makeLab, runAll, blobs, saveFrame, log, type Lab, type Blob , STARTERS } from './lab';
 
 export default async function (cfg: { F?: number; k?: number; spacings?: number[]; tilts?: number[]; offsets?: number[]; n?: number; steps?: number; batch?: number }) {
   const N = 256, c = 128, g = { F: cfg.F ?? 0.054, k: cfg.k ?? 0.065 };
-  const sol = stampFromJSON(await (await fetch('/lab/out/still-hit/soliton.json')).json());
-  const gl = stampFromJSON(await (await fetch('/lab/out/still-hit/glider.json')).json());
+  const sol = STARTERS('starter-soliton-hw65');
+  const gl = STARTERS('starter-glider-hw65');
   const n = cfg.n ?? 5;
   const jobs = (cfg.spacings ?? [18, 24]).flatMap((s) => (cfg.tilts ?? [0, 30, 45, 60]).flatMap((th) => (cfg.offsets ?? [-12, -9, -6, -3, 0, 3, 6, 9, 12]).map((off) => ({ s, th, off }))));
   const results: Record<string, unknown>[] = [];
