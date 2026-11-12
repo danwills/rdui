@@ -18,8 +18,12 @@ export interface Scene {
   /** Param values per rect [x, y, w, h]; unlisted paintables keep their global value. */
   paint?: { rect: [number, number, number, number]; values: Record<string, number> }[];
   walls?: [number, number, number, number][];
-  /** Stamps by id (bundled starter packs or the user's library), centred at x, y. */
-  stamps?: { stamp: string; x: number; y: number; rot?: number; flip?: boolean }[];
+  /**
+   * Stamps by id (bundled starter packs or the user's library), centred at x, y.
+   * Only their chemistry is placed unless `params` is set (then their painted
+   * params and walls come too).
+   */
+  stamps?: { stamp: string; x: number; y: number; rot?: number; flip?: boolean; params?: boolean }[];
   probes?: { name: string; x: number; y: number; w: number; h: number }[];
   view?: { reagent?: string; low?: number; high?: number; tint?: string; tintLow?: number; tintHigh?: number };
   stepsPerFrame?: number;

@@ -232,7 +232,7 @@ async function init() {
       const st = transformStamp(base, { rot: p.rot ?? 0, flip: p.flip ?? false });
       const f = remapField(st, st.w * st.h);
       const [ox, oy] = stampOrigin(st, p.x, p.y);
-      sim.writeRegion(ox, oy, st.w, st.h, f.params, f.state);
+      sim.writeRegion(ox, oy, st.w, st.h, p.params ? f.params : undefined, f.state);
     }
     probes.load(sc.probes ?? []);
     probePanel.render();

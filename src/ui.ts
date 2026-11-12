@@ -87,7 +87,7 @@ export function defaultSettings(): Settings {
     stampId: null,
     stampRot: 0,
     stampFlip: false,
-    placeParams: true,
+    placeParams: false, // stamps place chemistry only unless asked: no hidden painting
     placeChem: true,
   };
 }
