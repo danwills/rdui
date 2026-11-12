@@ -20,6 +20,14 @@ const DESIGNS: Record<string, (c: number) => P[]> = {
   'single s16': (c) => ring(c, 70, 16),
   'double s18': (c) => [...ring(c, 66, 18), ...ring(c, 80, 18 * (80 / 66), 0.5)],
   'double s22': (c) => [...ring(c, 64, 22), ...ring(c, 80, 22 * (80 / 64), 0.5)],
+  'single s25': (c) => ring(c, 70, 25),
+  'matched s25': (c) => {
+    // outer solitons sit behind each inner gap, 25 px from both inner neighbours
+    const n = 18, R = 70, half = R * Math.sin(Math.PI / n);
+    const R2 = R * Math.cos(Math.PI / n) + Math.sqrt(25 * 25 - half * half);
+    return [...ring(c, R, (2 * Math.PI * R) / n), ...ring(c, R2, (2 * Math.PI * R2) / n, 0.5)];
+  },
+  'double s25': (c) => [...ring(c, 70, 25), ...ring(c, 91.6, 25, 0.5)],
 };
 
 export default async function (cfg: { F?: number; k?: number; designs?: string[]; angles?: number[]; settle?: number; steps?: number; frames?: boolean }) {
@@ -54,7 +62,8 @@ export default async function (cfg: { F?: number; k?: number; designs?: string[]
       const bs = blobs((await r.lab.read()).state, N, r.lab.layout.S, 1, 0.2);
       const intact = pts.filter((p) => bs.some((b) => Math.hypot(b.x - p.x, b.y - p.y) < 6)).length;
       const extra = bs.filter((b) => !pts.some((p) => Math.hypot(b.x - p.x, b.y - p.y) < 6));
-      const outside = extra.filter((b) => Math.hypot(b.x - c, b.y - c) > 90).length;
+      const rOut = Math.max(...pts.map((p) => Math.hypot(p.x - c, p.y - c))) + 12;
+      const outside = extra.filter((b) => Math.hypot(b.x - c, b.y - c) > rOut).length;
       const inside = extra.filter((b) => Math.hypot(b.x - c, b.y - c) < 55).length;
       const verdict = outside ? 'ESCAPED' : intact < pts.length - 1 ? `damaged (${pts.length - intact} lost)` : inside ? 'inside' : extra.length ? 'in-ring' : 'eaten';
       res.push(`${r.a}°:${verdict}`);
