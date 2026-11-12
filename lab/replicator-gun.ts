@@ -9,7 +9,7 @@ export default async function (cfg: { Fs?: number[]; ks?: number[]; steps?: numb
   const runs: { g: { F: number; k: number }; lab: Lab; prev: Blob[]; hist: string[]; emitted: number }[] = [];
   for (const g of media) {
     const l = await makeLab(GS_HISTORY_WAVE, N, g);
-    l.place(STARTERS('starter-soliton-hw65'), c, c);
+    await l.place(STARTERS('starter-soliton-hw65'), c, c);
     runs.push({ g, lab: l, prev: [], hist: [], emitted: 0 });
   }
   const steps = cfg.steps ?? 90000, dt = 600;

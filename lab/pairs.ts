@@ -10,10 +10,10 @@ export default async function (cfg: { F?: number; k?: number; ds?: number[]; ste
   const runs: { name: string; lab: Lab }[] = [];
   for (const d of ds) {
     const l = await makeLab(GS_HISTORY_WAVE, N, g);
-    l.place(sol, c - d / 2, c); l.place(sol, c + d / 2, c);
+    await l.place(sol, c - d / 2, c); await l.place(sol, c + d / 2, c);
     runs.push({ name: `pair d=${d}`, lab: l });
     const r = await makeLab(GS_HISTORY_WAVE, N, g);
-    r.place(sol, c, c - d); r.place(sol, c, c); r.place(sol, c, c + d);
+    await r.place(sol, c, c - d); await r.place(sol, c, c); await r.place(sol, c, c + d);
     runs.push({ name: `row3 d=${d}`, lab: r });
   }
   const steps = cfg.steps ?? 30000;

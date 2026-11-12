@@ -22,8 +22,8 @@ const DESIGNS: Record<string, (c: number) => P[]> = {
   'double s22': (c) => [...ring(c, 64, 22), ...ring(c, 80, 22 * (80 / 64), 0.5)],
 };
 
-export default async function (cfg: { designs?: string[]; angles?: number[]; settle?: number; steps?: number; frames?: boolean }) {
-  const N = 256, c = 128, g = { F: 0.054, k: 0.065 };
+export default async function (cfg: { F?: number; k?: number; designs?: string[]; angles?: number[]; settle?: number; steps?: number; frames?: boolean }) {
+  const N = 256, c = 128, g = { F: cfg.F ?? 0.054, k: cfg.k ?? 0.065 };
   const sol = STARTERS('starter-soliton-hw65'), gl = STARTERS('starter-glider-hw65');
   const names = cfg.designs ?? Object.keys(DESIGNS);
   const angles = cfg.angles ?? Array.from({ length: 24 }, (_, i) => i * 15);
@@ -32,7 +32,7 @@ export default async function (cfg: { designs?: string[]; angles?: number[]; set
     const pts = DESIGNS[name](c);
     // 1. does the ring hold on its own?
     const alone = await makeLab(GS_HISTORY_WAVE, N, g);
-    for (const p of pts) alone.place(sol, p.x, p.y);
+    for (const p of pts) await alone.place(sol, p.x, p.y);
     await alone.run(cfg.settle ?? 30000);
     const ab = blobs((await alone.read()).state, N, alone.layout.S, 1, 0.2);
     const held = pts.filter((p) => ab.some((b) => Math.hypot(b.x - p.x, b.y - p.y) < 5)).length;
@@ -43,8 +43,8 @@ export default async function (cfg: { designs?: string[]; angles?: number[]; set
     const runs: { a: number; lab: Lab }[] = [];
     for (const a of angles) {
       const l = await makeLab(GS_HISTORY_WAVE, N, g);
-      for (const p of pts) l.place(sol, p.x, p.y);
-      l.place(rotateStampBy(gl, a), c, c);
+      for (const p of pts) await l.place(sol, p.x, p.y);
+      await l.place(rotateStampBy(gl, a), c, c);
       runs.push({ a, lab: l });
     }
     const steps = cfg.steps ?? 16000;

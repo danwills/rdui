@@ -10,15 +10,15 @@ export default async function (cfg: { eaters?: { y: number; x0: number; x1: numb
   const lab = await makeLab(GS_HISTORY_WAVE, N, g);
   const a = (th * Math.PI) / 180;
   const wall = Array.from({ length: 5 }, (_, i) => ({ x: c + 20 + (i - 2) * s * Math.sin(a), y: c - 30 + (i - 2) * s * Math.cos(a) }));
-  for (const p of wall) lab.place(sol, p.x, p.y);
+  for (const p of wall) await lab.place(sol, p.x, p.y);
   // optional natural catcher: a row of solitons across the exit lanes
   const eaters: { x: number; y: number }[] = [];
   if (cfg.eaters) for (let x = cfg.eaters.x0; x <= cfg.eaters.x1; x += cfg.eaters.s) eaters.push({ x, y: cfg.eaters.y });
-  for (const p of eaters) lab.place(sol, p.x, p.y);
+  for (const p of eaters) await lab.place(sol, p.x, p.y);
   wall.push(...eaters);
   // gliders queued on the lane to the left, `gap` px apart (the absorber-free torus wraps, so keep the train short)
   const gap = cfg.gap ?? 45;
-  for (let i = 0; i < (cfg.count ?? 3); i++) lab.place(gl, c - 60 - i * gap, c - 30 + off);
+  for (let i = 0; i < (cfg.count ?? 3); i++) await lab.place(gl, c - 60 - i * gap, c - 30 + off);
   const every = cfg.every ?? 200, steps = cfg.steps ?? 16000;
   let f = 0;
   for (let t = 0; t <= steps; t += every) {

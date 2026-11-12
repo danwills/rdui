@@ -20,7 +20,7 @@ export default async function (cfg: { offsets?: number[]; steps?: number }) {
   await window.__saveText('soliton.json', JSON.stringify(stampToJSON(sol)));
   // 2. alone
   const alone = await makeLab(GS_HISTORY_WAVE, N);
-  alone.place(sol, c, c);
+  await alone.place(sol, c, c);
   for (let t = 0; t < 4; t++) {
     await alone.run(5000);
     const bs = blobs((await alone.read()).state, N, alone.layout.S, 1, 0.2);
@@ -31,8 +31,8 @@ export default async function (cfg: { offsets?: number[]; steps?: number }) {
   const runs: { off: number; lab: Lab }[] = [];
   for (const off of offsets) {
     const l = await makeLab(GS_HISTORY_WAVE, N);
-    l.place(sol, c, c);
-    l.place(STARTERS('starter-glider-hw-axis'), c - 80, c + off);
+    await l.place(sol, c, c);
+    await l.place(STARTERS('starter-glider-hw-axis'), c - 80, c + off);
     runs.push({ off, lab: l });
   }
   const steps = cfg.steps ?? 8000;

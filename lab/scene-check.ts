@@ -10,7 +10,7 @@ export default async function (cfg: { scene: string; steps: number; every: numbe
   const rule = sc.paintable ? { ...base, paintable: sc.paintable } : base;
   const lab = await makeLab(rule, sc.size ?? 256, sc.globals ?? {});
   for (const p of sc.paint ?? []) await lab.paint(...p.rect, p.values);
-  for (const s of sc.stamps ?? []) lab.place(STARTER_STAMPS.find((x) => x.id === s.stamp)!, s.x, s.y, s);
+  for (const s of sc.stamps ?? []) await lab.place(STARTER_STAMPS.find((x) => x.id === s.stamp)!, s.x, s.y, s);
   const ri = lab.layout.reagents.indexOf(cfg.reagent);
   const S4 = lab.layout.S * 4;
   const boxes = (sc.probes ?? []).map((p) => ({ ...p, label: p.name }));

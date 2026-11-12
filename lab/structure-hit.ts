@@ -10,9 +10,9 @@ const N = 192, c = 96;
 /** Settle the starter soliton and glider in a medium and re-capture them. */
 async function settled(g: Record<string, number>): Promise<{ sol: Stamp; gl: Stamp }> {
   const s = await makeLab(GS_HISTORY_WAVE, N, g);
-  s.place(STARTERS('starter-soliton-hw65'), c, c);
+  await s.place(STARTERS('starter-soliton-hw65'), c, c);
   const q = await makeLab(GS_HISTORY_WAVE, N, g);
-  q.place(STARTERS('starter-glider-hw65'), 40, c);
+  await q.place(STARTERS('starter-glider-hw65'), 40, c);
   await runAll([s, q], 12000);
   const [sb] = blobs((await s.read()).state, N, s.layout.S, 1, 0.2);
   const [gb] = blobs((await q.read()).state, N, q.layout.S, 1, 0.2);
@@ -44,7 +44,7 @@ export default async function (cfg: { media?: Record<string, number>[]; structs?
     const ok: string[] = [];
     {
       const labs: Lab[] = [];
-      for (const n of names) { const l = await makeLab(GS_HISTORY_WAVE, N, g); for (const [x, y] of STRUCTS[n]) l.place(sol, c + x, c + y); labs.push(l); }
+      for (const n of names) { const l = await makeLab(GS_HISTORY_WAVE, N, g); for (const [x, y] of STRUCTS[n]) await l.place(sol, c + x, c + y); labs.push(l); }
       await runAll(labs, 12000);
       for (const [i, n] of names.entries()) {
         const bs = blobs((await labs[i].read()).state, N, labs[i].layout.S, 1, 0.2);
@@ -59,8 +59,8 @@ export default async function (cfg: { media?: Record<string, number>[]; structs?
       const runs: { n: string; off: number; lab: Lab }[] = [];
       for (const job of jobs.slice(j, j + batch)) {
         const l = await makeLab(GS_HISTORY_WAVE, N, g);
-        for (const [x, y] of STRUCTS[job.n]) l.place(sol, c + x, c + y);
-        l.place(gl, c - 60, c + job.off);
+        for (const [x, y] of STRUCTS[job.n]) await l.place(sol, c + x, c + y);
+        await l.place(gl, c - 60, c + job.off);
         runs.push({ ...job, lab: l });
       }
       await runAll(runs.map((r) => r.lab), steps - 600);

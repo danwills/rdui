@@ -6,7 +6,7 @@ import { makeLab, glider, blobs, capture, log } from './lab';
 
 export default async function () {
   const lab = await makeLab(GS_HISTORY_WAVE, 512);
-  lab.place(rotateStampBy(glider(), -8), 100, 256);
+  await lab.place(rotateStampBy(glider(), -8), 100, 256);
   await lab.run(8000);
   const [b] = blobs((await lab.read()).state, 512, lab.layout.S, 1, 0.2);
   log('glider at', b);
@@ -14,7 +14,7 @@ export default async function () {
   await window.__saveText('glider-axis.json', JSON.stringify(stampToJSON(s)));
   // verify the captured stamp heads along the axis
   const v = await makeLab(GS_HISTORY_WAVE, 512);
-  v.place(s, 100, 256);
+  await v.place(s, 100, 256);
   await v.run(1000);
   const p0 = blobs((await v.read()).state, 512, v.layout.S, 1, 0.2)[0];
   await v.run(10000);

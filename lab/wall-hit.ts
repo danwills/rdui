@@ -18,8 +18,8 @@ export default async function (cfg: { F?: number; k?: number; spacings?: number[
       const l = await makeLab(GS_HISTORY_WAVE, N, g);
       const a = (job.th * Math.PI) / 180;
       const wall = Array.from({ length: n }, (_, i) => ({ x: c + 20 + (i - (n - 1) / 2) * job.s * Math.sin(a), y: c + (i - (n - 1) / 2) * job.s * Math.cos(a) }));
-      for (const p of wall) l.place(sol, p.x, p.y);
-      l.place(gl, c - 70, c + job.off);
+      for (const p of wall) await l.place(sol, p.x, p.y);
+      await l.place(gl, c - 70, c + job.off);
       runs.push({ ...job, lab: l, wall });
     }
     await runAll(runs.map((r) => r.lab), steps - 800);

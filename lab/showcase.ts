@@ -8,11 +8,11 @@ export default async function (cfg: { steps?: number; every?: number }) {
   const N = 256, c = 128, G = () => STARTERS('starter-glider-hw-axis');
   const make = async () => { const l = await makeLab(GS_HISTORY_WAVE, N); await absorber(l, 6, { k: 0.072 }); return l; };
   const scenes: { name: string; lab: Lab; band?: boolean }[] = [];
-  let l = await make(); l.place(G(), c - 70, c); l.place(G(), c + 70, c, { rot: 2 }); scenes.push({ name: 'head-on: annihilate', lab: l });
-  l = await make(); l.place(G(), c - 70, c); l.place(G(), c + 70, c + 10, { rot: 2 }); scenes.push({ name: 'head-on, offset 10: scatter', lab: l });
-  l = await make(); l.place(G(), c - 70, c); l.place(G(), c, c - 70, { rot: 1 }); scenes.push({ name: 'right angle: merge → 45°', lab: l });
+  let l = await make(); await l.place(G(), c - 70, c); await l.place(G(), c + 70, c, { rot: 2 }); scenes.push({ name: 'head-on: annihilate', lab: l });
+  l = await make(); await l.place(G(), c - 70, c); await l.place(G(), c + 70, c + 10, { rot: 2 }); scenes.push({ name: 'head-on, offset 10: scatter', lab: l });
+  l = await make(); await l.place(G(), c - 70, c); await l.place(G(), c, c - 70, { rot: 1 }); scenes.push({ name: 'right angle: merge → 45°', lab: l });
   l = await make(); await l.paint(0, 170, N, 6, { k: 0.072 });
-  l.place(rotateStampBy(G(), 35), 128 - 100 * Math.cos(0.61), 170 - 100 * Math.sin(0.61)); scenes.push({ name: 'painted k band: mirror', lab: l, band: true });
+  await l.place(rotateStampBy(G(), 35), 128 - 100 * Math.cos(0.61), 170 - 100 * Math.sin(0.61)); scenes.push({ name: 'painted k band: mirror', lab: l, band: true });
   const steps = cfg.steps ?? 9000, every = cfg.every ?? 150;
   for (let t = 0, f = 0; t <= steps; t += every, f++) {
     if (t) await runAll(scenes.map((s) => s.lab), every);

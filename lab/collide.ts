@@ -13,10 +13,10 @@ export default async function (cfg: { kind?: 'headon' | 'cross' | 'chase'; offse
   for (const off of offsets) {
     const lab = await makeLab(GS_HISTORY_WAVE, N);
     await absorber(lab, 8, { k: 0.072 });
-    lab.place(G(), c - 70, c);
-    if (kind === 'headon') lab.place(G(), c + 70, c + off, { rot: 2 });
-    else if (kind === 'cross') lab.place(G(), c + off, c - 70, { rot: 1 });
-    else lab.place(G(), c - 20, c + off); // chase: same direction, ahead (meets only if speeds differ)
+    await lab.place(G(), c - 70, c);
+    if (kind === 'headon') await lab.place(G(), c + 70, c + off, { rot: 2 });
+    else if (kind === 'cross') await lab.place(G(), c + off, c - 70, { rot: 1 });
+    else await lab.place(G(), c - 20, c + off); // chase: same direction, ahead (meets only if speeds differ)
     labs.push({ off, lab });
   }
   const out: Record<string, unknown> = {};

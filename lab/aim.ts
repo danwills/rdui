@@ -8,7 +8,7 @@ export default async function (cfg: { steps?: number; every?: number; N?: number
   const out: Record<string, unknown> = {};
   for (const flip of [false, true]) for (const rot of [0, 1, 2, 3]) {
     const lab = await makeLab(GS_HISTORY_WAVE, N);
-    lab.place(glider(), N / 2, N / 2, { rot, flip });
+    await lab.place(glider(), N / 2, N / 2, { rot, flip });
     const track: [number, number, number][] = [];
     let ux = 0, uy = 0, px = NaN, py = NaN, count = 0;
     for (let t = 0; t <= steps; t += every) {

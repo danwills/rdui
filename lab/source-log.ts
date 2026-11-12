@@ -6,7 +6,7 @@ import { makeLab, blobs, saveFrame, log, STARTERS, type Blob } from './lab';
 export default async function (cfg: { F: number; k: number; N?: number; steps?: number; dt?: number }) {
   const N = cfg.N ?? 768, c = N / 2, dt = cfg.dt ?? 400, steps = cfg.steps ?? 70000;
   const lab = await makeLab(GS_HISTORY_WAVE, N, { F: cfg.F, k: cfg.k });
-  lab.place(STARTERS('starter-soliton-hw65'), c, c);
+  await lab.place(STARTERS('starter-soliton-hw65'), c, c);
   let prev: Blob[] = [];
   const known: { x: number; y: number }[] = []; // gliders already counted (predicted positions)
   const vel = new Map<Blob, [number, number]>();

@@ -12,7 +12,7 @@ import {
 } from './rule';
 import { BUNDLED_PATTERNS, importReady, loadBundled } from './ready';
 import { SCENES, type Scene } from './scenes';
-import { STARTER_STAMPS } from './stamps';
+import { STARTER_STAMPS, compositeOnto } from './stamps';
 
 const RECT_TOOLS = new Set(['capture', 'probe']);
 const PROBE_SAMPLE_EVERY = 3; // frames
@@ -232,7 +232,7 @@ async function init() {
       const st = transformStamp(base, { rot: p.rot ?? 0, flip: p.flip ?? false });
       const f = remapField(st, st.w * st.h);
       const [ox, oy] = stampOrigin(st, p.x, p.y);
-      sim.writeRegion(ox, oy, st.w, st.h, p.params ? f.params : undefined, f.state);
+      await compositeStamp(ox, oy, st.w, st.h, f.state, p.params ? f.params : undefined);
     }
     probes.load(sc.probes ?? []);
     probePanel.render();
@@ -421,7 +421,21 @@ async function init() {
     const g = placedStamp();
     if (!g || (!s.placeParams && !s.placeChem)) return;
     const [ox, oy] = stampOrigin(g.stamp, x, y);
-    sim.writeRegion(ox, oy, g.stamp.w, g.stamp.h, s.placeParams ? g.params : undefined, s.placeChem ? g.state : undefined);
+    if (s.placeChem) void compositeStamp(ox, oy, g.stamp.w, g.stamp.h, g.state, s.placeParams ? g.params : undefined);
+    else sim.writeRegion(ox, oy, g.stamp.w, g.stamp.h, g.params);
+  }
+
+  /**
+   * Add a stamp's chemistry as a deviation from rest (current + stamp − rest),
+   * so overlapping stamps superpose instead of cutting square seams.
+   */
+  async function compositeStamp(x: number, y: number, w: number, h: number, state: Float32Array, params?: Float32Array) {
+    const W = sim.width, H = sim.height;
+    const ox = ((x % W) + W) % W, oy = ((y % H) + H) % H;
+    const target = sim;
+    const cur = await target.readRegion(ox, oy, w, h);
+    if (target !== sim) return; // the rule changed while reading
+    sim.writeRegion(ox, oy, w, h, params, compositeOnto(cur.state, state, rule.rest, sim.layout.S, w * h));
   }
 
   async function captureStamp(r: Rect) {

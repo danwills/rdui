@@ -7,14 +7,14 @@ export default async function (cfg: { F?: number; k?: number; offsets?: number[]
   const N = 256, c = 128, g = { F: cfg.F ?? 0.054, k: cfg.k ?? 0.065 };
   // settle the soliton in this medium and re-capture its native shape
   const s0 = await makeLab(GS_HISTORY_WAVE, N, g);
-  s0.place(STARTERS('starter-soliton-hw65'), c, c);
+  await s0.place(STARTERS('starter-soliton-hw65'), c, c);
   await s0.run(20000);
   const [sb] = blobs((await s0.read()).state, N, s0.layout.S, 1, 0.2);
   const sol = await capture(s0, sb.x, sb.y, 28, 28, `soliton-F${g.F}-k${g.k}`, `HW soliton F=${g.F} k=${g.k}`);
   await window.__saveText('soliton.json', JSON.stringify(stampToJSON(sol)));
   // settle a glider too (its shape adjusts to the medium)
   const g0 = await makeLab(GS_HISTORY_WAVE, N, g);
-  g0.place(STARTERS('starter-glider-hw-axis'), 40, c);
+  await g0.place(STARTERS('starter-glider-hw-axis'), 40, c);
   await g0.run(6000);
   const [gb] = blobs((await g0.read()).state, N, g0.layout.S, 1, 0.2);
   const gl = await capture(g0, gb.x - 2, gb.y, 24, 24, `glider-F${g.F}-k${g.k}`, `HW glider F=${g.F} k=${g.k}`);
@@ -25,8 +25,8 @@ export default async function (cfg: { F?: number; k?: number; offsets?: number[]
   const runs: { off: number; lab: Lab }[] = [];
   for (const off of offsets) {
     const l = await makeLab(GS_HISTORY_WAVE, N, g);
-    l.place(sol, c, c);
-    l.place(gl, c - 80, c + off);
+    await l.place(sol, c, c);
+    await l.place(gl, c - 80, c + off);
     runs.push({ off, lab: l });
   }
   const steps = cfg.steps ?? 9000;

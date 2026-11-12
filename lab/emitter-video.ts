@@ -5,7 +5,7 @@ import { makeLab, saveFrame, STARTERS } from './lab';
 export default async function (cfg: { F: number; k: number; steps?: number; every?: number; N?: number; tag?: string }) {
   const N = cfg.N ?? 384, g = { F: cfg.F, k: cfg.k };
   const lab = await makeLab(GS_HISTORY_WAVE, N, g);
-  lab.place(STARTERS('starter-soliton-hw65'), N / 2, N / 2);
+  await lab.place(STARTERS('starter-soliton-hw65'), N / 2, N / 2);
   const every = cfg.every ?? 1000, steps = cfg.steps ?? 90000;
   for (let t = 0, f = 0; t <= steps; t += every, f++) {
     if (t) await lab.run(every);

@@ -60,6 +60,24 @@ export function transformStamp(s: Stamp, t: Transform): Stamp {
 }
 
 /**
+ * Composite stamp chemistry onto existing chemistry by adding the stamp's
+ * deviation from the rest state: out = current + (stamp − rest). A stamp's
+ * quiet border adds ~nothing, so overlapping stamps superpose smoothly instead
+ * of cutting square seams into each other. `stamp` and `current` share the
+ * destination layout (S vec4s per cell); `rest` is per reagent.
+ */
+export function compositeOnto(current: Float32Array, stamp: Float32Array, rest: number[], S: number, cells: number) {
+  const out = new Float32Array(current);
+  for (let i = 0; i < cells; i++) {
+    for (let r = 0; r < rest.length; r++) {
+      const j = i * S * 4 + r;
+      out[j] = current[j] + stamp[j] - rest[r];
+    }
+  }
+  return out;
+}
+
+/**
  * Rotate a stamp by any angle (degrees, clockwise on screen), resampling its
  * chemistry bilinearly into a larger square that holds the rotated content.
  * Params and walls use nearest-neighbour; cells that fall outside the source

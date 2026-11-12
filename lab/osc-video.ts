@@ -10,7 +10,7 @@ export default async function (cfg: { ids: string[]; settle?: number; frames?: n
   for (const id of cfg.ids) {
     const rec = await (await fetch(`/lab/out/oscillators/${id}.json`)).json();
     const lab = await makeLab(GS_HISTORY_WAVE, N, rec.medium);
-    lab.place(stampFromJSON(rec.stamp), c, c);
+    await lab.place(stampFromJSON(rec.stamp), c, c);
     await lab.run(cfg.settle ?? 4000);
     const dt = cfg.dt ?? Math.max(20, Math.round(rec.period / 12));
     const peaks: number[] = [];

@@ -8,7 +8,7 @@ export default async function (cfg: { angles?: number[]; steps?: number }) {
   const out: Record<string, unknown> = {};
   for (const ang of cfg.angles ?? [-8, 37, 82, 127, 172]) {
     const lab = await makeLab(GS_HISTORY_WAVE, N);
-    lab.place(rotateStampBy(glider(), ang), N / 2, N / 2);
+    await lab.place(rotateStampBy(glider(), ang), N / 2, N / 2);
     let ux = 0, uy = 0, px = NaN, py = NaN, nb = 0;
     const pts: [number, number, number][] = [];
     for (let t = 0; t <= steps; t += every) {

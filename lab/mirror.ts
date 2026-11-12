@@ -16,7 +16,7 @@ export default async function (cfg: { angles?: number[]; ks?: number[]; band?: n
       // start so that the glider would hit the band near x = 128
       const r = 100;
       const a = (ang * Math.PI) / 180;
-      lab.place(rotateStampBy(STARTERS('starter-glider-hw-axis'), ang), 128 - r * Math.cos(a), 170 - r * Math.sin(a));
+      await lab.place(rotateStampBy(STARTERS('starter-glider-hw-axis'), ang), 128 - r * Math.cos(a), 170 - r * Math.sin(a));
       runs.push({ ang, lab });
     }
     const T = Math.round((100 / 19.2) * 1000);

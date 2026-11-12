@@ -1,0 +1,181 @@
+{
+  "name": "Soliton fence (natural)",
+  "description": "A ring of 27 still solitons, 16 px apart, with four gliders fired outward from the middle. Medium F = 0.052, k = 0.066 (moreLifelike otherwise): there the ring keeps all its solitons for 300k+ steps, only slowly loosening outward. Solitons eat gliders that hit them near centre, so the ring contains them. Nothing is painted; stamps are composited as deviations from rest so they join without seams.",
+  "rule": "builtin:1",
+  "size": 256,
+  "globals": {
+    "F": 0.052,
+    "k": 0.066
+  },
+  "start": "rest",
+  "stamps": [
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 198.0,
+      "y": 128.0
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 196.1,
+      "y": 144.1
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 190.6,
+      "y": 159.4
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 181.6,
+      "y": 173.0
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 169.8,
+      "y": 184.1
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 155.7,
+      "y": 192.3
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 140.2,
+      "y": 196.9
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 123.9,
+      "y": 197.9
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 107.9,
+      "y": 195.1
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 93.0,
+      "y": 188.6
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 80.0,
+      "y": 178.9
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 69.5,
+      "y": 166.5
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 62.2,
+      "y": 151.9
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 58.5,
+      "y": 136.1
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 58.5,
+      "y": 119.9
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 62.2,
+      "y": 104.1
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 69.5,
+      "y": 89.5
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 80.0,
+      "y": 77.1
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 93.0,
+      "y": 67.4
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 107.9,
+      "y": 60.9
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 123.9,
+      "y": 58.1
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 140.2,
+      "y": 59.1
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 155.7,
+      "y": 63.7
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 169.8,
+      "y": 71.9
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 181.6,
+      "y": 83.0
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 190.6,
+      "y": 96.6
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 196.1,
+      "y": 111.9
+    },
+    {
+      "stamp": "starter-glider-hw65",
+      "x": 146,
+      "y": 128,
+      "rot": 0
+    },
+    {
+      "stamp": "starter-glider-hw65",
+      "x": 128,
+      "y": 146,
+      "rot": 1
+    },
+    {
+      "stamp": "starter-glider-hw65",
+      "x": 110,
+      "y": 128,
+      "rot": 2
+    },
+    {
+      "stamp": "starter-glider-hw65",
+      "x": 128,
+      "y": 110,
+      "rot": 3
+    }
+  ],
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.5,
+    "tint": "c",
+    "tintLow": 0,
+    "tintHigh": 0.3
+  },
+  "stepsPerFrame": 60
+}

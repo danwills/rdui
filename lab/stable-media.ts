@@ -8,7 +8,7 @@ export default async function (cfg: { Fs?: number[]; ks?: number[]; steps?: numb
   const media = (cfg.Fs ?? [0.05, 0.052, 0.054, 0.056]).flatMap((F) => (cfg.ks ?? [0.062, 0.063, 0.064, 0.065]).map((k) => ({ F, k })));
   const runs: { F: number; k: number; s: Lab; g: Lab; counts: number[]; gl: string[] }[] = [];
   for (const { F, k } of media) {
-    const s = await makeLab(GS_HISTORY_WAVE, N, { F, k }); s.place(sol, c, c);
+    const s = await makeLab(GS_HISTORY_WAVE, N, { F, k }); await s.place(sol, c, c);
     const g = await makeLab(GS_HISTORY_WAVE, N, { F, k }); g.place(STARTERS('starter-glider-hw-axis'), 30, c);
     runs.push({ F, k, s, g, counts: [], gl: [] });
   }

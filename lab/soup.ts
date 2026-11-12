@@ -66,7 +66,7 @@ export default async function (cfg: { only?: string[]; warm?: number; N?: number
         const w = 32;
         const st = await capture(lab, iso.x - (iso.vx / iso.speed) * 4, iso.y - (iso.vy / iso.speed) * 4, w, w, `ship-${found.length}`, `${c.name} ${key}`);
         const test = await makeLab(c.rule, N, c.g ?? {});
-        test.place(st, N / 2, N / 2);
+        await test.place(st, N / 2, N / 2);
         await test.run(1000);
         const a0 = blobs((await test.read()).state, N, test.layout.S, 1, 0.2);
         await test.run(6000);

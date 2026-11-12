@@ -4,7 +4,7 @@
  */
 import * as R from '../src/rule';
 import { Simulation } from '../src/sim';
-import { STARTER_STAMPS, transformStamp, type Stamp } from '../src/stamps';
+import { STARTER_STAMPS, compositeOnto, transformStamp, type Stamp } from '../src/stamps';
 
 declare global {
   interface Window {
@@ -34,7 +34,7 @@ export interface Lab {
   run(steps: number): Promise<void>;
   read(): Promise<{ params: Float32Array; state: Float32Array }>;
   paint(x: number, y: number, w: number, h: number, values: Record<string, number>): Promise<void>;
-  place(stamp: Stamp, cx: number, cy: number, t?: { rot?: number; flip?: boolean }): void;
+  place(stamp: Stamp, cx: number, cy: number, t?: { rot?: number; flip?: boolean; overwrite?: boolean }): Promise<void>;
 }
 
 const restCache = new Map<string, number[]>();
@@ -76,10 +76,14 @@ export async function makeLab(base: R.RuleDef, N: number, globals: Record<string
       }
       sim.writeRegion(x, y, w, h, params);
     },
-    place(stamp, cx, cy, t = {}) {
+    async place(stamp, cx, cy, t = {}) {
       const s = transformStamp(stamp, { rot: t.rot ?? 0, flip: t.flip ?? false });
       const st = R.remapCells(s.state, s.reagents, s.S, L.reagents, L.S, s.w * s.h, (n) => rest![rule.reagents.indexOf(n)] ?? 0);
-      sim.writeRegion(Math.round(cx - s.w / 2), Math.round(cy - s.h / 2), s.w, s.h, undefined, st);
+      const x = Math.round(cx - s.w / 2), y = Math.round(cy - s.h / 2);
+      const w = (v: number) => ((v % N) + N) % N;
+      if (t.overwrite) return sim.writeRegion(w(x), w(y), s.w, s.h, undefined, st);
+      const cur = (await sim.readRegion(w(x), w(y), s.w, s.h)).state;
+      sim.writeRegion(w(x), w(y), s.w, s.h, undefined, compositeOnto(cur, st, rest!, L.S, s.w * s.h));
     },
   };
   return lab;
