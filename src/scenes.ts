@@ -9,6 +9,8 @@ export interface Scene {
   /** Rule choice id, e.g. "builtin:1" or "pattern:<name>". */
   rule: string;
   size?: number;
+  /** Override global parameter values (e.g. a different medium). */
+  globals?: Record<string, number>;
   /** Override the rule's paintable params. */
   paintable?: string[];
   /** "rest" = clean field at the rule's rest state; "initial" = its generator. */

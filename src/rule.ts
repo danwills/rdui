@@ -56,6 +56,12 @@ export interface RuleDef {
   initial: Overlay[];
   /** Suggested view: reagent shown, its range, and steps per frame. */
   view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number };
+  /**
+   * Membranes: for the listed reagents, neighbours whose `param` value differs
+   * (a painted compartment id) are treated as no-flux, like walls but only for
+   * those reagents. Compartments then behave as well-mixed "cells".
+   */
+  membrane?: { param: string; reagents: string[] };
   /** Grid size the rule was authored for (imports). */
   size?: { width: number; height: number };
   /** Where it came from, e.g. a .vti file name. */
@@ -161,6 +167,9 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const layout = layoutOf(rule);
   const { S, P } = layout;
   const R = rule.reagents;
+  const mem = rule.membrane;
+  if (mem && !rule.params.some((p) => p.name === mem.param)) throw new RuleError(`membrane param '${mem.param}' isn't a parameter`);
+  const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
     ...R, ...R.map((r) => `delta_${r}`), ...R.map((r) => `laplacian_${r}`),
     ...rule.params.map((p) => p.name), 'timestep',
@@ -207,14 +216,37 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   for (let k = 0; k < S; k++) add(`    dst[sb + ${k}u] = s${k};`);
   add(`    return;\n  }`);
 
+  // Membrane-gated components per state slot.
+  const gated = new Map<number, boolean[]>();
+  if (mem) {
+    for (const r of mem.reagents) {
+      const i = R.indexOf(r);
+      if (i < 0) throw new RuleError(`membrane reagent '${r}' isn't a reagent`);
+      const m = gated.get(i >> 2) ?? [false, false, false, false];
+      m[i & 3] = true;
+      gated.set(i >> 2, m);
+    }
+  }
+  const memValue = (cell: string) =>
+    memSlot > 0 ? slotRef('params', `${cell} * ${P}u`, memSlot) : `g[${(rule.params.findIndex((p) => p.name === mem!.param)) >> 2}].${COMP[rule.params.findIndex((p) => p.name === mem!.param) & 3]}`;
+
   if (lapSlots.size) {
-    for (const k of lapSlots) add(`  var L${k} = -20.0 * s${k};`);
+    if (mem) add(`  let myCell = ${memValue('ci')};`);
+    for (const k of lapSlots) {
+      add(`  var L${k} = -20.0 * s${k};`);
+      const g = gated.get(k);
+      if (g) add(`  let gate${k} = vec4<bool>(${g.join(', ')});`);
+    }
     const nbs: [number, number, number][] = [
       [1, 0, 4], [-1, 0, 4], [0, 1, 4], [0, -1, 4], [1, 1, 1], [-1, 1, 1], [1, -1, 1], [-1, -1, 1],
     ];
     nbs.forEach(([dx, dy, w], n) => {
       add(`  let n${n} = cellIndex(x + ${dx}, y + ${dy}); let nw${n} = isWall(n${n});`);
-      for (const k of lapSlots) add(`  L${k} += ${w.toFixed(1)} * select(src[n${n} * ${S}u + ${k}u], s${k}, nw${n});`);
+      if (mem) add(`  let other${n} = abs(${memValue(`n${n}`)} - myCell) > 0.5;`);
+      for (const k of lapSlots) {
+        const cond = gated.get(k) ? `vec4<bool>(nw${n}) | (vec4<bool>(other${n}) & gate${k})` : `nw${n}`;
+        add(`  L${k} += ${w.toFixed(1)} * select(src[n${n} * ${S}u + ${k}u], s${k}, ${cond});`);
+      }
     });
     for (const k of lapSlots) add(`  L${k} = L${k} / 6.0;`);
   }
@@ -411,7 +443,42 @@ delta_d = e + delta_e;`,
   size: { width: 256, height: 256 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE];
+/**
+ * History+Wave plus a bistable memory reagent m (Schlögl cubic, stable at 0 and
+ * 1, threshold m_theta). m diffuses quickly but can't cross membranes between
+ * different painted `cell` ids, so each compartment is a well-mixed memory
+ * cell that is either on or off as a whole. Gliders write to it through b:
+ * paint b_to_m > 0 for a "set" zone, < 0 for a "reset" zone. m is a pure
+ * observer here — it doesn't feed back into a..e.
+ */
+export const GS_HW_MEMORY: RuleDef = {
+  ...GS_HISTORY_WAVE,
+  name: 'GS History+Wave+Memory',
+  description:
+    'GS History+Wave with a sixth reagent m: a bistable memory (stable at 0 and 1) that mixes within painted compartments ' +
+    '(cell id) but cannot cross between them. Gliders passing through b_to_m > 0 set a compartment; b_to_m < 0 resets it. ' +
+    'A memory cell holds its state indefinitely, and decays back if pushed only part-way.',
+  reagents: ['a', 'b', 'c', 'd', 'e', 'm'],
+  params: [
+    ...GS_HISTORY_WAVE.params,
+    { name: 'cell', value: 0, min: 0, max: 8 },
+    { name: 'D_m', value: 0.3, min: 0, max: 0.37 },
+    { name: 'm_gain', value: 0.01, min: 0, max: 0.05 },
+    { name: 'm_theta', value: 0.45, min: 0, max: 1 },
+    { name: 'b_to_m', value: 0, min: -0.1, max: 0.1 },
+  ],
+  paintable: ['F', 'k', 'cell', 'b_to_m'],
+  formula: GS_HISTORY_WAVE.formula + `
+delta_m = D_m * laplacian_m + m_gain * m * (1.0 - m) * (m - m_theta) + b * b_to_m;
+m = clamp(m, -1.0, 2.0);`,
+  membrane: { param: 'cell', reagents: ['m'] },
+  rest: [...GS_HISTORY_WAVE.rest, 0],
+  seed: [...GS_HISTORY_WAVE.seed, null],
+  seedNoise: [...GS_HISTORY_WAVE.seedNoise, 0],
+  view: { reagent: 'b', low: 0, high: 0.5, tint: 'm', stepsPerFrame: 40 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));

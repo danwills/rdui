@@ -31,6 +31,10 @@ reagents and sets `delta_x`, then `x += timestep * delta_x`.
   ✕ to make it global again; up to 7). The field is carried across the change.
 - **Hidden reagents:** the view shows one reagent and can tint it by another, so
   reagents like the history c can drive behaviour without being the main display.
+- **Memory + membranes:** *GS History+Wave+Memory* adds a bistable reagent m (stable
+  at 0 and 1). A rule can declare a `membrane`: m can't diffuse between cells with a
+  different painted `cell` id, so each compartment is a well-mixed memory cell.
+  Gliders write it through `b_to_m` (> 0 sets, < 0 resets).
 - **Rest state:** Erase, walls and Clear use the rule's homogeneous steady state,
   computed by relaxing a 1×1 wrapped grid (zero Laplacian).
 
@@ -72,10 +76,34 @@ walls, placed stamps, probes, view — listed under *Scenes* in the rule menu.
 `Glider → lamp`: a History+Wave glider lights a lamp painted with `c_damp = 0`; the
 lamp keeps its history after the glider leaves while the trail elsewhere fades.
 
+`Memory latch`: a set glider switches a compartment on, a reset glider switches it off;
+each state holds by itself. `Soliton reflector (natural)`: a chain of five still
+solitons turns gliders ~90° and survives; nothing in the reflector is painted.
+
 Open a specific rule or scene directly with `#rule=<id>`, e.g. `#rule=scene%3Aglider-lamp`.
 
 The feed/kill pad in the panel plots the classic presets and the saddle-node curve;
 the hover readout shows u, v and params under the cursor.
+
+## Lab
+
+Headless experiments on the real GPU: `node lab/run.mjs <experiment> '<json>'` runs
+`lab/<experiment>.ts` in Chrome (its own vite server, HMR off) and streams its log;
+frames land in `lab/out/<experiment>/`, and `lab/mp4.sh` turns them into a video.
+`lab/lab.ts` has helpers: build a sim for a rule, place stamps, paint, track blobs.
+
+Findings so far (GS History+Wave):
+- The glider is straight to ±0.5 px. Headings near an axis lock onto it; the axis
+  glider stamp flies exactly along x. Speed ≈ 19 px per 1000 steps.
+- Head-on, offset ≤ 4: both annihilate. Offset ≥ 6: both scatter ≈ ±70°.
+- At right angles two gliders merge into one; its heading follows the timing offset
+  (0° … 45° … 90°), with a wide window.
+- With k = 0.065 a lone soliton is stable and gliders still run. A soliton eats a
+  glider hitting it within ±6 px, launches as a second glider at ±8–12, and lets it
+  pass at ±14. Chains of solitons spaced 16–20 deflect gliders 20–50° (90° in a narrow
+  band) and stay intact, repeatedly.
+- A soup search (all bundled patterns + F/k variants) found one glider family,
+  14–20 px/k depending on the medium; no other spaceships yet.
 
 In dev builds, `window.rdui` exposes `sim`, `rule`, `globals`, `settings`, `probes`,
 `stamps`, `applyRule` and `selectRule` for console tinkering.
@@ -114,7 +142,9 @@ src/
    toward after damage; inputs are brief pulses that move it between attractors.
    - glider → lamp latch *(first cut; `c_damp = 0` is a leaky integrator — it slowly
      self-fills from the background)*
-   - bistable memory reagent → a real toggle that a second glider switches off
+   - bistable memory reagent → a real toggle that a second glider switches off *(done)*
+   - natural reflector from still solitons *(done)*; next: natural gun (a soliton
+     source that a glider repeatedly launches), splitter, then NOT/NOR from merges
    - damage test: erase part of a widget, check it regrows to its stored state
    - glider gun: search emitter-region parameters for periodic glider sources
 5. **Bubbles** — window-like regions as a phase-field (Allen–Cahn) territory reagent:

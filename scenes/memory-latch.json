@@ -1,0 +1,86 @@
+{
+  "name": "Memory latch (set / reset)",
+  "description": "A bistable memory cell, after Levin's bioelectric pattern memory. The compartment (painted cell = 1) holds reagent m, which is stable at 0 and at 1 and mixes freely inside the membrane but can't leave it. The first glider crosses the set zone (b_to_m > 0) and switches the cell on; it stays on. A second glider, released later on the lower lane, crosses the reset zone (b_to_m < 0) and switches it off; it stays off. Shown as b tinted by m. Both gliders are the axis-locked kind, so they fly dead straight along their lanes.",
+  "rule": "builtin:2",
+  "size": 256,
+  "start": "rest",
+  "paint": [
+    {
+      "rect": [
+        120,
+        46,
+        28,
+        62
+      ],
+      "values": {
+        "cell": 1
+      }
+    },
+    {
+      "rect": [
+        120,
+        51,
+        28,
+        14
+      ],
+      "values": {
+        "b_to_m": 0.06
+      }
+    },
+    {
+      "rect": [
+        120,
+        77,
+        28,
+        14
+      ],
+      "values": {
+        "b_to_m": -0.25
+      }
+    }
+  ],
+  "stamps": [
+    {
+      "stamp": "starter-glider-hw-axis",
+      "x": 80,
+      "y": 58
+    },
+    {
+      "stamp": "starter-glider-hw-axis",
+      "x": 216,
+      "y": 84
+    }
+  ],
+  "probes": [
+    {
+      "name": "memory",
+      "x": 120,
+      "y": 46,
+      "w": 28,
+      "h": 62
+    },
+    {
+      "name": "set lane",
+      "x": 60,
+      "y": 50,
+      "w": 12,
+      "h": 16
+    },
+    {
+      "name": "reset lane",
+      "x": 60,
+      "y": 76,
+      "w": 12,
+      "h": 16
+    }
+  ],
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.5,
+    "tint": "m",
+    "tintLow": 0,
+    "tintHigh": 1
+  },
+  "stepsPerFrame": 40
+}

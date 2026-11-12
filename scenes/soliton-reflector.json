@@ -1,0 +1,102 @@
+{
+  "name": "Soliton reflector (natural)",
+  "description": "A glider reflector built only from the medium's own structures: a chain of five still solitons. In this medium (k = 0.065, otherwise moreLifelike) a lone soliton neither moves nor divides, and gliders still run. Each glider in the train meets the chain at a shallow angle and turns about 90\u00b0, leaving the chain intact. Successive gliders exit on slightly different lanes because each one's history trail (c) nudges the next. Solitons also eat gliders that hit them dead-centre, and a glider that clips one at offset 8\u201312 knocks it loose, releasing a second glider. Nothing is painted: a second row of solitons 14 px apart below the reflector eats the outgoing gliders (a soliton absorbs a glider that hits it within about 6 px of centre), so they don't wrap round the torus. The catch nudges a couple of solitons a few pixels.",
+  "rule": "builtin:1",
+  "size": 256,
+  "globals": {
+    "k": 0.065
+  },
+  "start": "rest",
+  "stamps": [
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 119.0,
+      "y": 84.5
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 133.5,
+      "y": 91.2
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 148.0,
+      "y": 98.0
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 162.5,
+      "y": 104.8
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 177.0,
+      "y": 111.5
+    },
+    {
+      "stamp": "starter-glider-hw65",
+      "x": 68,
+      "y": 108
+    },
+    {
+      "stamp": "starter-glider-hw65",
+      "x": 23,
+      "y": 108
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 120,
+      "y": 200
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 134,
+      "y": 200
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 148,
+      "y": 200
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 162,
+      "y": 200
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 176,
+      "y": 200
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 190,
+      "y": 200
+    }
+  ],
+  "probes": [
+    {
+      "name": "in",
+      "x": 30,
+      "y": 100,
+      "w": 16,
+      "h": 16
+    },
+    {
+      "name": "out",
+      "x": 120,
+      "y": 160,
+      "w": 50,
+      "h": 16
+    }
+  ],
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.5,
+    "tint": "c",
+    "tintLow": 0,
+    "tintHigh": 0.3
+  },
+  "stepsPerFrame": 40
+}

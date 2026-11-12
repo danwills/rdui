@@ -202,14 +202,22 @@ async function init() {
     }
     if (sc.paintable) r = { ...r, paintable: sc.paintable };
     const size = sc.size ? { width: sc.size, height: sc.size } : r.size;
-    const ok = await applyRule(r, { field: 'initial', id, globals: defaultGlobals(r), size, image: imp?.image, warnings: imp?.warnings });
+    const ok = await applyRule(r, { field: 'initial', id, globals: { ...defaultGlobals(r), ...sc.globals }, size, image: imp?.image, warnings: imp?.warnings });
     if (!ok) return;
     if (sc.start === 'rest') sim.clearChemistry();
+    // Each rect changes only the params it lists, so rects can be layered.
     for (const p of sc.paint ?? []) {
       const [x, y, w, h] = p.rect;
-      const values = rule.paintable.map((n) => p.values[n] ?? globals[n]);
-      const params = new Float32Array(w * h * sim.layout.P * 4);
-      for (let i = 0; i < w * h; i++) values.forEach((v, k) => (params[i * sim.layout.P * 4 + 1 + k] = v));
+      const { params } = await sim.readRegion(x, y, w, h);
+      const P4 = sim.layout.P * 4;
+      for (const [n, v] of Object.entries(p.values)) {
+        const slot = sim.layout.paramNames.indexOf(n);
+        if (slot < 1) {
+          warnings.push(`scene paints "${n}", which isn't paintable here`);
+          continue;
+        }
+        for (let i = 0; i < w * h; i++) params[i * P4 + slot] = v;
+      }
       sim.writeRegion(x, y, w, h, params);
     }
     for (const [x, y, w, h] of sc.walls ?? []) {

@@ -60,6 +60,40 @@ export function transformStamp(s: Stamp, t: Transform): Stamp {
 }
 
 /**
+ * Rotate a stamp by any angle (degrees, clockwise on screen), resampling its
+ * chemistry bilinearly into a larger square that holds the rotated content.
+ * Params and walls use nearest-neighbour; cells that fall outside the source
+ * take the nearest edge cell, so a stamp with a quiet border stays quiet.
+ * Used to aim gliders: their heading turns with the stamp.
+ */
+export function rotateStampBy(s: Stamp, degrees: number): Stamp {
+  const a = (degrees * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a);
+  const side = Math.ceil(Math.abs(s.w * c) + Math.abs(s.h * sn)) | 1;
+  const W = Math.max(side, Math.ceil(Math.abs(s.w * sn) + Math.abs(s.h * c)) | 1);
+  const ss = s.S * 4, ps = s.P * 4;
+  const state = new Float32Array(W * W * ss), params = new Float32Array(W * W * ps);
+  const cx = (s.w - 1) / 2, cy = (s.h - 1) / 2, oc = (W - 1) / 2;
+  const at = (x: number, y: number) => Math.min(s.h - 1, Math.max(0, y)) * s.w + Math.min(s.w - 1, Math.max(0, x));
+  for (let y = 0; y < W; y++) {
+    for (let x = 0; x < W; x++) {
+      // inverse-rotate the destination cell into source coordinates
+      const dx = x - oc, dy = y - oc;
+      const sx = cx + c * dx + sn * dy, sy = cy - sn * dx + c * dy;
+      const x0 = Math.floor(sx), y0 = Math.floor(sy), fx = sx - x0, fy = sy - y0;
+      const i00 = at(x0, y0), i10 = at(x0 + 1, y0), i01 = at(x0, y0 + 1), i11 = at(x0 + 1, y0 + 1);
+      const dst = y * W + x;
+      for (let k = 0; k < ss; k++) {
+        state[dst * ss + k] =
+          (s.state[i00 * ss + k] * (1 - fx) + s.state[i10 * ss + k] * fx) * (1 - fy) +
+          (s.state[i01 * ss + k] * (1 - fx) + s.state[i11 * ss + k] * fx) * fy;
+      }
+      params.set(s.params.subarray(at(Math.round(sx), Math.round(sy)) * ps, at(Math.round(sx), Math.round(sy)) * ps + ps), dst * ps);
+    }
+  }
+  return { ...s, w: W, h: W, params, state };
+}
+
+/**
  * Small preview image: one reagent (by name, else the second) auto-ranged to
  * the stamp's own min/max, walls hatched grey.
  */
