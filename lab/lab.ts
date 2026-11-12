@@ -144,7 +144,8 @@ export async function absorber(lab: Lab, band: number, values: Record<string, nu
 export const STARTERS = (id: string) => STARTER_STAMPS.find((s) => s.id === id)!;
 export const glider = () => STARTERS('starter-glider-hw');
 
-export interface Blob { x: number; y: number; area: number; peak: number }
+/** elong: ratio of principal axis lengths (1 = round). */
+export interface Blob { x: number; y: number; area: number; peak: number; elong: number }
 
 /** Connected components (4-neighbour, toroidal) of reagent `ri` above `thr`; centroids unwrapped. */
 export function blobs(state: Float32Array, N: number, S: number, ri: number, thr: number, minArea = 4): Blob[] {
@@ -157,7 +158,7 @@ export function blobs(state: Float32Array, N: number, S: number, ri: number, thr
     if (!on[i] || label[i] >= 0) continue;
     const id = out.length;
     const ox = i % N, oy = (i / N) | 0;
-    let sx = 0, sy = 0, sw = 0, area = 0, peak = 0;
+    let sx = 0, sy = 0, sw = 0, area = 0, peak = 0, sxx = 0, syy = 0, sxy = 0;
     label[i] = id;
     stack.push(i);
     // track unwrapped offsets relative to the seed cell
@@ -167,14 +168,19 @@ export function blobs(state: Float32Array, N: number, S: number, ri: number, thr
       const [jx, jy] = off.get(j)!;
       const v = state[j * S * 4 + ri];
       sx += jx * v; sy += jy * v; sw += v; area++; peak = Math.max(peak, v);
+      sxx += jx * jx * v; syy += jy * jy * v; sxy += jx * jy * v;
       const x = j % N, y = (j / N) | 0;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const k = ((y + dy + N) % N) * N + ((x + dx + N) % N);
         if (on[k] && label[k] < 0) { label[k] = id; off.set(k, [jx + dx, jy + dy]); stack.push(k); }
       }
     }
-    if (area >= minArea) out.push({ x: (((ox + sx / sw) % N) + N) % N, y: (((oy + sy / sw) % N) + N) % N, area, peak });
-    else out.push({ x: NaN, y: NaN, area: 0, peak: 0 });
+    const mx = sx / sw, my = sy / sw;
+    const cxx = sxx / sw - mx * mx, cyy = syy / sw - my * my, cxy = sxy / sw - mx * my;
+    const tr = (cxx + cyy) / 2, det = Math.sqrt(Math.max(0, ((cxx - cyy) / 2) ** 2 + cxy * cxy));
+    const elong = Math.sqrt((tr + det) / Math.max(1e-6, tr - det));
+    if (area >= minArea) out.push({ x: (((ox + mx) % N) + N) % N, y: (((oy + my) % N) + N) % N, area, peak, elong });
+    else out.push({ x: NaN, y: NaN, area: 0, peak: 0, elong: 1 });
   }
   return out.filter((b) => b.area > 0);
 }
