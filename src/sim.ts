@@ -272,6 +272,59 @@ export class Simulation {
     }
   }
 
+  get paramsBuffer() {
+    return this.params;
+  }
+
+  /** The state buffer the next step reads from (i.e. the latest state). */
+  get stateBuffer() {
+    return this.state[this.current];
+  }
+
+  /**
+   * Row segments covering a w×h rectangle at (x, y), wrapped toroidally.
+   * Each segment is a run of cells contiguous in the field and in the region.
+   */
+  private segments(x: number, y: number, w: number, h: number) {
+    const W = this.width, H = this.height;
+    const out: { field: number; region: number; len: number }[] = [];
+    const x0 = ((x % W) + W) % W;
+    const first = Math.min(w, W - x0);
+    for (let r = 0; r < h; r++) {
+      const fy = (((y + r) % H) + H) % H;
+      out.push({ field: fy * W + x0, region: r * w, len: first });
+      if (first < w) out.push({ field: fy * W, region: r * w + first, len: w - first });
+    }
+    return out;
+  }
+
+  /** Read params (4 floats/cell) and state (2 floats/cell) of a rectangle. */
+  async readRegion(x: number, y: number, w: number, h: number): Promise<{ params: Float32Array; state: Float32Array }> {
+    const cells = w * h;
+    const staging = this.device.createBuffer({ size: cells * 24, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+    const enc = this.device.createCommandEncoder();
+    const state = this.state[this.current];
+    for (const s of this.segments(x, y, w, h)) {
+      enc.copyBufferToBuffer(this.params, s.field * 16, staging, s.region * 16, s.len * 16);
+      enc.copyBufferToBuffer(state, s.field * 8, staging, cells * 16 + s.region * 8, s.len * 8);
+    }
+    this.device.queue.submit([enc.finish()]);
+    await staging.mapAsync(GPUMapMode.READ);
+    const all = new Float32Array(staging.getMappedRange().slice(0));
+    staging.destroy();
+    return { params: all.slice(0, cells * 4), state: all.slice(cells * 4) };
+  }
+
+  /** Write params and/or state into a rectangle (either may be omitted). */
+  writeRegion(x: number, y: number, w: number, h: number, params?: Float32Array, state?: Float32Array) {
+    const q = this.device.queue;
+    const cur = this.state[this.current];
+    for (const s of this.segments(x, y, w, h)) {
+      if (params) q.writeBuffer(this.params, s.field * 16, params, s.region * 4, s.len * 4);
+      if (state) q.writeBuffer(cur, s.field * 8, state, s.region * 2, s.len * 2);
+    }
+  }
+
   destroy() {
     for (const b of [...this.state, this.params, this.simUniform, this.sizeUniform, this.brushUniform, this.viewUniform, this.probeBuffer]) {
       b.destroy();

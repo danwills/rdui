@@ -1,6 +1,6 @@
 import { PRESETS, DEFAULT_PRESET } from './presets';
 
-export type Tool = 'seed' | 'erase' | 'params' | 'wall';
+export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'capture' | 'stamp' | 'probe';
 
 export interface Settings {
   tool: Tool;
@@ -15,6 +15,11 @@ export interface Settings {
   gridSize: number;
   view: number;
   palette: number;
+  stampId: string | null;
+  stampRot: number;
+  stampFlip: boolean;
+  placeParams: boolean;
+  placeChem: boolean;
 }
 
 export interface Actions {
@@ -23,6 +28,8 @@ export interface Actions {
   clearChemistry(): void;
   resize(size: number): void;
   stepOnce(): void;
+  saveField(): void;
+  loadField(): void;
 }
 
 export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
@@ -30,6 +37,9 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'erase', label: 'Erase', key: '2', hint: 'reset chemistry to U=1, V=0' },
   { id: 'params', label: 'Params', key: '3', hint: 'paint feed/kill/diffusion · right-click samples' },
   { id: 'wall', label: 'Wall', key: '4', hint: 'no-flux barrier · right-drag removes' },
+  { id: 'capture', label: 'Capture', key: '5', hint: 'drag a rectangle to capture it as a stamp' },
+  { id: 'stamp', label: 'Stamp', key: '6', hint: 'click to place the selected stamp · Q/E rotate · X mirror' },
+  { id: 'probe', label: 'Probe', key: '7', hint: 'drag a rectangle to measure it · right-click a probe removes it' },
 ];
 
 const F_RANGE = [0, 0.1] as const;
@@ -49,22 +59,33 @@ export function defaultSettings(): Settings {
     gridSize: 512,
     view: 0,
     palette: 0,
+    stampId: null,
+    stampRot: 0,
+    stampFlip: false,
+    placeParams: true,
+    placeChem: true,
   };
 }
 
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}, ...children: (Node | string)[]) {
+export function el<K extends keyof HTMLElementTagNameMap>(tag: K, attrs: Record<string, string> = {}, ...children: (Node | string)[]) {
   const e = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
   e.append(...children);
   return e;
 }
 
-function section(title: string, ...children: Node[]) {
+export function section(title: string, ...children: Node[]) {
   return el('section', {}, el('h2', {}, title), ...children);
 }
 
+export function button(label: string, onClick: () => void, title = '') {
+  const b = el('button', { title }, label);
+  b.addEventListener('click', onClick);
+  return b;
+}
+
 /** Builds the side panel. Returns `sync()` to refresh widgets after settings change elsewhere. */
-export function buildPanel(root: HTMLElement, s: Settings, actions: Actions) {
+export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, extraSections: Node[] = []) {
   const syncers: (() => void)[] = [];
   const sync = () => syncers.forEach((f) => f());
 
@@ -93,12 +114,6 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions) {
     });
     syncers.push(() => (sel.value = String(s[key])));
     return el('label', { class: 'row' }, el('span', {}, label), sel);
-  }
-
-  function button(label: string, onClick: () => void, title = '') {
-    const b = el('button', { title }, label);
-    b.addEventListener('click', onClick);
-    return b;
   }
 
   // Tools
@@ -157,13 +172,18 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions) {
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Clear chem', actions.clearChemistry, 'C')),
       slider('steps/frame', 'stepsPerFrame', 1, 60, 1, 0),
       select('grid', 'gridSize', [[256, '256²'], [512, '512²'], [1024, '1024²'], [2048, '2048²']], () => actions.resize(s.gridSize)),
+      el('div', { class: 'buttons' },
+        button('Save field…', actions.saveField, 'download params, walls, chemistry and probes · ctrl+S'),
+        button('Load field…', actions.loadField, 'ctrl+O'),
+      ),
     ),
+    ...extraSections,
     section('View',
       select('show', 'view', [[0, 'V (activator)'], [1, 'U (substrate)'], [2, 'parameter map']]),
       select('palette', 'palette', [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral']]),
     ),
     el('footer', {}, el('p', { class: 'hint' },
-      '1–4 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle view · right-click alt action')),
+      '1–7 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle view · right-click alt action · Esc cancel')),
   );
 
   sync();
