@@ -1,33 +1,23 @@
 {
   "name": "\u25b6 Current experiment",
-  "description": "Live view of what Claude is testing right now. NOW: one fuseWorms glider stamp (captured with its reagent halo and a soft round mask) placed four times, rotated 0/90/180/270\u00b0. Tint = wave reagent d.",
+  "description": "Live view of what Claude is testing right now. NOW: stampable worms. In fuseWorms with F = 0.05, k = 0.0644, a lone straight worm keeps lengthening (it grows at its tips), but a closed ring has no tips: these worm rings (radius 25 and 35) were stamped straight from 'worm chemistry' and hold their shape for 180k+ steps, growing only very slowly. Tint = wave reagent d.",
   "rule": "pattern:grayscott-historyWave_fuseWorms",
   "size": 256,
   "start": "rest",
+  "globals": {
+    "F": 0.05,
+    "k": 0.0644
+  },
   "stamps": [
     {
-      "stamp": "starter-fw-glider",
-      "x": 64,
-      "y": 64,
-      "rot": 0
+      "stamp": "starter-fw-worm-ring-r25",
+      "x": 70,
+      "y": 80
     },
     {
-      "stamp": "starter-fw-glider",
-      "x": 192,
-      "y": 64,
-      "rot": 1
-    },
-    {
-      "stamp": "starter-fw-glider",
-      "x": 192,
-      "y": 192,
-      "rot": 2
-    },
-    {
-      "stamp": "starter-fw-glider",
-      "x": 64,
-      "y": 192,
-      "rot": 3
+      "stamp": "starter-fw-worm-ring-r35",
+      "x": 170,
+      "y": 160
     }
   ],
   "view": {
@@ -38,5 +28,5 @@
     "tintLow": 0,
     "tintHigh": 0.35
   },
-  "stepsPerFrame": 40
+  "stepsPerFrame": 60
 }

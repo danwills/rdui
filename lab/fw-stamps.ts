@@ -9,7 +9,7 @@ const PAT = 'grayscott-historyWave_fuseWorms';
 const CORE: Record<string, number> = { a: 0.407, b: 0.359, c: 0.363, d: 0.205, e: -0.002 };
 const wrapD = (a: number, b: number, N: number) => ((a - b + N * 1.5) % N) - N / 2;
 
-export default async function (cfg: { sizes?: number[]; radii?: number[]; lengths?: number[]; steps?: number; g?: Record<string, number>; skipGliders?: boolean }) {
+export default async function (cfg: { sizes?: number[]; radii?: number[]; lengths?: number[]; steps?: number; g?: Record<string, number>; skipGliders?: boolean; climate?: Record<string, number> }) {
   const rule = (await loadBundled(PAT)).rule;
   const saved: Record<string, unknown>[] = [];
   const keep = async (st: Stamp, note: string) => { saved.push({ ...stampToJSON(st), note }); await window.__saveText('stamps.json', JSON.stringify(saved)); };
@@ -55,9 +55,16 @@ export default async function (cfg: { sizes?: number[]; radii?: number[]; length
     ...(cfg.lengths ?? [30, 40, 50]).map((L) => ({ name: `line ${L}`, w: L + 16, h: 19, inside: (x: number, y: number) => Math.abs(x) <= L / 2 && Math.abs(y) <= 1.5 })),
     ...(cfg.radii ?? [12, 18, 25, 35, 50]).map((R) => ({ name: `ring r${R}`, w: 2 * R + 16, h: 2 * R + 16, inside: (x: number, y: number) => Math.abs(Math.hypot(x, y) - R) <= 1.5 })),
   ];
+  log(`rest: ${rule.reagents.map((n, k) => `${n}=${rule.rest[k]?.toFixed(3)}`).join(' ')}`);
   const runs: { name: string; lab: Lab; st: Stamp; hist: string[] }[] = [];
   for (const sh of shapes) {
     const l = await makeLab(rule, M, cfg.g ?? {});
+    if (cfg.climate) {
+      // uniform background (no structure): start the whole field at these reagent values
+      const f = await l.read(), Rr = l.layout.reagents, S4c = l.layout.S * 4;
+      for (const [n, v] of Object.entries(cfg.climate)) { const k = Rr.indexOf(n); for (let i = 0; i < M * M; i++) f.state[i * S4c + k] = v; }
+      l.sim.load(f.state, f.params);
+    }
     const R = l.layout.reagents, S4 = l.layout.S * 4, x0 = Math.round(c - sh.w / 2), y0 = Math.round(c - sh.h / 2);
     const { state } = await l.sim.readRegion(x0, y0, sh.w, sh.h);
     for (let j = 0; j < sh.h; j++) for (let i = 0; i < sh.w; i++) {
