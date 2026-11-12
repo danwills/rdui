@@ -1,9 +1,36 @@
 {
   "name": "\u25b6 Current experiment",
-  "description": "Live view of what Claude is testing right now (overwritten as experiments change). NOW (tint = wave reagent d): hunting for a self-propelled worm spaceship in Dan's fuseWorms medium at 512\u00b2 (more room before things wrap). This is the fuseWorms soup at that size; the lab is tracking elongated blobs that move steadily and re-testing each one alone.",
+  "description": "Live view of what Claude is testing right now (overwritten as experiments change). NOW: the new fuseWorms glider stamps, captured from a soup together with their reagent halo and a soft circular mask, placed on a clean field. Each one flies alone at ~6.5\u20138 px per 1000 steps. Tint = wave reagent d.",
   "rule": "pattern:grayscott-historyWave_fuseWorms",
-  "size": 512,
-  "start": "initial",
+  "size": 256,
+  "start": "rest",
+  "stamps": [
+    {
+      "stamp": "starter-fw-glider-0",
+      "x": 60,
+      "y": 60
+    },
+    {
+      "stamp": "starter-fw-glider-2",
+      "x": 190,
+      "y": 70
+    },
+    {
+      "stamp": "starter-fw-glider-3",
+      "x": 70,
+      "y": 190
+    },
+    {
+      "stamp": "starter-fw-glider-4",
+      "x": 180,
+      "y": 180
+    },
+    {
+      "stamp": "starter-fw-glider-halo40",
+      "x": 128,
+      "y": 128
+    }
+  ],
   "view": {
     "reagent": "b",
     "low": 0,

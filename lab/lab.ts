@@ -89,11 +89,21 @@ export async function makeLab(base: R.RuleDef, N: number, globals: Record<string
   return lab;
 }
 
-/** Capture a w×h stamp centred on (cx, cy). */
-export async function capture(lab: Lab, cx: number, cy: number, w: number, h: number, id: string, name: string): Promise<Stamp> {
+/** Capture a w×h stamp centred on (cx, cy). With `soft`, the deviation from
+ *  rest fades to zero towards the edge of the inscribed ellipse over the
+ *  outer `soft` fraction of its radius, so it composites without edges. */
+export async function capture(lab: Lab, cx: number, cy: number, w: number, h: number, id: string, name: string, soft = 0): Promise<Stamp> {
   const x = Math.round(cx - w / 2), y = Math.round(cy - h / 2);
   const { params, state } = await lab.sim.readRegion(((x % lab.N) + lab.N) % lab.N, ((y % lab.N) + lab.N) % lab.N, w, h);
   const L = lab.layout;
+  if (soft > 0) {
+    const rest = lab.rule.rest, S4 = L.S * 4;
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const r = Math.hypot((i + 0.5 - w / 2) / (w / 2), (j + 0.5 - h / 2) / (h / 2));
+      const t = Math.min(1, Math.max(0, (1 - r) / soft)), m = t * t * (3 - 2 * t);
+      for (let k = 0; k < rest.length; k++) { const q = (j * w + i) * S4 + k; state[q] = rest[k] + (state[q] - rest[k]) * m; }
+    }
+  }
   return { id, name, w, h, rule: lab.rule.name, reagents: L.reagents, paramNames: L.paramNames, S: L.S, P: L.P, params, state };
 }
 
