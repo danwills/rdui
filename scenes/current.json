@@ -1,8 +1,8 @@
 {
-  "name": "\u25b6 Current experiment",
-  "description": "Live view of what Claude is testing right now. NOW: A natural container in the standard History+Wave medium (F = 0.052, k = 0.066, c_damp 0.0009): 18 inner + 18 outer still solitons, every bond at the natural ~25 px spacing, outer ones behind the inner gaps. It stays put for 300k+ steps and eats gliders from every direction (24/24 tested) without damage. Four gliders fire outward from the middle. Nothing is painted. Tint = history c.",
+  "name": "▶ Current experiment",
+  "description": "Live view of what Claude is testing right now. NOW: the natural 90° turn, the corner piece for a glider loop. Standard History+Wave medium (F 0.052, k 0.066, c_damp 0.0009). Reflector A (three still solitons in a line at 30°) bends the glider from heading east to ~48°; reflector B (the same line at 70°) bends it again to ~90°, straight down. Both clusters stay intact. Next: four of these corners chained into a loop. Tint = history c.",
   "rule": "builtin:1",
-  "size": 256,
+  "size": 512,
   "start": "rest",
   "globals": {
     "F": 0.052,
@@ -12,207 +12,38 @@
   "stamps": [
     {
       "stamp": "starter-soliton-hw65",
-      "x": 198.0,
-      "y": 128.0
+      "x": 128.3,
+      "y": 137.5
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 193.8,
-      "y": 151.9
+      "x": 150.0,
+      "y": 150.0
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 181.6,
-      "y": 173.0
+      "x": 171.7,
+      "y": 162.5
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 163.0,
-      "y": 188.6
+      "x": 264.5,
+      "y": 282.7
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 140.2,
-      "y": 196.9
+      "x": 273.1,
+      "y": 306.2
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 115.8,
-      "y": 196.9
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 93.0,
-      "y": 188.6
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 74.4,
-      "y": 173.0
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 62.2,
-      "y": 151.9
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 58.0,
-      "y": 128.0
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 62.2,
-      "y": 104.1
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 74.4,
-      "y": 83.0
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 93.0,
-      "y": 67.4
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 115.8,
-      "y": 59.1
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 140.2,
-      "y": 59.1
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 163.0,
-      "y": 67.4
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 181.6,
-      "y": 83.0
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 193.8,
-      "y": 104.1
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 217.4,
-      "y": 143.8
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 206.6,
-      "y": 173.4
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 186.4,
-      "y": 197.5
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 159.0,
-      "y": 213.3
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 128.0,
-      "y": 218.8
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 97.0,
-      "y": 213.3
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 69.6,
-      "y": 197.5
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 49.4,
-      "y": 173.4
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 38.6,
-      "y": 143.8
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 38.6,
-      "y": 112.2
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 49.4,
-      "y": 82.6
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 69.6,
-      "y": 58.5
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 97.0,
-      "y": 42.7
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 128.0,
-      "y": 37.2
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 159.0,
-      "y": 42.7
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 186.4,
-      "y": 58.5
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 206.6,
-      "y": 82.6
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 217.4,
-      "y": 112.2
+      "x": 281.6,
+      "y": 329.7
     },
     {
       "stamp": "starter-glider-hw65",
-      "x": 146,
-      "y": 128,
-      "rot": 0
-    },
-    {
-      "stamp": "starter-glider-hw65",
-      "x": 128,
-      "y": 146,
-      "rot": 1
-    },
-    {
-      "stamp": "starter-glider-hw65",
-      "x": 110,
-      "y": 128,
-      "rot": 2
-    },
-    {
-      "stamp": "starter-glider-hw65",
-      "x": 128,
-      "y": 110,
-      "rot": 3
+      "x": 77.3,
+      "y": 146
     }
   ],
   "view": {
