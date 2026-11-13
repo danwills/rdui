@@ -30,8 +30,8 @@ const DESIGNS: Record<string, (c: number) => P[]> = {
   'double s25': (c) => [...ring(c, 70, 25), ...ring(c, 91.6, 25, 0.5)],
 };
 
-export default async function (cfg: { F?: number; k?: number; designs?: string[]; angles?: number[]; settle?: number; steps?: number; frames?: boolean }) {
-  const N = 256, c = 128, g = { F: cfg.F ?? 0.054, k: cfg.k ?? 0.065 };
+export default async function (cfg: { F?: number; k?: number; globals?: Record<string, number>; designs?: string[]; angles?: number[]; settle?: number; steps?: number; frames?: boolean }) {
+  const N = 256, c = 128, g = { F: cfg.F ?? 0.054, k: cfg.k ?? 0.065, ...cfg.globals };
   const sol = STARTERS('starter-soliton-hw65'), gl = STARTERS('starter-glider-hw65');
   const names = cfg.designs ?? Object.keys(DESIGNS);
   const angles = cfg.angles ?? Array.from({ length: 24 }, (_, i) => i * 15);

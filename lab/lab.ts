@@ -151,6 +151,10 @@ export async function absorber(lab: Lab, band: number, values: Record<string, nu
   await lab.paint(N - band, band, band, N - 2 * band, values);
 }
 
+/** Standard History+Wave medium for natural machinery: solitons bond at ~25 px,
+ *  gliders fly, clusters eat/reflect, and faster-fading history calms collisions. */
+export const HW_STD = { F: 0.052, k: 0.066, c_damp: 0.0009 };
+
 export const STARTERS = (id: string) => STARTER_STAMPS.find((s) => s.id === id)!;
 export const glider = () => STARTERS('starter-glider-hw');
 
