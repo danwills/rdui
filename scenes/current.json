@@ -1,46 +1,48 @@
 {
   "name": "\u25b6 Current experiment",
-  "description": "Live view of what Claude is testing right now. NOW: worm rings and gliders living together. fuseWorms with F = 0.048, k = 0.0639, wave_to_k = 0.004, wave_to_F = 0.018: the glider's own wave lifts F around it and keeps it moving, while the still rings don't grow. Each ring is a clean eater: gliders hitting within ~20 px of centre are absorbed and the ring is unharmed; wider ones pass by. Tint = wave reagent d.",
-  "rule": "pattern:grayscott-historyWave_fuseWorms",
+  "description": "Live view of what Claude is testing right now. NOW: a natural glider reflector in History+Wave (F = 0.052, k = 0.066): four still solitons in a square (25 px bonds) turned 60\u00b0. A glider arriving 14 px off-centre is caught, slides along the cluster and leaves turned ~49\u00b0, and the square is unharmed. It reflects repeatedly if shots are ~30k steps apart; faster than that, the history trail of the last glider spoils the next one. Tint = history c.",
+  "rule": "builtin:1",
   "size": 256,
   "start": "rest",
   "globals": {
-    "F": 0.048,
-    "k": 0.0639,
-    "wave_to_k": 0.004,
-    "wave_to_F": 0.018
+    "F": 0.052,
+    "k": 0.066
   },
   "stamps": [
     {
-      "stamp": "starter-fw-worm-ring-r25",
-      "x": 160,
-      "y": 96
+      "stamp": "starter-soliton-hw65",
+      "x": 132.6,
+      "y": 110.9
     },
     {
-      "stamp": "starter-fw-worm-ring-r35",
-      "x": 80,
-      "y": 80
+      "stamp": "starter-soliton-hw65",
+      "x": 145.1,
+      "y": 132.6
     },
     {
-      "stamp": "starter-fw-glider",
-      "x": 106,
-      "y": 154,
+      "stamp": "starter-soliton-hw65",
+      "x": 110.9,
+      "y": 123.4
+    },
+    {
+      "stamp": "starter-soliton-hw65",
+      "x": 123.4,
+      "y": 145.1
+    },
+    {
+      "stamp": "starter-glider-hw65",
+      "x": 65.9,
+      "y": 114,
       "rot": 0
-    },
-    {
-      "stamp": "starter-fw-glider",
-      "x": 141,
-      "y": 14,
-      "rot": 2
     }
   ],
   "view": {
     "reagent": "b",
     "low": 0,
     "high": 0.5,
-    "tint": "d",
+    "tint": "c",
     "tintLow": 0,
-    "tintHigh": 0.35
+    "tintHigh": 0.3
   },
-  "stepsPerFrame": 60
+  "stepsPerFrame": 40
 }
