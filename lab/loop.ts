@@ -30,18 +30,18 @@ export function corners(L: number, cx: number, cy: number, n = 4, across = 114.5
   return { pts, rots, A0, glider: [A0[0] + Math.min(...clusterPts('line3', 30).map((p) => p[0])) - 45, A0[1] - 4] };
 }
 
-export default async function (cfg: { Ls?: number[]; n?: number; N?: number; steps?: number; across?: number[]; bLater?: number[] }) {
+export default async function (cfg: { Ls?: number[]; n?: number; N?: number; steps?: number; across?: number[]; bLater?: number[]; runIn?: number[] }) {
   const N = cfg.N ?? 768;
-  const jobs = (cfg.Ls ?? [441]).flatMap((L) => (cfg.across ?? [115]).flatMap((ac) => (cfg.bLater ?? [70]).map((bl) => ({ L, ac, bl }))));
-  const runs: { L: number; ac: number; bl: number; lab: Lab; c: ReturnType<typeof corners> }[] = [];
-  for (const { L, ac, bl } of jobs) {
+  const jobs = (cfg.Ls ?? [441]).flatMap((L) => (cfg.across ?? [115]).flatMap((ac) => (cfg.bLater ?? [70]).flatMap((bl) => (cfg.runIn ?? [0]).map((ri) => ({ L, ac, bl, ri })))));
+  const runs: { L: number; ac: number; bl: number; ri: number; lab: Lab; c: ReturnType<typeof corners> }[] = [];
+  for (const { L, ac, bl, ri } of jobs) {
     const l = await makeLab(GS_HISTORY_WAVE, N, HW_STD);
     const c = corners(L, N / 2, N / 2, cfg.n ?? 4, ac, bl);
     for (const [j, [x, y]] of c.pts.entries()) await l.place(STARTERS('starter-soliton-hw65'), x, y, { rot: c.rots[j] });
-    runs.push({ L, ac, bl, lab: l, c });
+    runs.push({ L, ac, bl, ri, lab: l, c });
   }
   await runAll(runs.map((r) => r.lab), 4000);
-  for (const r of runs) await r.lab.place(STARTERS('starter-glider-hw65'), r.c.glider[0], r.c.glider[1]);
+  for (const r of runs) await r.lab.place(STARTERS('starter-glider-hw65'), r.c.glider[0] - r.ri, r.c.glider[1]);
   const T = cfg.steps ?? 80000, chunk = 2000;
   const trails = runs.map(() => [] as number[][]);
   for (let t = chunk; t <= T; t += chunk) {
@@ -65,9 +65,9 @@ export default async function (cfg: { Ls?: number[]; n?: number; N?: number; ste
       if (Math.hypot(tr[j][2] - tr[j - 1][2], tr[j][1] - tr[j - 1][1]) > 10 && legs.at(-1) !== tag) legs.push(tag);
     }
     const last = tr.at(-1)!;
-    log(`L ${r.L} across ${r.ac} bLater ${r.bl}: ${intact}/${r.c.pts.length} intact; glider legs ${legs.join(' → ') || 'none'}; at end ${isNaN(last[1]) ? `${last[2]} movers` : `(${last[1].toFixed(0)},${last[2].toFixed(0)})`}`);
-    out.push({ L: r.L, across: r.ac, bLater: r.bl, intact, legs, trail: tr });
-    await saveFrame(`L${r.L}-a${r.ac}-b${r.bl}.png`, r.lab, { ri: 1, lo: 0, hi: 0.5, ti: 2, tlo: 0, thi: 0.3, scale: 1, caption: `loop L ${r.L}: ${legs.join(' → ')}` });
+    log(`L ${r.L} across ${r.ac} bLater ${r.bl} runIn ${r.ri}: ${intact}/${r.c.pts.length} intact; glider legs ${legs.join(' → ') || 'none'}; at end ${isNaN(last[1]) ? `${last[2]} movers` : `(${last[1].toFixed(0)},${last[2].toFixed(0)})`}`);
+    out.push({ L: r.L, across: r.ac, bLater: r.bl, runIn: r.ri, intact, legs, trail: tr });
+    await saveFrame(`L${r.L}-a${r.ac}-b${r.bl}-r${r.ri}.png`, r.lab, { ri: 1, lo: 0, hi: 0.5, ti: 2, tlo: 0, thi: 0.3, scale: 1, caption: `loop L ${r.L}: ${legs.join(' → ')}` });
     r.lab.sim.destroy();
   }
   return out;

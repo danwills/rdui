@@ -54,5 +54,5 @@
     "tintLow": 0,
     "tintHigh": 0.3
   },
-  "stepsPerFrame": 60
+  "stepsPerFrame": 30
 }
