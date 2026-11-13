@@ -9,30 +9,36 @@ import { clusterPts } from './reflect-ring';
 const rot = ([x, y]: number[], q: number) => { for (let i = 0; i < q; i++) [x, y] = [-y, x]; return [x, y]; };
 const B_REL = [123.1, 156.2];
 
-export function corners(L: number, cx: number, cy: number, n = 4, across = 114.5) {
+export function corners(L: number, cx: number, cy: number, n = 4, across = 114.5, bLater = 70) {
   // corner i's A, relative to corner 0's A, before centring
   const As: number[][] = [[0, 0]];
   for (let i = 1; i < 4; i++) { const step = rot([L, -across], i); As.push([As[i - 1][0] + step[0], As[i - 1][1] + step[1]]); }
   const mx = (Math.min(...As.map((a) => a[0])) + Math.max(...As.map((a) => a[0]))) / 2, my = (Math.min(...As.map((a) => a[1])) + Math.max(...As.map((a) => a[1]))) / 2;
-  const pts: number[][] = [];
-  for (let i = 0; i < n; i++) {
-    const A = [cx + As[i][0] - mx, cy + As[i][1] - my], B = rot(B_REL, i);
-    for (const p of clusterPts('line3', 30 + 90 * i)) pts.push([A[0] + p[0], A[1] + p[1]]);
-    for (const p of clusterPts('line3', 70 + 90 * i)) pts.push([A[0] + B[0] + p[0], A[1] + B[1] + p[1]]);
-  }
-  const A0 = [cx - mx, cy - my];
-  return { pts, A0, glider: [A0[0] + Math.min(...clusterPts('line3', 30).map((p) => p[0])) - 45, A0[1] - 4] };
+  // Stamps are resampled bilinearly at fractional positions, so put corner 0's
+  // A on whole pixels (as in loop-trace) and rotate every point about a centre
+  // on the pixel lattice: then all four corners are exact grid rotations.
+  const A0 = [Math.round(cx - mx), Math.round(cy - my)], C = [A0[0] + mx, A0[1] + my];
+  if (!Number.isInteger(2 * C[0]) || !Number.isInteger(2 * C[1])) throw new Error(`loop centre ${C} is off the pixel lattice: use whole L and across`);
+  // Corner 0 gets a freshly stamped glider; later corners get a travelled one,
+  // which turns a little less, so their B can be steeper (bLater).
+  const base = (bAng: number) => [
+    ...clusterPts('line3', 30).map((p) => [A0[0] + p[0], A0[1] + p[1]]),
+    ...clusterPts('line3', bAng).map((p) => [A0[0] + B_REL[0] + p[0], A0[1] + B_REL[1] + p[1]]),
+  ];
+  const pts: number[][] = [], rots: number[] = [];
+  for (let i = 0; i < n; i++) for (const p of base(i ? bLater : 70)) { const q = rot([p[0] - C[0], p[1] - C[1]], i); pts.push([C[0] + q[0], C[1] + q[1]]); rots.push(i); }
+  return { pts, rots, A0, glider: [A0[0] + Math.min(...clusterPts('line3', 30).map((p) => p[0])) - 45, A0[1] - 4] };
 }
 
-export default async function (cfg: { Ls?: number[]; n?: number; N?: number; steps?: number; across?: number[] }) {
+export default async function (cfg: { Ls?: number[]; n?: number; N?: number; steps?: number; across?: number[]; bLater?: number[] }) {
   const N = cfg.N ?? 768;
-  const jobs = (cfg.Ls ?? [260]).flatMap((L) => (cfg.across ?? [114.5]).map((ac) => ({ L, ac })));
-  const runs: { L: number; ac: number; lab: Lab; c: ReturnType<typeof corners> }[] = [];
-  for (const { L, ac } of jobs) {
+  const jobs = (cfg.Ls ?? [441]).flatMap((L) => (cfg.across ?? [115]).flatMap((ac) => (cfg.bLater ?? [70]).map((bl) => ({ L, ac, bl }))));
+  const runs: { L: number; ac: number; bl: number; lab: Lab; c: ReturnType<typeof corners> }[] = [];
+  for (const { L, ac, bl } of jobs) {
     const l = await makeLab(GS_HISTORY_WAVE, N, HW_STD);
-    const c = corners(L, N / 2, N / 2, cfg.n ?? 4, ac);
-    for (const [x, y] of c.pts) await l.place(STARTERS('starter-soliton-hw65'), x, y);
-    runs.push({ L, ac, lab: l, c });
+    const c = corners(L, N / 2, N / 2, cfg.n ?? 4, ac, bl);
+    for (const [j, [x, y]] of c.pts.entries()) await l.place(STARTERS('starter-soliton-hw65'), x, y, { rot: c.rots[j] });
+    runs.push({ L, ac, bl, lab: l, c });
   }
   await runAll(runs.map((r) => r.lab), 4000);
   for (const r of runs) await r.lab.place(STARTERS('starter-glider-hw65'), r.c.glider[0], r.c.glider[1]);
@@ -59,9 +65,9 @@ export default async function (cfg: { Ls?: number[]; n?: number; N?: number; ste
       if (Math.hypot(tr[j][2] - tr[j - 1][2], tr[j][1] - tr[j - 1][1]) > 10 && legs.at(-1) !== tag) legs.push(tag);
     }
     const last = tr.at(-1)!;
-    log(`L ${r.L} across ${r.ac}: ${intact}/${r.c.pts.length} intact; glider legs ${legs.join(' → ') || 'none'}; at end ${isNaN(last[1]) ? `${last[2]} movers` : `(${last[1].toFixed(0)},${last[2].toFixed(0)})`}`);
-    out.push({ L: r.L, across: r.ac, intact, legs, trail: tr });
-    await saveFrame(`L${r.L}-a${r.ac}.png`, r.lab, { ri: 1, lo: 0, hi: 0.5, ti: 2, tlo: 0, thi: 0.3, scale: 1, caption: `loop L ${r.L}: ${legs.join(' → ')}` });
+    log(`L ${r.L} across ${r.ac} bLater ${r.bl}: ${intact}/${r.c.pts.length} intact; glider legs ${legs.join(' → ') || 'none'}; at end ${isNaN(last[1]) ? `${last[2]} movers` : `(${last[1].toFixed(0)},${last[2].toFixed(0)})`}`);
+    out.push({ L: r.L, across: r.ac, bLater: r.bl, intact, legs, trail: tr });
+    await saveFrame(`L${r.L}-a${r.ac}-b${r.bl}.png`, r.lab, { ri: 1, lo: 0, hi: 0.5, ti: 2, tlo: 0, thi: 0.3, scale: 1, caption: `loop L ${r.L}: ${legs.join(' → ')}` });
     r.lab.sim.destroy();
   }
   return out;

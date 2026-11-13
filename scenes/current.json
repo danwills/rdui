@@ -2,7 +2,7 @@
   "name": "▶ Current experiment",
   "description": "Live view of what Claude is testing right now. NOW: the natural 90° turn, the corner piece for a glider loop. Standard History+Wave medium (F 0.052, k 0.066, c_damp 0.0009). Reflector A (three still solitons in a line at 30°) bends the glider from heading east to ~48°; reflector B (the same line at 70°) bends it again to ~90°, straight down. Both clusters stay intact. Next: four of these corners chained into a loop. Tint = history c.",
   "rule": "builtin:1",
-  "size": 512,
+  "size": 384,
   "start": "rest",
   "globals": {
     "F": 0.052,
@@ -12,38 +12,38 @@
   "stamps": [
     {
       "stamp": "starter-soliton-hw65",
-      "x": 128.3,
-      "y": 137.5
+      "x": 78.3,
+      "y": 87.5
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 150.0,
-      "y": 150.0
+      "x": 100.0,
+      "y": 100.0
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 171.7,
-      "y": 162.5
+      "x": 121.7,
+      "y": 112.5
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 264.5,
-      "y": 282.7
+      "x": 214.5,
+      "y": 232.7
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 273.1,
-      "y": 306.2
+      "x": 223.1,
+      "y": 256.2
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 281.6,
-      "y": 329.7
+      "x": 231.6,
+      "y": 279.7
     },
     {
       "stamp": "starter-glider-hw65",
-      "x": 77.3,
-      "y": 146
+      "x": 27.3,
+      "y": 96
     }
   ],
   "view": {
