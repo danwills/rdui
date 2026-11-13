@@ -1,6 +1,6 @@
 {
   "name": "\u25b6 Current experiment",
-  "description": "Live view of what Claude is testing right now. NOW: a natural glider reflector in History+Wave (F = 0.052, k = 0.066): four still solitons in a square (25 px bonds) turned 60\u00b0. A glider arriving 14 px off-centre is caught, slides along the cluster and leaves turned ~49\u00b0, and the square is unharmed. It reflects repeatedly if shots are ~30k steps apart; faster than that, the history trail of the last glider spoils the next one. Tint = history c.",
+  "description": "Live view of what Claude is testing right now. NOW: the calmest natural reflector in History+Wave (F = 0.052, k = 0.066): three still solitons in a line (25 px bonds) turned 30\u00b0. A glider arriving 4 px off-centre is caught, slides along the line and leaves turned ~46\u00b0; the solitons wobble by ~1 px for a while and settle back. Tint = history c.",
   "rule": "builtin:1",
   "size": 256,
   "start": "rest",
@@ -11,28 +11,23 @@
   "stamps": [
     {
       "stamp": "starter-soliton-hw65",
-      "x": 132.6,
-      "y": 110.9
+      "x": 106.35,
+      "y": 115.5
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 145.1,
-      "y": 132.6
+      "x": 128.0,
+      "y": 128.0
     },
     {
       "stamp": "starter-soliton-hw65",
-      "x": 110.9,
-      "y": 123.4
-    },
-    {
-      "stamp": "starter-soliton-hw65",
-      "x": 123.4,
-      "y": 145.1
+      "x": 149.65,
+      "y": 140.5
     },
     {
       "stamp": "starter-glider-hw65",
-      "x": 65.9,
-      "y": 114,
+      "x": 61.35,
+      "y": 124,
       "rot": 0
     }
   ],
