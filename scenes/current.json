@@ -1,23 +1,37 @@
 {
   "name": "\u25b6 Current experiment",
-  "description": "Live view of what Claude is testing right now. NOW: stampable worms. In fuseWorms with F = 0.05, k = 0.0644, a lone straight worm keeps lengthening (it grows at its tips), but a closed ring has no tips: these worm rings (radius 25 and 35) were stamped straight from 'worm chemistry' and hold their shape for 180k+ steps, growing only very slowly. Tint = wave reagent d.",
+  "description": "Live view of what Claude is testing right now. NOW: worm rings and gliders living together. fuseWorms with F = 0.048, k = 0.0639, wave_to_k = 0.004, wave_to_F = 0.018: the glider's own wave lifts F around it and keeps it moving, while the still rings don't grow. Each ring is a clean eater: gliders hitting within ~20 px of centre are absorbed and the ring is unharmed; wider ones pass by. Tint = wave reagent d.",
   "rule": "pattern:grayscott-historyWave_fuseWorms",
   "size": 256,
   "start": "rest",
   "globals": {
-    "F": 0.05,
-    "k": 0.0644
+    "F": 0.048,
+    "k": 0.0639,
+    "wave_to_k": 0.004,
+    "wave_to_F": 0.018
   },
   "stamps": [
     {
       "stamp": "starter-fw-worm-ring-r25",
-      "x": 70,
-      "y": 80
+      "x": 160,
+      "y": 96
     },
     {
       "stamp": "starter-fw-worm-ring-r35",
-      "x": 170,
-      "y": 160
+      "x": 80,
+      "y": 80
+    },
+    {
+      "stamp": "starter-fw-glider",
+      "x": 106,
+      "y": 154,
+      "rot": 0
+    },
+    {
+      "stamp": "starter-fw-glider",
+      "x": 141,
+      "y": 14,
+      "rot": 2
     }
   ],
   "view": {
