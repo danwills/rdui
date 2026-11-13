@@ -7,7 +7,7 @@ import { stampToJSON } from '../src/stamps';
 import { makeLab, runAll, blobs, capture, log, saveFrame, STARTERS, HW_STD, type Lab } from './lab';
 import { corners } from './loop';
 
-export default async function (cfg: { L?: number; across?: number; bAng?: number; runIn?: number; at?: number[]; box?: number; soft?: number; steps?: number; N?: number }) {
+export default async function (cfg: { L?: number; across?: number; bAng?: number; runIn?: number; at?: number[]; box?: number; soft?: number; steps?: number; N?: number; frames?: boolean }) {
   const N = cfg.N ?? 768, L = cfg.L ?? 441, ac = cfg.across ?? 110, bA = cfg.bAng ?? 72, box = cfg.box ?? 56;
   const setup = async (n: number) => {
     const l = await makeLab(GS_HISTORY_WAVE, N, HW_STD);
@@ -44,8 +44,11 @@ export default async function (cfg: { L?: number; across?: number; bAng?: number
     await l.place(stampFromJSON(cap.st), cap.cx, cap.cy);
     runs.push({ cap, l, c, heads: [], last: null, trail: [] });
   }
-  for (let t = 4000; t <= (cfg.steps ?? 280000); t += 4000) {
-    await runAll(runs.map((r) => r.l), 4000);
+  const dt = cfg.frames ? 1500 : 4000;
+  let f = 0;
+  for (let t = dt; t <= (cfg.steps ?? 280000); t += dt) {
+    await runAll(runs.map((r) => r.l), dt);
+    if (cfg.frames) await saveFrame(`f${String(f++).padStart(4, '0')}.png`, runs[0].l, { ri: 1, lo: 0, hi: 0.5, ti: 2, tlo: 0, thi: 0.3, scale: 1, caption: `glider loop, relaxed glider relayed in  t=${t}` });
     for (const r of runs) {
       const g = await glider(r.l, r.c.pts);
       r.trail.push(g.length === 1 ? `${t / 1000}k:(${g[0].x.toFixed(0)},${g[0].y.toFixed(0)})` : `${t / 1000}k:${g.length}`);
