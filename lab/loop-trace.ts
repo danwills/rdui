@@ -26,7 +26,7 @@ export default async function (cfg: { bAng?: number; side?: number; dist?: numbe
     if (bs.length === 1) path.push([t * 1000, bs[0].x, bs[0].y]);
   }
   // keep points well past B (beyond 60 px), fit x = a + b·y
-  const far = path.filter(([, x, y]) => y > B[1] + 60 && y < N - 20);
+  const far = path.filter(([, , y]) => y > B[1] + 60 && y < N - 20);
   const my = far.reduce((m, p) => m + p[2], 0) / far.length, mx = far.reduce((m, p) => m + p[1], 0) / far.length;
   const b = far.reduce((m, p) => m + (p[2] - my) * (p[1] - mx), 0) / far.reduce((m, p) => m + (p[2] - my) ** 2, 0);
   const res = far.map(([, x, y]) => x - (mx + b * (y - my)));
