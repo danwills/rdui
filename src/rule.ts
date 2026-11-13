@@ -62,6 +62,15 @@ export interface RuleDef {
    * those reagents. Compartments then behave as well-mixed "cells".
    */
   membrane?: { param: string; reagents: string[] };
+  /**
+   * How laplacian (and bilaplacian) are computed: the 9-point and 21-point
+   * stencils (default), or by FFT, perfectly isotropic: 'spectral' uses the
+   * 9-point stencil's axis response in every direction (explicit-stable like
+   * the stencil, so tuned media carry over), 'spectral-exact' uses −|k|²
+   * (needs small timesteps). FFT modes need power-of-two grids ≤ 512 and
+   * ignore walls and membranes.
+   */
+  laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
   /** Grid size the rule was authored for (imports). */
   size?: { width: number; height: number };
   /** Where it came from, e.g. a .vti file name. */
@@ -180,6 +189,8 @@ export interface CompiledRule {
   /** Index of each param in the globals uniform. */
   globalIndex: Map<string, number>;
   globalVec4s: number;
+  /** Set when the step shader reads FFT-computed operators (bindings 5, 6). */
+  spectral?: { bilap: boolean; exact: boolean };
 }
 
 export function compileRule(rule: RuleDef): CompiledRule {
@@ -217,6 +228,9 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const dxSlot = layout.paramNames.indexOf('dx');
   const dxExpr = dxSlot > 0 ? slotRef('params', 'pb', dxSlot) : dxIndex >= 0 ? `g[${dxIndex >> 2}].${COMP[dxIndex & 3]}` : '1.0';
 
+  const spectral = rule.laplacian === 'spectral' || rule.laplacian === 'spectral-exact';
+  if (spectral && mem) throw new RuleError('membranes need the stencil Laplacian');
+  const spectralBilap = spectral && needs('bilaplacian').size > 0;
   const L: string[] = [];
   const add = (s: string) => L.push(s);
   add(`struct Info { width: u32, height: u32, _p0: u32, _p1: u32 };`);
@@ -225,6 +239,8 @@ export function compileRule(rule: RuleDef): CompiledRule {
   add(`@group(0) @binding(2) var<storage, read> params: array<vec4<f32>>;`);
   add(`@group(0) @binding(3) var<storage, read> src: array<vec4<f32>>;`);
   add(`@group(0) @binding(4) var<storage, read_write> dst: array<vec4<f32>>;`);
+  if (spectral && lapSlots.size) add(`@group(0) @binding(5) var<storage, read> lapK: array<vec4<f32>>;`);
+  if (spectralBilap) add(`@group(0) @binding(6) var<storage, read> bilapK: array<vec4<f32>>;`);
   add(`fn cellIndex(x: i32, y: i32) -> u32 {
   let w = i32(info.width); let h = i32(info.height);
   return u32(((y + h) % h) * w + ((x + w) % w));
@@ -265,7 +281,9 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     memSlot > 0 ? slotRef('params', `${cell} * ${P}u`, memSlot) : `g[${(rule.params.findIndex((p) => p.name === mem!.param)) >> 2}].${COMP[rule.params.findIndex((p) => p.name === mem!.param) & 3]}`;
 
   add(`  let rd_dx = ${dxExpr};`);
-  if (lapSlots.size) {
+  if (lapSlots.size && spectral) {
+    for (const k of lapSlots) add(`  let L${k} = lapK[sb + ${k}u];`);
+  } else if (lapSlots.size) {
     if (mem) add(`  let myCell = ${memValue('ci')};`);
     for (const k of lapSlots) {
       add(`  var L${k} = -20.0 * s${k};`);
@@ -288,6 +306,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   for (const st of STENCILS) {
     const slots = needs(st.op);
     if (!slots.size) continue;
+    if (spectral && st.op === 'bilaplacian') {
+      for (const k of slots) add(`  let ${st.v}${k} = bilapK[sb + ${k}u];`);
+      continue;
+    }
     for (const k of slots) add(`  var ${st.v}${k} = vec4<f32>(0.0);`);
     st.points.forEach(([dx, dy, w], n) => {
       add(`  let ${st.v}n${n} = cellIndex(x + ${dx}, y + ${dy}); let ${st.v}w${n} = isWall(${st.v}n${n});`);
@@ -322,7 +344,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     add(`  dst[sb + ${k}u] = vec4<f32>(${comps.join(', ')});`);
   }
   add(`}`);
-  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s };
+  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { bilap: spectralBilap, exact: rule.laplacian === 'spectral-exact' } : undefined };
 }
 
 // --- initial state

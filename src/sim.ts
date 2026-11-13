@@ -1,6 +1,7 @@
 import brushWGSL from './shaders/brush.wgsl?raw';
 import renderWGSL from './shaders/render.wgsl?raw';
 import type { CompiledRule, Layout } from './rule';
+import { Spectral } from './spectral';
 
 export const BrushMode = {
   Seed: 0,
@@ -81,6 +82,8 @@ export class Simulation {
   private brushGroups: [GPUBindGroup, GPUBindGroup];
   private renderGroups: [GPUBindGroup, GPUBindGroup];
 
+  /** FFT operators for rules with a spectral Laplacian. */
+  private spectral?: Spectral;
   private probeBuffer: GPUBuffer;
   private probeBusy = false;
   private globals: Float32Array;
@@ -133,6 +136,12 @@ export class Simulation {
       primitive: { topology: 'triangle-list' },
     });
 
+    if (compiled.spectral) {
+      this.spectral = new Spectral(device, width, height, S, compiled.spectral.bilap, this.state, !compiled.spectral.exact);
+      const dx = compiled.globalIndex.get('dx');
+      if (dx !== undefined) this.spectral.setDx(this.globals[dx]);
+    }
+    const usesLap = compiled.stepWGSL.includes('lapK'), usesBilap = compiled.stepWGSL.includes('bilapK');
     const stepGroup = (from: number) =>
       device.createBindGroup({
         layout: this.stepPipeline.getBindGroupLayout(0),
@@ -142,6 +151,8 @@ export class Simulation {
           { binding: 2, resource: { buffer: this.params } },
           { binding: 3, resource: { buffer: this.state[from] } },
           { binding: 4, resource: { buffer: this.state[1 - from] } },
+          ...(usesLap ? [{ binding: 5, resource: { buffer: this.spectral!.lap } }] : []),
+          ...(usesBilap ? [{ binding: 6, resource: { buffer: this.spectral!.bilap } }] : []),
         ],
       });
     this.stepGroups = [stepGroup(0), stepGroup(1)];
@@ -175,6 +186,7 @@ export class Simulation {
     if (i === undefined) return;
     this.globals[i] = value;
     this.device.queue.writeBuffer(this.globalsUniform, 0, this.globals);
+    if (name === 'dx') this.spectral?.setDx(value);
   }
 
   getGlobals(): Record<string, number> {
@@ -243,6 +255,10 @@ export class Simulation {
     const gx = Math.ceil(this.width / WG);
     const gy = Math.ceil(this.height / WG);
     for (let i = 0; i < n; i++) {
+      if (this.spectral) {
+        this.spectral.encode(pass, this.current);
+        pass.setPipeline(this.stepPipeline);
+      }
       pass.setBindGroup(0, this.stepGroups[this.current]);
       pass.dispatchWorkgroups(gx, gy);
       this.current = 1 - this.current;
@@ -389,5 +405,6 @@ export class Simulation {
     for (const b of [...this.state, this.params, this.infoUniform, this.globalsUniform, this.brushUniform, this.viewUniform, this.probeBuffer]) {
       b.destroy();
     }
+    this.spectral?.destroy();
   }
 }
