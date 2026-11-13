@@ -1,12 +1,13 @@
 {
   "name": "\u25b6 Current experiment",
-  "description": "Live view of what Claude is testing right now. NOW: the calmest natural reflector in History+Wave (F = 0.052, k = 0.066): three still solitons in a line (25 px bonds) turned 30\u00b0. A glider arriving 4 px off-centre is caught, slides along the line and leaves turned ~46\u00b0; the solitons wobble by ~1 px for a while and settle back. Tint = history c.",
+  "description": "Live view of what Claude is testing right now. NOW: the line-of-3 reflector in a calmer History+Wave medium: F = 0.052, k = 0.066, and history fading a bit faster (c_damp 0.0009 instead of 0.0005). The glider is caught, slides along the line and leaves turned ~48\u00b0; afterwards the solitons wobble about half as much as before (\u22640.7 px). Tint = history c.",
   "rule": "builtin:1",
   "size": 256,
   "start": "rest",
   "globals": {
     "F": 0.052,
-    "k": 0.066
+    "k": 0.066,
+    "c_damp": 0.0009
   },
   "stamps": [
     {

@@ -5,8 +5,8 @@ import { GS_HISTORY_WAVE } from '../src/rule';
 import { makeLab, runAll, blobs, saveFrame, log, STARTERS, type Lab } from './lab';
 import { clusterPts } from './reflect-ring';
 
-export default async function (cfg: { head?: number; through?: [number, number]; side?: number[]; dist?: number[]; steps?: number; noB?: boolean; bAng?: number }) {
-  const N = 512, g = { F: 0.052, k: 0.066 }, A: [number, number] = [150, 150];
+export default async function (cfg: { head?: number; through?: [number, number]; side?: number[]; dist?: number[]; steps?: number; noB?: boolean; bAng?: number; g?: Record<string, number> }) {
+  const N = 512, g = cfg.g ?? { F: 0.052, k: 0.066 }, A: [number, number] = [150, 150];
   const th = ((cfg.head ?? 46.2) * Math.PI) / 180, P0 = cfg.through ?? [81.0, 101.1];
   const u = [Math.cos(th), Math.sin(th)], n = [-Math.sin(th), Math.cos(th)];
   const ptsA = clusterPts('line3', 30);

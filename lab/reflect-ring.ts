@@ -41,6 +41,7 @@ export default async function (cfg: { cases?: { shape: string; ang: number; off:
   const out = [];
   for (const r of runs) {
     // outgoing line: fit from the last 8 glider positions
+    if (r.path.length < 2) { log(`${r.cs.shape} ${r.cs.ang}° off ${r.cs.off}: glider never left (died or stalled)`); r.lab.sim.destroy(); continue; }
     const p = r.path.slice(0, 8);
     const [x0, y0] = p[0], [x1, y1] = p[p.length - 1];
     const head = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
