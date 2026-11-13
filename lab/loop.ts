@@ -9,7 +9,7 @@ import { clusterPts } from './reflect-ring';
 const rot = ([x, y]: number[], q: number) => { for (let i = 0; i < q; i++) [x, y] = [-y, x]; return [x, y]; };
 const B_REL = [123.1, 156.2];
 
-export function corners(L: number, cx: number, cy: number, n = 4, across = 114.5, bLater = 70) {
+export function corners(L: number, cx: number, cy: number, n = 4, across = 114.5, bLater = 70, bFirst = bLater) {
   // corner i's A, relative to corner 0's A, before centring
   const As: number[][] = [[0, 0]];
   for (let i = 1; i < 4; i++) { const step = rot([L, -across], i); As.push([As[i - 1][0] + step[0], As[i - 1][1] + step[1]]); }
@@ -26,7 +26,7 @@ export function corners(L: number, cx: number, cy: number, n = 4, across = 114.5
     ...clusterPts('line3', bAng).map((p) => [A0[0] + B_REL[0] + p[0], A0[1] + B_REL[1] + p[1]]),
   ];
   const pts: number[][] = [], rots: number[] = [];
-  for (let i = 0; i < n; i++) for (const p of base(i ? bLater : 70)) { const q = rot([p[0] - C[0], p[1] - C[1]], i); pts.push([C[0] + q[0], C[1] + q[1]]); rots.push(i); }
+  for (let i = 0; i < n; i++) for (const p of base(i ? bLater : bFirst)) { const q = rot([p[0] - C[0], p[1] - C[1]], i); pts.push([C[0] + q[0], C[1] + q[1]]); rots.push(i); }
   return { pts, rots, A0, glider: [A0[0] + Math.min(...clusterPts('line3', 30).map((p) => p[0])) - 45, A0[1] - 4] };
 }
 
