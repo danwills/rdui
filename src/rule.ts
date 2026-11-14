@@ -43,6 +43,7 @@ export type Shape =
   | { type: 'spots'; count: number; minSize: number; maxSize: number; seed: number }; // cells; same seed → same spots
 
 export interface Overlay {
+  /** A reagent, or a paintable parameter (then the overlay paints its per-cell value). */
   chem: string;
   op: 'overwrite' | 'add' | 'subtract' | 'multiply';
   fill: Fill;
@@ -452,8 +453,9 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
   // Spots overlays share positions per reset when they share a seed; vary between resets.
   const salt = Math.floor(Math.random() * 2 ** 31);
   for (const o of rule.initial) {
-    const r = rule.reagents.indexOf(o.chem);
-    if (r < 0) continue;
+    const r = rule.reagents.indexOf(o.chem), pslot = r < 0 ? paramNames.indexOf(o.chem) : -1;
+    if (r < 0 && pslot < 1) continue;
+    const [arr, stride, slot] = r >= 0 ? [state, S * 4, r] : [params, P * 4, pslot];
     // a smooth bump reaches past the circle's rim, so its tail isn't cut off
     const sh = o.shape, fill = o.fill;
     const bump = fill.type === 'bump' && sh.type === 'circle' ? { cx: sh.cx * w, cy: sh.cy * h, r: sh.r * Math.max(w, h), e: fill.edge ?? 2 } : null;
@@ -465,12 +467,12 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
         : fill.type === 'packet' ? packetValue(fill, pk, c % w, Math.floor(c / w))
         : fill.type === 'bump' ? (bump ? fill.value * 0.5 * (1 - Math.tanh((Math.hypot((c % w) + 0.5 - bump.cx, Math.floor(c / w) + 0.5 - bump.cy) - bump.r) / bump.e)) : fill.value)
         : fill.low + Math.random() * (fill.high - fill.low);
-      const k = c * S * 4 + r;
+      const k = c * stride + slot;
       switch (o.op) {
-        case 'overwrite': state[k] = v; break;
-        case 'add': state[k] += v; break;
-        case 'subtract': state[k] -= v; break;
-        case 'multiply': state[k] *= v; break;
+        case 'overwrite': arr[k] = v; break;
+        case 'add': arr[k] += v; break;
+        case 'subtract': arr[k] -= v; break;
+        case 'multiply': arr[k] *= v; break;
       }
     }
   }
@@ -831,17 +833,19 @@ delta_a = (u - a)/tau_a;`,
 
 /**
  * Saturable nonlinear Schrödinger equation (light in a saturable medium):
- * i ψ_t = −½∇²ψ − g·|ψ|²/(1 + s|ψ|²)·ψ, ψ = p + iq. Split-step: the dispersion
+ * i ψ_t = −½∇²ψ − g·|ψ|²/(1 + s|ψ|²)·ψ + V·ψ, ψ = p + iq. Split-step: the dispersion
  * is applied exactly by FFT (wave_cos/wave_sin), then the nonlinearity as an
  * exact local phase rotation; both keep |ψ|, so any timestep is stable and
  * the total power is conserved (gamma, paintable, absorbs for sponge borders).
+ * V, paintable, is a potential: wells guide and trap, barriers reflect.
  * Self-focusing balances dispersion in 2D solitons ("light bullets"); saturation
  * stops them collapsing. n shows the intensity |ψ|².
  */
 export const SATURABLE_NLS: RuleDef = {
   name: 'Saturable Schrödinger (NLS)',
   description:
-    'i ψ_t = −½∇²ψ − g·I/(1 + s·I)·ψ, I = |ψ|², ψ = p + iq, by exact split steps (FFT dispersion, local phase rotation). ' +
+    'i ψ_t = −½∇²ψ − g·I/(1 + s·I)·ψ + V·ψ, I = |ψ|², ψ = p + iq, by exact split steps (FFT dispersion, local phase rotation). ' +
+    'V is a paintable potential (a refractive-index landscape): low V guides and traps solitons, high V reflects them. ' +
     'Conservative: solitons collide elastically, merge, repel or swap power depending on their relative phase. gamma absorbs.',
   reagents: ['p', 'q', 'n'],
   params: [
@@ -850,12 +854,13 @@ export const SATURABLE_NLS: RuleDef = {
     { name: 'g', value: 1, min: -2, max: 4 },
     { name: 's', value: 0.5, min: 0, max: 5 },
     { name: 'gamma', value: 0, min: 0, max: 1 },
+    { name: 'V', value: 0, min: -2, max: 2 },
   ],
-  paintable: ['gamma'],
+  paintable: ['gamma', 'V'],
   formula: `float P = wave_cos_p + wave_sin_q;
 float Q = wave_cos_q - wave_sin_p;
 float I = P*P + Q*Q;
-float ph = g*I/(1.0 + s*I)*timestep;
+float ph = (g*I/(1.0 + s*I) - V)*timestep;
 float damp = exp(-gamma*timestep);
 float P2 = damp*(P*cos(ph) - Q*sin(ph));
 float Q2 = damp*(P*sin(ph) + Q*cos(ph));
