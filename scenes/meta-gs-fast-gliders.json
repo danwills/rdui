@@ -1,0 +1,40 @@
+{
+  "name": "Meta Gray-Scott fast gliders",
+  "description": "From the glider search (#61, a mutant of the trail gliders): about a dozen elongated spots gliding at ~6 cells per 1000 steps, four times the trail gliders' speed. D_a is raised strongly in narrow imprints (Da_gain 2.7, reach 1.4) and F in narrow trails too, with F_forget on. Tint = the D_a field.",
+  "rule": "builtin:11",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 333,
+  "globals": {
+    "D_a": 0.8559,
+    "D_b": 0.3861,
+    "F": 0.05463,
+    "k": 0.06629,
+    "F_gain": 0.9464,
+    "F_mem": 24920.0,
+    "F_reach": 0.992,
+    "F_diff": 0.9235,
+    "F_forget": 0.0001037,
+    "F_ref": 0.252,
+    "k_gain": 0.01594,
+    "k_mem": 21510.0,
+    "k_reach": 29.95,
+    "k_diff": -0.9737,
+    "Da_gain": 2.744,
+    "Da_mem": 33200.0,
+    "Da_reach": 1.433,
+    "Da_diff": -1.028,
+    "Db_gain": 0.1873,
+    "Db_mem": 41580.0,
+    "Db_reach": 0.8181,
+    "Db_diff": 1.691
+  },
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.8,
+    "tint": "dDa",
+    "tintLow": 0,
+    "tintHigh": 0.6
+  }
+}

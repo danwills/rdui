@@ -1,0 +1,40 @@
+{
+  "name": "Meta Gray-Scott gliders (random find)",
+  "description": "From the glider search (#62), found from a fully random start rather than as a mutant: base F 0.022, k 0.061 (another part of Gray-Scott space), with k raised in narrow imprints and D_a lowered (Da_gain −1.4). About ten round spots gliding at ~3 cells per 1000 steps. Tint = the D_a field.",
+  "rule": "builtin:11",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 333,
+  "globals": {
+    "F": 0.02226,
+    "k": 0.06097,
+    "D_a": 0.7387,
+    "D_b": 0.3258,
+    "F_forget": 0.0001906,
+    "F_ref": 0.1862,
+    "F_gain": 0.306,
+    "F_mem": 3319.0,
+    "F_reach": 12.17,
+    "F_diff": -0.6352,
+    "k_gain": 0.06983,
+    "k_mem": 69020.0,
+    "k_reach": 1.114,
+    "k_diff": 1.358,
+    "Da_gain": -1.433,
+    "Da_mem": 155200.0,
+    "Da_reach": 1.918,
+    "Da_diff": -0.6506,
+    "Db_gain": 0.0,
+    "Db_mem": 6132.0,
+    "Db_reach": 8.503,
+    "Db_diff": 0.3266
+  },
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.8,
+    "tint": "dDa",
+    "tintLow": -0.3,
+    "tintHigh": 0
+  }
+}
