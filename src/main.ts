@@ -349,6 +349,10 @@ async function init() {
       },
     });
   }
+  // The installed app (a production build) runs offline from the service worker's cache.
+  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('service worker not registered', e));
+  }
 
   async function saveField() {
     const { params, state } = await sim.readRegion(0, 0, sim.width, sim.height);
