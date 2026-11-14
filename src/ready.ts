@@ -6,7 +6,7 @@
  * Ready's y axis points up; rdui's points down, so shapes and images are flipped.
  */
 
-import { guessRange, type Overlay, type RuleDef, type Shape, type Fill } from './rule';
+import { guessRange, MAX_REAGENTS, type Overlay, type RuleDef, type Shape, type Fill } from './rule';
 
 export interface ReadyImport {
   rule: RuleDef;
@@ -44,7 +44,7 @@ export async function importReady(text: string, fileName: string): Promise<Ready
   const formulaEl = ruleEl.querySelector('formula');
   if (!formulaEl) throw new Error('rule has no <formula>');
   const nChems = num(formulaEl, 'number_of_chemicals', 2);
-  if (nChems > 8) throw new Error(`${nChems} chemicals — rdui supports at most 8`);
+  if (nChems > MAX_REAGENTS) throw new Error(`${nChems} chemicals — rdui supports at most ${MAX_REAGENTS}`);
   const reagents = CHEM_NAMES.slice(0, nChems);
 
   const params = Array.from(ruleEl.querySelectorAll(':scope > param')).map((p) => {

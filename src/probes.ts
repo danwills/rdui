@@ -16,7 +16,7 @@ export interface Rect {
 export interface Probe extends Rect {
   id: number;
   name: string;
-  /** Latest reading per reagent (layout order, up to 8). */
+  /** Latest reading per reagent (layout order; only the first 8 are measured). */
   mean: Float32Array;
   max: Float32Array;
   /** Ring buffer of per-reagent means, HISTORY × 8, newest at `head - 1`. */

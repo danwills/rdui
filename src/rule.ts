@@ -15,7 +15,7 @@
  */
 import type { Second } from './spectral';
 
-export const MAX_REAGENTS = 8;
+export const MAX_REAGENTS = 12;
 export const MAX_PAINTABLE = 7;
 
 export interface ParamSpec {
@@ -1315,7 +1315,59 @@ delta_P_F = (Fx - P_F)/timestep;`,
   view: { reagent: 'b', low: 0, high: 0.5, tint: 'P_F' },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES];
+/**
+ * Gray-Scott Niches: four species b1..b4 as in Gray-Scott Species, but each
+ * lives on its own food a1..a4 (fed at its own F), so there is no single
+ * ranking by who survives on least food. They compete for space instead:
+ * where species overlap each raises the others' death rate (interfere · b_i ·
+ * others). An established patch holds its ground and invaders must win at the
+ * border. b (total) and P_F (local mean feed) are for display.
+ */
+export const GS_NICHES: RuleDef = {
+  name: 'Gray-Scott Niches',
+  description: 'Four species of b, each with its own feed and kill (F1, k1 … F4, k4; by default spots, worms, maze and curly) and, '
+    + 'unlike Gray-Scott Species, its own food (a1 … a4). With no shared food there is no single winner by who lives on least; '
+    + 'instead species compete for space: where they overlap, each raises the others\' death rate (interfere). A patch keeps its '
+    + 'ground unless a neighbour wins at the border, and species never blend. The brush seeds species 1. View b (total) tinted by '
+    + 'P_F, or view b1…b4 one at a time.',
+  reagents: ['a1', 'a2', 'a3', 'a4', 'b1', 'b2', 'b3', 'b4', 'b', 'P_F'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.5 },
+    { name: 'D_a', value: 0.3, min: 0, max: 0.37 },
+    { name: 'D_b', value: 0.15, min: 0, max: 0.37 },
+    ...SPECIES_TRAITS.flatMap(([F, k], i) => [
+      { name: `F${i + 1}`, value: F, min: 0, max: 0.1 },
+      { name: `k${i + 1}`, value: k, min: 0.03, max: 0.075 },
+    ]),
+    { name: 'interfere', value: 1, min: 0, max: 4 },
+  ],
+  paintable: [],
+  explore: ['interfere', 'F1', 'F2', 'F3', 'F4'],
+  formula: `float bt = b1 + b2 + b3 + b4;
+delta_a1 = D_a*laplacian_a1 - a1*b1*b1 + F1*(1.0 - a1);
+delta_a2 = D_a*laplacian_a2 - a2*b2*b2 + F2*(1.0 - a2);
+delta_a3 = D_a*laplacian_a3 - a3*b3*b3 + F3*(1.0 - a3);
+delta_a4 = D_a*laplacian_a4 - a4*b4*b4 + F4*(1.0 - a4);
+delta_b1 = D_b*laplacian_b1 + a1*b1*b1 - (F1 + k1 + interfere*(bt - b1))*b1;
+delta_b2 = D_b*laplacian_b2 + a2*b2*b2 - (F2 + k2 + interfere*(bt - b2))*b2;
+delta_b3 = D_b*laplacian_b3 + a3*b3*b3 - (F3 + k3 + interfere*(bt - b3))*b3;
+delta_b4 = D_b*laplacian_b4 + a4*b4*b4 - (F4 + k4 + interfere*(bt - b4))*b4;
+delta_b = (bt - b)/timestep;
+delta_P_F = ((F1*b1 + F2*b2 + F3*b3 + F4*b4)/(bt + 1e-4) - P_F)/timestep;`,
+  rest: [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+  seed: [0.5, null, null, null, 0.25, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0.25, 0, 0, 0, 0, 0],
+  initial: [
+    ...[1, 2, 3, 4].map((i): Overlay => ({ chem: `a${i}`, op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } })),
+    ...[1, 2, 3, 4].flatMap((i): Overlay[] => [
+      { chem: `a${i}`, op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'spots', count: 4, minSize: 3, maxSize: 6, seed: 10 + i } },
+      { chem: `b${i}`, op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: { type: 'spots', count: 4, minSize: 3, maxSize: 6, seed: 10 + i } },
+    ]),
+  ],
+  view: { reagent: 'b', low: 0, high: 0.5, tint: 'P_F' },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));

@@ -16,27 +16,28 @@ const WALL = 0.012, DOOR = 0.015;
 const doorAt = (cx: number, cy: number) => { const dx = 0.5 - cx, dy = 0.5 - cy, l = Math.hypot(dx, dy), r = R_CIRCLE + WALL / 2; return { cx: cx + (dx / l) * r, cy: cy + (dy / l) * r }; };
 const SEEDS = [[0, 0], [0.07, 0.02], [-0.06, 0.05], [-0.03, -0.07], [0.04, -0.06], [0.02, 0.09]];
 
-export const heredityInitial = (only = [0, 1, 2, 3], species = false): R.Overlay[] => [
-  { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+/** niches: each species has its own food a1..a4 (Gray-Scott Niches). */
+export const heredityInitial = (only = [0, 1, 2, 3], species = false, niches = false): R.Overlay[] => [
+  ...(niches ? ['a1', 'a2', 'a3', 'a4'] : ['a']).map((a): R.Overlay => ({ chem: a, op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } })),
   ...REGIMES.flatMap(([, F, k, cx, cy]): R.Overlay[] => [
     // a closed wall ring, so each lineage fills its circle undisturbed (open doors with Unwall)
     { chem: 'wall', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'circle', cx, cy, r: R_CIRCLE + WALL } },
     { chem: 'wall', op: 'overwrite', fill: { type: 'constant', value: 0 }, shape: { type: 'circle', cx, cy, r: R_CIRCLE } },
-    { chem: 'F', op: 'overwrite', fill: { type: 'constant', value: F }, shape: { type: 'circle', cx, cy, r: R_CIRCLE } },
+    ...(niches ? [] : [{ chem: 'F', op: 'overwrite', fill: { type: 'constant', value: F }, shape: { type: 'circle', cx, cy, r: R_CIRCLE } } as R.Overlay]),
     ...(species ? [] : [{ chem: 'k', op: 'overwrite', fill: { type: 'constant', value: k }, shape: { type: 'circle', cx, cy, r: R_CIRCLE } } as R.Overlay]),
     // small seed spots (a wide uniform seed dies in the spots and worms regimes)
     ...SEEDS.filter(() => only.includes(REGIMES.findIndex((g) => g[3] === cx && g[4] === cy))).flatMap(([dx, dy]): R.Overlay[] => [
-      { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'circle', cx: cx + dx, cy: cy + dy, r: R_SEED } },
+      { chem: niches ? `a${REGIMES.findIndex((g) => g[3] === cx && g[4] === cy) + 1}` : 'a', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'circle', cx: cx + dx, cy: cy + dy, r: R_SEED } },
       { chem: species ? `b${REGIMES.findIndex((g) => g[3] === cx && g[4] === cy) + 1}` : 'b', op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: { type: 'circle', cx: cx + dx, cy: cy + dy, r: R_SEED } },
     ]),
   ]),
 ];
 
-export default async function (cfg: { species?: boolean; open?: number; only?: number[]; N?: number; steps?: number; every?: number; frames?: number; tag?: string; set?: Record<string, number> }) {
+export default async function (cfg: { niches?: boolean; species?: boolean; open?: number; only?: number[]; N?: number; steps?: number; every?: number; frames?: number; tag?: string; set?: Record<string, number> }) {
   const N = cfg.N ?? 384, steps = cfg.steps ?? 60000, every = cfg.every ?? 10000, tag = cfg.tag ?? 'run', frameEvery = cfg.frames ?? 0;
-  const sp = !!cfg.species, rule = sp ? R.GS_SPECIES : R.GS_LINEAGES;
-  const lab = await makeLab({ ...rule, initial: heredityInitial(cfg.only, sp) }, N, sp ? { ...cfg.set } : { F: 0.03, k: 0.06, ...cfg.set }, 'initial');
-  const BI = sp ? 5 : 1, FI = sp ? 6 : 5;
+  const ni = !!cfg.niches, sp = ni || !!cfg.species, rule = ni ? R.GS_NICHES : sp ? R.GS_SPECIES : R.GS_LINEAGES;
+  const lab = await makeLab({ ...rule, initial: heredityInitial(cfg.only, sp, ni) }, N, sp ? { ...cfg.set } : { F: 0.03, k: 0.06, ...cfg.set }, 'initial');
+  const B0 = ni ? 4 : 1, BI = ni ? 8 : sp ? 5 : 1, FI = ni ? 9 : sp ? 6 : 5;
   const S4 = lab.layout.S * 4, names = [...REGIMES.map((r) => r[0]), 'between'];
   const regionOf = (x: number, y: number) => { const j = REGIMES.findIndex(([, , , cx, cy]) => Math.hypot((x + 0.5) / N - cx, (y + 0.5) / N - cy) <= R_CIRCLE + WALL); return j < 0 ? 4 : j; };
   const outside = (x: number, y: number) => regionOf(x, y) === 4;
@@ -54,7 +55,7 @@ export default async function (cfg: { species?: boolean; open?: number; only?: n
       if (!(b > 0.15)) continue;
       if (pw[(y * N + x) * lab.layout.P * 4] > 0.5) inWall++; else if (outside(x, y)) esc++;
       const pf = s[i + FI], pk = sp ? 0 : s[i + 6];
-      if (sp) for (let j = 0; j < 4; j++) share[regionOf(x, y)][j] += s[i + 1 + j];
+      if (sp) for (let j = 0; j < 4; j++) share[regionOf(x, y)][j] += s[i + B0 + j];
       else {
         let best = 0, bd = Infinity;
         REGIMES.forEach(([, F, k], j) => { const d = ((pf - F) / 0.04) ** 2 + ((pk - k) / 0.014) ** 2; if (d < bd) { bd = d; best = j; } });

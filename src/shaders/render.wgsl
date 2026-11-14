@@ -13,7 +13,7 @@ struct View {
   mode: u32,       // 0 = reagent, 1 = params
   palette: u32,
   reagent: u32,
-  tint: u32,       // reagent index, or >= 8 for none
+  tint: u32,       // reagent index, or >= 12 for none
   low: f32,
   high: f32,
   tintLow: f32,
@@ -169,13 +169,13 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
   } else if (view.palette == 4u) {
     // HSV: the shown reagent is the hue, the tint reagent the saturation (tint mix: how much).
     var sat = 1.0;
-    if (view.tint < 8u) {
+    if (view.tint < 12u) {
       sat = mix(1.0, norm(sampleReagent(g, view.tint), view.tintLow, view.tintHigh), view.tintStrength);
     }
     col = hsv(t, sat, 1.0);
   } else {
     col = palette(t);
-    if (view.tint < 8u) {
+    if (view.tint < 12u) {
       // Hidden reagent shown as hue, strongest where it's high.
       let u = norm(sampleReagent(g, view.tint), view.tintLow, view.tintHigh);
       let h = hue(0.08 + 0.75 * u);

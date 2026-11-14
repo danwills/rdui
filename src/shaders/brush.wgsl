@@ -15,10 +15,10 @@ struct Brush {
   _p0: f32,
   _p1: f32,
   _p2: f32,
-  seed: array<vec4<f32>, 2>,      // seed target per reagent
-  seedMask: array<vec4<f32>, 2>,  // 1 where the seed brush touches that reagent
-  seedNoise: array<vec4<f32>, 2>, // noise amplitude added to the seed target
-  rest: array<vec4<f32>, 2>,      // erase / wall value per reagent
+  seed: array<vec4<f32>, 3>,      // seed target per reagent (up to 12)
+  seedMask: array<vec4<f32>, 3>,  // 1 where the seed brush touches that reagent
+  seedNoise: array<vec4<f32>, 3>, // noise amplitude added to the seed target
+  rest: array<vec4<f32>, 3>,      // erase / wall value per reagent
   paint: array<vec4<f32>, 2>,     // per-cell param slot values (slot 0 = wall, ignored)
 };
 

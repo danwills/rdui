@@ -125,7 +125,7 @@ export class Simulation {
     const uniform = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
     this.infoUniform = device.createBuffer({ size: 16, usage: uniform });
     this.globalsUniform = device.createBuffer({ size: compiled.globalVec4s * 16, usage: uniform });
-    this.brushUniform = device.createBuffer({ size: 208, usage: uniform });
+    this.brushUniform = device.createBuffer({ size: 272, usage: uniform });
     this.viewUniform = device.createBuffer({ size: 112, usage: uniform });
     this.writeInfo();
     this.globals = new Float32Array(compiled.globalVec4s * 4);
@@ -293,7 +293,7 @@ export class Simulation {
 
   brush(b: BrushStroke) {
     const rule = this.compiled.rule;
-    const buf = new ArrayBuffer(208);
+    const buf = new ArrayBuffer(272);
     const f = new Float32Array(buf);
     const u = new Uint32Array(buf);
     f[0] = b.ax; f[1] = b.ay; f[2] = b.bx; f[3] = b.by;
@@ -305,11 +305,11 @@ export class Simulation {
     rule.reagents.forEach((_, r) => {
       const seed = rule.seed[r];
       f[12 + r] = seed ?? 0;
-      f[20 + r] = seed === null || seed === undefined ? 0 : 1;
-      f[28 + r] = rule.seedNoise[r] ?? 0;
-      f[36 + r] = rule.rest[r] ?? 0;
+      f[24 + r] = seed === null || seed === undefined ? 0 : 1;
+      f[36 + r] = rule.seedNoise[r] ?? 0;
+      f[48 + r] = rule.rest[r] ?? 0;
     });
-    b.paint.forEach((v, i) => (f[44 + 1 + i] = v));
+    b.paint.forEach((v, i) => (f[60 + 1 + i] = v));
     this.device.queue.writeBuffer(this.brushUniform, 0, buf);
 
     const enc = this.device.createCommandEncoder();
