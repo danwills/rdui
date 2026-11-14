@@ -91,6 +91,7 @@ h2 {
 }
 .row select { grid-column: 2 / 4; }
 .row output { font: 11px ui-monospace, monospace; text-align: right; color: var(--muted); }
+.row.log .num { width: 52px; justify-self: end; }
 input[type='range'] { width: 100%; accent-color: var(--accent); }
 
 button, select {

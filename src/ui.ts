@@ -196,6 +196,41 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return el('label', { class: 'row' }, el('span', {}, label), input, out);
   }
 
+  /**
+   * An integer slider on a log scale from 1 to `max` (fine at the low end); dragging
+   * on past the right end keeps going up the same scale (to `limit`), and the box
+   * takes any value typed.
+   */
+  function logSlider(label: string, key: 'stepsPerFrame', max: number, limit: number) {
+    const input = el('input', { type: 'range', min: '0', max: '1', step: 'any' });
+    const num = el('input', { type: 'text', class: 'num', inputmode: 'numeric' });
+    const L = Math.log(max);
+    const put = (v: number) => {
+      s[key] = Math.min(limit, Math.max(1, Math.round(v)));
+      sync();
+    };
+    input.addEventListener('input', () => put(Math.exp(Number(input.value) * L)));
+    // past the right end: the input clamps, so follow the pointer ourselves
+    input.addEventListener('pointermove', (e) => {
+      if (!(e.buttons & 1)) return;
+      const r = input.getBoundingClientRect();
+      if (e.clientX > r.right) put(max * Math.exp(((e.clientX - r.right) / r.width) * L));
+    });
+    input.addEventListener('pointerdown', (e) => input.setPointerCapture(e.pointerId));
+    num.addEventListener('change', () => {
+      const v = Number(num.value);
+      if (Number.isFinite(v)) put(v);
+      sync();
+    });
+    num.addEventListener('keydown', (e) => e.stopPropagation());
+    num.addEventListener('focus', () => num.select()); // typing replaces the value
+    syncers.push(() => {
+      input.value = String(Math.min(1, Math.log(Math.max(1, s[key])) / L));
+      if (document.activeElement !== num) num.value = String(s[key]);
+    });
+    return el('label', { class: 'row log' }, el('span', {}, label), input, num);
+  }
+
   function select(label: string, key: keyof Settings, options: () => [number | string, string][], onChange?: () => void) {
     const sel = el('select');
     const fill = () => {
@@ -369,7 +404,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     section('Rule', el('div', { class: 'rule-row' }, ruleSel, importBtn), ruleBody),
     section('Simulation',
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Clear chem', actions.clearChemistry, 'C')),
-      slider('steps/frame', 'stepsPerFrame', 1, 200, 1, 0),
+      logSlider('steps/frame', 'stepsPerFrame', 64, 5000),
       select('grid', 'gridSize', () => [[128, '128²'], [256, '256²'], [512, '512²'], [1024, '1024²'], [2048, '2048²']], () => actions.resize(s.gridSize)).row,
       select('resolution', 'resScale', () => [[1, 'full'], [0.5, '½'], [0.25, '¼'], [0.125, '⅛']], () => actions.resize(s.gridSize)).row,
       featureSel.row,
