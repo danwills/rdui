@@ -1,0 +1,35 @@
+{
+  "name": "Meta Gray-Scott trail gliders",
+  "description": "From the long Meta Gray-Scott search (#47): a few spots that travel in straight lines, each leaving a fading trail. F is raised slowly and regionally (memory 142k steps), D_a and D_b in narrow imprints (reach ~1) where b has been; a spot's own imprint behind it is what pushes it along. No F_forget. Ran 200k steps. Tint = the D_a field (the trails). Try: seed a few spots with the brush; lengthen Da_mem for longer trails.",
+  "rule": "builtin:11",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 333,
+  "globals": {
+    "F_gain": 0.1811,
+    "F_mem": 141700.0,
+    "F_reach": 11.31,
+    "F_diff": 0.8924,
+    "k_gain": 0.0,
+    "k_mem": 141700.0,
+    "k_reach": 18.27,
+    "k_diff": -0.9308,
+    "Da_gain": 0.3145,
+    "Da_mem": 22430.0,
+    "Da_reach": 1.068,
+    "Da_diff": 0.4985,
+    "Db_gain": 0.7079,
+    "Db_mem": 117400.0,
+    "Db_reach": 1.376,
+    "Db_diff": 1.224,
+    "F_forget": 0.0
+  },
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.8,
+    "tint": "dDa",
+    "tintLow": 0,
+    "tintHigh": 0.3
+  }
+}
