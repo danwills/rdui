@@ -1,0 +1,16 @@
+{
+  "name": "Neural field travelling bumps",
+  "description": "Amari / Wilson–Cowan neural field: firing rate u excites its neighbours within kernel_sigma and inhibits out to kernel_sigma2 (a Mexican hat, applied by FFT), and slow adaptation a tires active patches out. A patch of activity becomes a bump; adaptation builds up on the bump's trailing side, so it slides off its own tired wake and travels in a straight line, leaving a fading tail (tint). Bumps collide, scatter, merge and annihilate. Things to try: g (adaptation) — 0 gives standing bumps, ≈0.5 slow travellers, ≈1.5 small fast ones; A (coupling) ≈12 stretches bumps into travelling worms and arcs; paint I positive for regions that spawn activity, negative for ones that absorb it; paint g to make bumps stop or start. The seed brush drops new activity.",
+  "rule": "builtin:7",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "view": {
+    "reagent": "u",
+    "low": 0,
+    "high": 1,
+    "tint": "a",
+    "tintLow": 0,
+    "tintHigh": 0.5
+  }
+}

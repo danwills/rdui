@@ -758,7 +758,49 @@ delta_w = (u - w)/tau + D_w*laplacian_w;`,
 // FHN3 is exported for lab experiments but not listed until its parameters
 // are pinned down (spots don't survive on this lattice scaling yet).
 // New rules go at the end: scenes refer to built-ins by index.
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB];
+/**
+ * Neural field (Amari / Wilson–Cowan) with spike-frequency adaptation: firing
+ * rate u is driven through a Mexican-hat coupling (near excitation, wider
+ * inhibition: a difference of Gaussians applied by FFT) and a sigmoid; a slow
+ * adaptation a tires active regions out. With little adaptation, localized
+ * bumps sit still; with more, they're pushed off their own tired wake and
+ * travel, and colliding bumps scatter, merge or annihilate.
+ */
+export const NEURAL_FIELD: RuleDef = {
+  name: 'Neural field (Amari + adaptation)',
+  description:
+    'delta_u = (−u + f(A·(w ⊗ u) − g·a + I))/tau, f(x) = 1/(1 + exp(−beta (x − theta))), delta_a = (u − a)/tau_a. ' +
+    'w = G(kernel_sigma) − kernel_b·G(kernel_sigma2), unit-mass Gaussians: near excitation, wider inhibition.',
+  reagents: ['u', 'a'],
+  params: [
+    { name: 'timestep', value: 0.1, min: 0, max: 0.5 },
+    { name: 'dx', value: 0.2, min: 0.05, max: 1 },
+    { name: 'A', value: 8, min: 0, max: 20 },
+    { name: 'kernel_sigma', value: 1, min: 0.2, max: 5 },
+    { name: 'kernel_b', value: 0.9, min: 0, max: 2 },
+    { name: 'kernel_sigma2', value: 2, min: 0.2, max: 10 },
+    { name: 'theta', value: 1, min: -2, max: 4 },
+    { name: 'beta', value: 10, min: 1, max: 50 },
+    { name: 'g', value: 0.5, min: 0, max: 5 },
+    { name: 'tau', value: 1, min: 0.1, max: 5 },
+    { name: 'tau_a', value: 10, min: 1, max: 100 },
+    { name: 'I', value: 0, min: -2, max: 2 },
+  ],
+  paintable: ['I', 'g'],
+  formula: `delta_u = (-u + 1.0/(1.0 + exp(-beta*(A*kernel_u - g*a + I - theta))))/tau;
+delta_a = (u - a)/tau_a;`,
+  laplacian: 'spectral',
+  size: { width: 256, height: 256 },
+  rest: [0, 0],
+  seed: [1, null],
+  seedNoise: [0, 0],
+  initial: [
+    { chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'spots', count: 6, minSize: 6, maxSize: 10, seed: 3 } },
+  ],
+  view: { reagent: 'u', low: 0, high: 1, tint: 'a', stepsPerFrame: 8 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));
