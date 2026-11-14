@@ -1,5 +1,5 @@
 import './style.css';
-import { Simulation, BrushMode, type BrushStroke, type ViewOptions } from './sim';
+import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type ViewOptions } from './sim';
 import { buildPanel, defaultSettings, fmt, TOOLS, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
 import { StampLibrary, newStampId, stampThumbnail, transformStamp, type Stamp } from './stamps';
@@ -185,11 +185,6 @@ async function init() {
     return f;
   }
 
-  /** Whether a rule's diffusion is unconditionally stable (exact spectral operators), so features can be made larger than full size. */
-  function stableAtAnySize(c: CompiledRule) {
-    return ['heat', 'kernel', 'propagator'].includes(c.spectral?.second ?? '');
-  }
-
   /** Switch to a (possibly modified) rule, rebuilding the simulation. */
   async function applyRule(nextRule: RuleDef, o: ApplyOptions) {
     let next = nextRule;
@@ -234,7 +229,6 @@ async function init() {
     globals = { ...defaultGlobals(rule), ...(o.globals ?? globals) };
     for (const k of Object.keys(globals)) if (!rule.params.some((p) => p.name === k)) delete globals[k];
     sim = new Simulation(device, format, width, height, compiled);
-    if (!stableAtAnySize(compiled)) s.featureSize = Math.min(s.featureSize, 1);
     cellScale = 1 / s.featureSize;
     sim.setCellScale(cellScale);
     for (const [k, v] of Object.entries(globals)) sim.setGlobal(k, v);
@@ -454,7 +448,7 @@ async function init() {
     currentId: () => ruleId,
     warnings: () => warnings,
     note: () => note,
-    bigFeatures: () => stableAtAnySize(compiled),
+    bigFeatures: () => stableAtAnySpacing(compiled),
   }, [stampPanel.node, probePanel.node]);
 
   if (import.meta.env.DEV) {

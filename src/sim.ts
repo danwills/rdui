@@ -68,6 +68,11 @@ const WG = 8;
  * slot 0 = wall) live in one buffer that only brushes and region writes touch.
  * Global parameter values sit in a uniform buffer.
  */
+/** Whether a rule's diffusion is unconditionally stable (exact spectral operators), so its grid can be made finer without shorter steps. */
+export function stableAtAnySpacing(c: CompiledRule) {
+  return ['heat', 'kernel', 'propagator'].includes(c.spectral?.second ?? '');
+}
+
 export class Simulation {
   readonly width: number;
   readonly height: number;
@@ -82,6 +87,8 @@ export class Simulation {
   private infoUniform: GPUBuffer;
   private globalsUniform: GPUBuffer;
   private cell = 1;
+  /** Steps taken per requested step: > 1 when a finer grid needs shorter explicit steps (see setCellScale). */
+  private substeps = 1;
   private brushUniform: GPUBuffer;
   private viewUniform: GPUBuffer;
 
@@ -205,8 +212,16 @@ export class Simulation {
    * in the step's stencils and the spectral wavenumbers, so a coarser grid shows
    * the same picture.
    */
+  /**
+   * Grid spacing relative to the rule's own (1 / feature size). Explicit stencil
+   * steps are only stable up to a timestep ∝ spacing², so on a finer grid each
+   * requested step becomes (1/cell)² steps of timestep·cell²: the same dynamics
+   * per requested step, at that many times the cost. Exact spectral rules are
+   * stable at any spacing and keep their step.
+   */
   setCellScale(cell: number) {
     this.cell = cell;
+    this.substeps = cell < 1 && !stableAtAnySpacing(this.compiled) ? Math.round(1 / (cell * cell)) : 1;
     this.writeInfo();
     this.applyDx();
   }
@@ -215,6 +230,7 @@ export class Simulation {
     const buf = new ArrayBuffer(16);
     new Uint32Array(buf).set([this.width, this.height]);
     new Float32Array(buf)[2] = this.cell;
+    new Float32Array(buf)[3] = 1 / this.substeps;
     this.device.queue.writeBuffer(this.infoUniform, 0, buf);
   }
 
@@ -306,7 +322,8 @@ export class Simulation {
   }
 
   /** Encode `n` simulation steps into the given encoder. */
-  step(enc: GPUCommandEncoder, n: number) {
+  step(enc: GPUCommandEncoder, steps: number) {
+    const n = steps * this.substeps;
     if (n <= 0) return;
     const pass = enc.beginComputePass();
     pass.setPipeline(this.stepPipeline);

@@ -18,7 +18,7 @@ export interface Settings {
   gridSize: number;
   /** Fraction of full resolution the sim runs at (1, ½, ¼, ⅛). */
   resScale: number;
-  /** Feature size relative to the rule's own (grid spacing = 1/featureSize); above 1 only for unconditionally stable rules. */
+  /** Feature size relative to the rule's own (grid spacing = 1/featureSize); above 1, stencil rules take (featureSize)² shorter steps per step. */
   featureSize: number;
   viewMode: 'reagent' | 'params';
   /** Displayed reagent index and its range. */
@@ -407,7 +407,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const importBtn = button('Import…', actions.importRule, 'load a Ready formula pattern (.vti) or a saved rdui rule (.json)');
   // feature size: ¼–1 for any rule, up to 4 where the rule's diffusion is exact (stable at any size)
   const featureSel = select('feature size', 'featureSize', () => [
-    [0.125, '⅛'], [0.25, '¼'], [0.5, '½'], [1, '1×'], ...(rc.bigFeatures() ? [[2, '2×'], [4, '4×']] as [number, string][] : []),
+    [0.125, '⅛'], [0.25, '¼'], [0.5, '½'], [1, '1×'], ...(rc.bigFeatures() ? [[2, '2×'], [4, '4×']] as [number, string][] : [[2, '2× (4× slower)'], [4, '4× (16× slower)']] as [number, string][]),
   ], actions.setFeatureSize);
 
   root.append(

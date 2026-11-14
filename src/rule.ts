@@ -283,7 +283,8 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const L: string[] = [];
   const add = (s: string) => L.push(s);
   // cell: grid spacing relative to full resolution (the app's resolution scale), multiplies dx
-  add(`struct Info { width: u32, height: u32, cell: f32, _p1: u32 };`);
+  // cell: grid spacing factor; dt: timestep factor (shorter steps on a finer grid)
+  add(`struct Info { width: u32, height: u32, cell: f32, dt: f32 };`);
   add(`@group(0) @binding(0) var<uniform> info: Info;`);
   add(`@group(0) @binding(1) var<uniform> g: array<vec4<f32>, ${globalVec4s}>;`);
   add(`@group(0) @binding(2) var<storage, read> params: array<vec4<f32>>;`);
@@ -386,9 +387,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   rule.params.forEach((p, i) => {
     if (!used.has(p.name) && p.name !== 'timestep') return;
     const slot = layout.paramNames.indexOf(p.name);
-    add(slot > 0 ? `  let v_${p.name} = ${slotRef('params', 'pb', slot)};` : `  let v_${p.name} = g[${i >> 2}].${COMP[i & 3]};`);
+    const v = slot > 0 ? slotRef('params', 'pb', slot) : `g[${i >> 2}].${COMP[i & 3]}`;
+    add(`  let v_${p.name} = ${v}${p.name === 'timestep' ? ' * info.dt' : ''};`);
   });
-  if (!rule.params.some((p) => p.name === 'timestep')) add(`  let v_timestep = 1.0;`);
+  if (!rule.params.some((p) => p.name === 'timestep')) add(`  let v_timestep = info.dt;`);
   add(`  // --- formula`);
   add(code.split('\n').map((l) => '  ' + l.trim()).filter((l) => l.trim()).join('\n'));
   add(`  // ---`);
