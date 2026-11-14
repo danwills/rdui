@@ -53,6 +53,10 @@ export interface Actions {
   loadField(): void;
   selectRule(id: string): void;
   importRule(): void;
+  saveRule(): void;
+  deleteRule(): void;
+  exportRule(): void;
+  explore(): void;
   setGlobal(name: string, value: number): void;
   togglePaintable(name: string): void;
   /** Set the rule's base values for paintable params and retune every cell still holding the old ones. */
@@ -67,7 +71,9 @@ export interface Actions {
 export interface RuleContext {
   rule(): RuleDef;
   globals(): Record<string, number>;
-  choices: { id: string; label: string; group: string }[];
+  choices(): { id: string; label: string; group: string }[];
+  /** Whether the current rule is one of "My rules". */
+  isUserRule(): boolean;
   currentId(): string;
   warnings(): string[];
   note(): string;
@@ -268,16 +274,20 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
 
   // --- rule section (rebuilt when the rule changes)
   const ruleSel = el('select', { class: 'rule-select' });
-  const groups = new Map<string, HTMLOptGroupElement>();
-  for (const c of rc.choices) {
-    let g = groups.get(c.group);
-    if (!g) {
-      g = el('optgroup', { label: c.group });
-      groups.set(c.group, g);
-      ruleSel.append(g);
+  function fillRules() {
+    const groups = new Map<string, HTMLOptGroupElement>();
+    ruleSel.replaceChildren();
+    for (const c of rc.choices()) {
+      let g = groups.get(c.group);
+      if (!g) {
+        g = el('optgroup', { label: c.group });
+        groups.set(c.group, g);
+        ruleSel.append(g);
+      }
+      g.append(el('option', { value: c.id }, c.label));
     }
-    g.append(el('option', { value: c.id }, c.label));
   }
+  fillRules();
   ruleSel.addEventListener('change', () => actions.selectRule(ruleSel.value));
   const ruleBody = el('div');
   let ruleSyncers: (() => void)[] = [];
@@ -287,6 +297,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     const rule = rc.rule();
     const globals = rc.globals();
     ruleSyncers = [];
+    fillRules();
     if (![...ruleSel.options].some((o) => o.value === rc.currentId())) {
       ruleSel.append(el('option', { value: rc.currentId() }, rule.source ?? rule.name));
     }
@@ -299,6 +310,11 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     if (rule.description) {
       nodes.push(el('details', { class: 'desc' }, el('summary', {}, `${rule.name} · ${rule.reagents.join(' ')}`), el('p', {}, rule.description)));
     }
+    nodes.push(el('div', { class: 'buttons' },
+      button('Explore…', actions.explore, 'a grid of variants of this rule, and a live map over any two parameters'),
+      button('Save as rule…', actions.saveRule, 'keep this rule with its current parameter values and view under "My rules"'),
+      ...(rc.isUserRule() ? [button('Export', actions.exportRule, 'download this rule as a .json file'), button('Delete', actions.deleteRule, 'remove it from My rules')] : []),
+    ));
 
     // Paintable params: brush values.
     const paintBox = el('div', { class: 'paintable' });
@@ -388,7 +404,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const viewReagent = select('show', 'reagent', reagentOptions);
   const viewTint = select('tint by', 'tint', () => [[-1, 'none'], ...reagentOptions()]);
 
-  const importBtn = button('Import .vti…', actions.importRule, 'load a Ready formula pattern');
+  const importBtn = button('Import…', actions.importRule, 'load a Ready formula pattern (.vti) or a saved rdui rule (.json)');
   // feature size: ¼–1 for any rule, up to 4 where the rule's diffusion is exact (stable at any size)
   const featureSel = select('feature size', 'featureSize', () => [
     [0.125, '⅛'], [0.25, '¼'], [0.5, '½'], [1, '1×'], ...(rc.bigFeatures() ? [[2, '2×'], [4, '4×']] as [number, string][] : []),

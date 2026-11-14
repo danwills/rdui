@@ -57,6 +57,8 @@ export interface RuleDef {
   params: ParamSpec[];
   /** Parameter names stored per cell (paintable). Up to 7. */
   paintable: string[];
+  /** Parameters the explorer varies by default (else the paintable ones). */
+  explore?: string[];
   formula: string;
   /** Value each reagent relaxes to under Erase / in new walls. */
   rest: number[];

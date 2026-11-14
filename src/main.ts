@@ -12,6 +12,8 @@ import {
 } from './rule';
 import { BUNDLED_PATTERNS, importReady, loadBundled } from './ready';
 import { SCENES, type Scene } from './scenes';
+import { UserRules } from './userRules';
+import { openExplorerPanel } from './explorer';
 import { STARTER_STAMPS, compositeOnto, stampBackground } from './stamps';
 
 const RECT_TOOLS = new Set(['capture', 'probe']);
@@ -92,11 +94,74 @@ async function init() {
   const strokes: BrushStroke[] = []; // resolved at input time so later tool changes don't affect them
   let pendingSteps = 0;
 
-  const ruleChoices = [
+  const userRules = new UserRules();
+  const ruleChoices = () => [
+    ...userRules.rules.map((u) => ({ id: `user:${u.id}`, label: u.rule.name, group: 'My rules' })),
     ...BUILTIN_RULES.map((r, i) => ({ id: `builtin:${i}`, label: r.name, group: 'Built-in' })),
     ...BUNDLED_PATTERNS.map((p) => ({ id: `pattern:${p.name}`, label: p.name, group: 'Ready patterns' })),
     ...SCENES.map((sc) => ({ id: `scene:${sc.id}`, label: sc.scene.name, group: 'Scenes' })),
   ];
+
+  /**
+   * The current rule as a stand-alone rule: parameter values (globals, with any
+   * `values` overriding them) and the current view baked in, its initial pattern
+   * generator kept; its rest state is relaxed again for the new values.
+   */
+  function ruleSnapshot(name: string, values: Record<string, number> = {}): RuleDef {
+    const g = { ...globals, ...values };
+    const r: RuleDef = {
+      ...clone(rule),
+      name,
+      params: rule.params.map((p) => ({ ...p, value: g[p.name], min: Math.min(p.min, g[p.name]), max: Math.max(p.max, g[p.name]) })),
+      view: {
+        ...rule.view,
+        reagent: rule.reagents[s.reagent], low: s.low, high: s.high,
+        tint: s.tint >= 0 ? rule.reagents[s.tint] : undefined,
+        stepsPerFrame: s.stepsPerFrame, palette: s.palette, hueShape: s.hueShape, hueOffset: s.hueOffset,
+      },
+      size: { ...full },
+    };
+    delete r.restRelaxed;
+    return r;
+  }
+
+  /** The explorer (explorer.ts) on the current rule; the main sim pauses while it's open. */
+  function openExplorer() {
+    const wasRunning = s.running;
+    s.running = false;
+    ui.sync();
+    openExplorerPanel({
+      device, format, rule, globals: { ...globals },
+      view: viewOptions,
+      stepsPerFrame: () => s.stepsPerFrame,
+      cell: cellScale,
+      use: (values) => {
+        const bg: Record<string, number> = {};
+        for (const [k, v] of Object.entries(values)) {
+          if (rule.paintable.includes(k)) bg[k] = v;
+          else {
+            globals[k] = v;
+            sim.setGlobal(k, v);
+          }
+        }
+        if (Object.keys(bg).length) setBackground(bg);
+        ui.rebuildRule();
+      },
+      save: (values) => void saveRuleAs(values),
+      onClose: () => {
+        s.running = wasRunning;
+        ui.sync();
+      },
+    });
+  }
+
+  async function saveRuleAs(values?: Record<string, number>) {
+    const name = prompt('Name for the new rule', `${rule.name.replace(/ \(saved.*\)$/, '')} (saved)`);
+    if (!name) return;
+    const u = userRules.add(ruleSnapshot(name, values));
+    if (userRules.saveError) alert(userRules.saveError);
+    await selectRule(`user:${u.id}`);
+  }
 
   const paintValues = () => rule.paintable.map((n) => s.paint[n] ?? globals[n]);
   const restOf = (name: string) => rule.rest[rule.reagents.indexOf(name)] ?? 0;
@@ -279,6 +344,11 @@ async function init() {
       } else if (id.startsWith('builtin:')) {
         const r = clone(BUILTIN_RULES[Number(id.slice(8))]);
         await applyRule(r, { field: 'initial', id, globals: defaultGlobals(r), size: r.size });
+      } else if (id.startsWith('user:')) {
+        const u = userRules.get(id.slice(5));
+        if (!u) throw new Error('not in My rules any more');
+        const r = clone(u.rule);
+        await applyRule(r, { field: 'initial', id, globals: defaultGlobals(r), size: r.size });
       } else if (id.startsWith('pattern:')) {
         const imp = await loadBundled(id.slice(8));
         await applyRule(imp.rule, { field: 'initial', id, globals: defaultGlobals(imp.rule), size: imp.rule.size, image: imp.image, warnings: imp.warnings });
@@ -332,15 +402,32 @@ async function init() {
     loadField,
     selectRule,
     importRule: async () => {
-      const f = await pickFile('.vti');
+      const f = await pickFile('.vti,.json,application/json');
       if (!f) return;
       try {
+        if (f.name.endsWith('.json')) {
+          const added = userRules.import(await f.text());
+          await selectRule(`user:${added[0].id}`);
+          return;
+        }
         const imp = await importReady(await f.text(), f.name);
         await applyRule(imp.rule, { field: 'initial', id: `file:${f.name}`, globals: defaultGlobals(imp.rule), size: imp.rule.size, image: imp.image, warnings: imp.warnings });
       } catch (e) {
         alert(`Couldn't import ${f.name}: ${(e as Error).message}`);
       }
     },
+    saveRule: () => void saveRuleAs(),
+    deleteRule: () => {
+      const id = ruleId.slice(5);
+      if (!ruleId.startsWith('user:') || !confirm(`Delete "${rule.name}" from My rules?`)) return;
+      userRules.remove(id);
+      void selectRule('builtin:0');
+    },
+    exportRule: () => {
+      const u = userRules.get(ruleId.slice(5));
+      if (u) download(new Blob([JSON.stringify(u.rule, null, 2)], { type: 'application/json' }), `${u.rule.name.replace(/[^\w-]+/g, '_')}.rdui-rule.json`);
+    },
+    explore: () => openExplorer(),
     setGlobal: (name, v) => {
       globals[name] = v;
       sim.setGlobal(name, v);
@@ -363,6 +450,7 @@ async function init() {
     rule: () => rule,
     globals: () => globals,
     choices: ruleChoices,
+    isUserRule: () => ruleId.startsWith('user:'),
     currentId: () => ruleId,
     warnings: () => warnings,
     note: () => note,
@@ -760,7 +848,7 @@ async function init() {
   }
 
   const wanted = decodeURIComponent(location.hash.match(/rule=([^&]+)/)?.[1] ?? '');
-  if (wanted && ruleChoices.some((c) => c.id === wanted)) await selectRule(wanted);
+  if (wanted && ruleChoices().some((c) => c.id === wanted)) await selectRule(wanted);
   else await applyRule(rule, { field: 'initial', id: ruleId });
   requestAnimationFrame(frame);
 }

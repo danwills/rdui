@@ -209,3 +209,19 @@ header button { margin-left: 8px; padding: 0 8px; font-size: 15px; }
 .fkmap-readout { font: 11px ui-monospace, monospace; color: var(--muted); margin: 0 6px; }
 .fkmap-canvas { display: block; cursor: crosshair; touch-action: none; border-radius: 3px; }
 .fkmap .hint { margin: 6px 0 0; max-width: 1100px; }
+
+/* explorer (explorer.ts) */
+.explore { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; overflow-y: auto; }
+.explore-bar, .explore-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-width: 900px; }
+.explore-bar button.active, .explore-chips button.active { border-color: var(--accent); color: var(--accent); }
+.explore-chips button { padding: 1px 6px; font-size: 11px; }
+.explore-controls { width: 100%; max-width: 900px; }
+.explore-controls .row { max-width: 420px; }
+.explore-box { position: relative; border: 1px solid var(--line); }
+.explore-box canvas { display: block; }
+.explore-grid { position: absolute; inset: 0; }
+.explore-cell { position: absolute; cursor: pointer; outline: 1px solid var(--line); }
+.explore-cell.centre { outline: 2px solid var(--accent); z-index: 1; }
+.explore-cell span { position: absolute; left: 0; right: 0; bottom: 0; padding: 1px 4px; font: 10px ui-monospace, monospace; background: rgba(8, 9, 12, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.explore-over { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
+.explore-readout { font: 11px ui-monospace, monospace; color: var(--muted); max-width: 900px; text-align: center; }
