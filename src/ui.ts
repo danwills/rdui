@@ -1,5 +1,5 @@
 import { PRESETS } from './presets';
-import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, openLoupe, pickFK } from './fkmap';
+import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, openLoupe } from './fkmap';
 import type { RuleDef } from './rule';
 
 export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'capture' | 'stamp' | 'probe';
@@ -467,7 +467,7 @@ function buildFKPad(s: Settings, background: () => Record<string, number>, set: 
   const W = 260;
   const H = 170;
   const dpr = window.devicePixelRatio || 1;
-  const canvas = el('canvas', { class: 'fkpad', title: 'press to pick feed (y) and kill (x); drag for fine control on the magnified map' });
+  const canvas = el('canvas', { class: 'fkpad', title: 'hold to magnify the map about the current feed (y) and kill (x); drag to move them finely' });
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width = `${W}px`;
@@ -482,8 +482,9 @@ function buildFKPad(s: Settings, background: () => Record<string, number>, set: 
   }
   onMapLoaded(draw);
 
-  // Press: pick the value under the finger and show the magnifier; drag: move it
-  // at the magnifier's scale (fine control); lift: the magnifier goes. A touch
+  // Press: show the magnifier about the current value (wherever the press is:
+  // nothing changes yet); drag: move the value at the magnifier's scale (fine
+  // control); lift: the magnifier goes. The big map picks values directly. A touch
   // has to be held still for HOLD_MS first, so swiping over the pad still
   // scrolls the panel; a mouse press engages at once.
   const HOLD_MS = 300;
@@ -502,10 +503,8 @@ function buildFKPad(s: Settings, background: () => Record<string, number>, set: 
   const engage = (id: number, x: number, y: number) => {
     pending = null;
     canvas.setPointerCapture(id);
-    const r = canvas.getBoundingClientRect();
-    const [F, k] = pickFK((x - r.left) / r.width, (y - r.top) / r.height);
-    set(F, k);
-    drag = { x, y, F, k, loupe: openLoupe(s, background) };
+    const cur = s.fkTarget === 'background' ? background() : s.paint;
+    drag = { x, y, F: cur.F, k: cur.k, loupe: openLoupe(s, background) };
   };
   canvas.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse') return engage(e.pointerId, e.clientX, e.clientY);
