@@ -10,6 +10,8 @@ export interface Settings {
   hardness: number;
   /** Brush values for the rule's paintable params. */
   paint: Record<string, number>;
+  /** What the F/k map and presets set: the brush values, or the background (unpainted cells). */
+  fkTarget: 'brush' | 'background';
   running: boolean;
   stepsPerFrame: number;
   gridSize: number;
@@ -29,6 +31,8 @@ export interface Settings {
   stampFlip: boolean;
   placeParams: boolean;
   placeChem: boolean;
+  /** List stamps captured in other rules (other reagents) too. */
+  showAllStamps: boolean;
 }
 
 export interface Actions {
@@ -43,6 +47,8 @@ export interface Actions {
   importRule(): void;
   setGlobal(name: string, value: number): void;
   togglePaintable(name: string): void;
+  /** Set the rule's base values for paintable params and retune every cell still holding the old ones. */
+  setBackground(values: Record<string, number>): void;
 }
 
 /** What the panel needs to know about the current rule. */
@@ -72,6 +78,7 @@ export function defaultSettings(): Settings {
     strength: 1,
     hardness: 0.6,
     paint: {},
+    fkTarget: 'brush',
     running: true,
     stepsPerFrame: 10,
     gridSize: 512,
@@ -89,6 +96,7 @@ export function defaultSettings(): Settings {
     stampFlip: false,
     placeParams: false, // stamps place chemistry only unless asked: no hidden painting
     placeChem: true,
+    showAllStamps: false,
   };
 }
 
@@ -243,19 +251,35 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     const paintBox = el('div', { class: 'paintable' });
     const hasFK = rule.paintable.includes('F') && rule.paintable.includes('k');
     if (hasFK) {
-      const pad = buildFKPad(s, sync);
+      // the map and presets set either the brush or the background (what unpainted cells hold)
+      const target = () => (s.fkTarget === 'brush' ? s.paint : globals);
+      const setFK = (F: number, k: number) => {
+        if (s.fkTarget === 'brush') {
+          s.paint.F = F;
+          s.paint.k = k;
+        } else actions.setBackground({ F, k });
+        sync();
+      };
+      const pad = buildFKPad(s, () => globals, setFK);
       ruleSyncers.push(pad.draw);
+      const targetRow = el('div', { class: 'presets fk-target' }, el('span', { class: 'hint' }, 'map sets'));
+      for (const [id, label, hint] of [['brush', 'Brush', 'the values the Params tool paints'], ['background', 'Background', 'the unpainted field: every cell still at the old base values follows (painted areas and walls stay); Reset starts from it too']] as const) {
+        const b = button(label, () => {
+          s.fkTarget = id;
+          sync();
+        }, hint);
+        ruleSyncers.push(() => b.classList.toggle('active', s.fkTarget === id));
+        targetRow.append(b);
+      }
       const presetRow = el('div', { class: 'presets' });
       for (const p of PRESETS) {
-        const b = button(p.name, () => {
-          s.paint.F = p.feed;
-          s.paint.k = p.kill;
-          sync();
-        }, p.note);
-        ruleSyncers.push(() => b.classList.toggle('active', Math.abs(s.paint.F - p.feed) < 1e-5 && Math.abs(s.paint.k - p.kill) < 1e-5));
+        const b = button(p.name, () => setFK(p.feed, p.kill), p.note);
+        ruleSyncers.push(() => b.classList.toggle('active', Math.abs(target().F - p.feed) < 1e-5 && Math.abs(target().k - p.kill) < 1e-5));
         presetRow.append(b);
       }
-      paintBox.append(pad.canvas, presetRow);
+      const bgReadout = el('p', { class: 'hint' });
+      ruleSyncers.push(() => (bgReadout.textContent = `background F ${globals.F.toFixed(4)} · k ${globals.k.toFixed(4)}`));
+      paintBox.append(pad.canvas, targetRow, presetRow, bgReadout);
     }
     for (const name of rule.paintable) {
       const spec = rule.params.find((p) => p.name === name)!;
@@ -351,8 +375,11 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
 const F_RANGE = [0, 0.1] as const;
 const K_RANGE = [0.03, 0.075] as const;
 
-/** A clickable (kill → x, feed → y) map with presets marked. Edits s.paint.F / s.paint.k. */
-function buildFKPad(s: Settings, sync: () => void) {
+/**
+ * A clickable (kill → x, feed → y) map with presets marked. Shows the brush (ring)
+ * and background (filled dot) values; picking calls `set` with the chosen pair.
+ */
+function buildFKPad(s: Settings, background: () => Record<string, number>, set: (F: number, k: number) => void) {
   const W = 260;
   const H = 170;
   const dpr = window.devicePixelRatio || 1;
@@ -392,12 +419,19 @@ function buildFKPad(s: Settings, sync: () => void) {
       ctx.fillStyle = '#7f8ba0';
       ctx.fillText(p.name, x + 4, y - 3);
     }
-    const x = toX(s.paint.k), y = toY(s.paint.F);
+    const bg = background();
+    ctx.globalAlpha = s.fkTarget === 'background' ? 1 : 0.5;
+    ctx.fillStyle = '#66d9ff';
+    ctx.beginPath();
+    ctx.arc(toX(bg.k), toY(bg.F), 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = s.fkTarget === 'brush' ? 1 : 0.5;
     ctx.strokeStyle = '#ffcc66';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.arc(toX(s.paint.k), toY(s.paint.F), 5, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.globalAlpha = 1;
     ctx.lineWidth = 1;
     ctx.fillStyle = '#5b6b85';
     ctx.fillText('kill →', W - 38, H - 4);
@@ -408,9 +442,7 @@ function buildFKPad(s: Settings, sync: () => void) {
     const r = canvas.getBoundingClientRect();
     const fx = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1);
     const fy = Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1);
-    s.paint.k = K_RANGE[0] + fx * (K_RANGE[1] - K_RANGE[0]);
-    s.paint.F = F_RANGE[0] + (1 - fy) * (F_RANGE[1] - F_RANGE[0]);
-    sync();
+    set(F_RANGE[0] + (1 - fy) * (F_RANGE[1] - F_RANGE[0]), K_RANGE[0] + fx * (K_RANGE[1] - K_RANGE[0]));
   }
   canvas.addEventListener('pointerdown', (e) => {
     canvas.setPointerCapture(e.pointerId);

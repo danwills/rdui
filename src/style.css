@@ -109,6 +109,8 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .buttons { display: flex; gap: 4px; margin: 6px 0; flex-wrap: wrap; }
 .presets { display: flex; flex-wrap: wrap; gap: 3px; margin: 8px 0; }
 .presets button { padding: 2px 6px; font-size: 11px; }
+.fk-target { align-items: center; }
+.fk-target .hint { margin: 0 4px 0 0; }
 
 .fkpad { display: block; border: 1px solid var(--line); border-radius: 4px; cursor: crosshair; touch-action: none; }
 
@@ -147,6 +149,7 @@ button.del:hover { color: #ff7a7a; border-color: var(--line); }
 }
 .tile:hover { background: var(--btn-hover); }
 .tile.active { border-color: var(--accent); }
+.tile.foreign { opacity: 0.55; }
 .tile canvas { display: block; height: 56px; width: auto; max-width: 100%; object-fit: contain; image-rendering: pixelated; }
 .tile .name { font-size: 10px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tile .del { position: absolute; top: 0; right: 0; }

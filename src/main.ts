@@ -285,10 +285,9 @@ async function init() {
         alert(`Could not import stamps: ${(e as Error).message}`);
       }
     },
-  }, () => rule.reagents[s.reagent]);
+  }, () => rule.reagents[s.reagent], () => rule.reagents);
   stamps.onChange = () => {
-    if (!stamps.get(s.stampId)) s.stampId = stamps.stamps[0]?.id ?? null;
-    stampPanel.render();
+    stampPanel.render(); // also moves the selection off deleted or unlisted stamps
   };
 
   const probePanel = probeSection(probes, () => ({ index: s.reagent, name: rule.reagents[s.reagent] }));
@@ -324,6 +323,7 @@ async function init() {
       globals[name] = v;
       sim.setGlobal(name, v);
     },
+    setBackground,
     togglePaintable: (name) => {
       const paintable = rule.paintable.includes(name) ? rule.paintable.filter((n) => n !== name) : [...rule.paintable, name];
       if (paintable.length > 7) {
@@ -352,6 +352,46 @@ async function init() {
   // The installed app (a production build) runs offline from the service worker's cache.
   if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch((e) => console.warn('service worker not registered', e));
+  }
+
+  /**
+   * The background (unpainted) values of paintable params are their globals: the
+   * initial field is filled from them. Changing them retunes every non-wall cell
+   * still holding all the old values, read back and rewritten on the CPU; while a
+   * rewrite is in flight, further changes (a drag on the F/k map) just queue up.
+   */
+  let bgBusy = false;
+  let bgQueued: Record<string, number> | null = null;
+  function setBackground(values: Record<string, number>) {
+    bgQueued = { ...bgQueued, ...values };
+    if (!bgBusy) void flushBackground();
+  }
+  async function flushBackground() {
+    bgBusy = true;
+    while (bgQueued) {
+      const values = bgQueued;
+      bgQueued = null;
+      const target = sim;
+      const names = Object.keys(values).filter((n) => rule.paintable.includes(n));
+      const old = names.map((n) => Math.fround(globals[n]));
+      for (const n of names) {
+        globals[n] = values[n];
+        sim.setGlobal(n, values[n]);
+      }
+      const { params } = await target.readRegion(0, 0, target.width, target.height);
+      if (target !== sim) continue; // the rule changed meanwhile
+      const P4 = target.layout.P * 4;
+      const slots = names.map((n) => target.layout.paramNames.indexOf(n));
+      let changed = 0;
+      for (let i = 0; i < params.length; i += P4) {
+        if (params[i] !== 0 || !slots.every((sl, j) => params[i + sl] === old[j])) continue;
+        slots.forEach((sl, j) => (params[i + sl] = values[names[j]]));
+        changed++;
+      }
+      if (changed) target.writeRegion(0, 0, target.width, target.height, params);
+    }
+    bgBusy = false;
+    ui.sync();
   }
 
   async function saveField() {

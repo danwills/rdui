@@ -1,10 +1,13 @@
 import { el, section, button, type Settings } from './ui';
-import { stampThumbnail, type StampLibrary } from './stamps';
+import { stampThumbnail, type Stamp, type StampLibrary } from './stamps';
 import { HISTORY, ProbeSet, type Probe } from './probes';
 import { probeColor } from './overlay';
 
-/** Stamp library: thumbnail grid, placement options, import/export. */
-export function stampSection(lib: StampLibrary, s: Settings, select: (id: string) => void, io: { export(): void; import(): void }, shownReagent: () => string) {
+/**
+ * Stamp library: thumbnail grid, placement options, import/export. Only stamps
+ * captured with the current rule's reagents are listed, unless showAllStamps.
+ */
+export function stampSection(lib: StampLibrary, s: Settings, select: (id: string) => void, io: { export(): void; import(): void }, shownReagent: () => string, reagents: () => string[]) {
   const starters = () => {
     const n = lib.addStarters();
     if (!n) alert('All starter stamps are already in your library.');
@@ -12,20 +15,31 @@ export function stampSection(lib: StampLibrary, s: Settings, select: (id: string
   const grid = el('div', { class: 'stamps' });
   const empty = el('p', { class: 'hint' }, 'No stamps yet — use Capture (5) and drag over the field.');
   const error = el('p', { class: 'hint error' });
+  const hidden = el('p', { class: 'hint' });
+  const fits = (st: Stamp) => st.reagents.join() === reagents().join();
   const thumbs = new Map<string, HTMLCanvasElement>();
 
-  function checkbox(label: string, key: 'placeParams' | 'placeChem') {
+  function checkbox(label: string, key: 'placeParams' | 'placeChem' | 'showAllStamps', then?: () => void) {
     const input = el('input', { type: 'checkbox' });
     input.checked = s[key];
-    input.addEventListener('change', () => (s[key] = input.checked));
+    input.addEventListener('change', () => {
+      s[key] = input.checked;
+      then?.();
+    });
     return el('label', { class: 'check' }, input, label);
   }
 
   function render() {
     grid.replaceChildren();
-    empty.hidden = lib.stamps.length > 0;
+    const shown = s.showAllStamps ? lib.stamps : lib.stamps.filter(fits);
+    // keep the selection on a stamp that's listed
+    if (!shown.some((st) => st.id === s.stampId)) s.stampId = shown[0]?.id ?? null;
+    empty.hidden = shown.length > 0;
+    const others = lib.stamps.length - lib.stamps.filter(fits).length;
+    hidden.hidden = s.showAllStamps || !others;
+    hidden.textContent = `${others} stamp${others === 1 ? '' : 's'} for other rules hidden`;
     error.textContent = lib.saveError ?? '';
-    for (const st of lib.stamps) {
+    for (const st of shown) {
       const key = `${st.id}:${shownReagent()}`;
       let thumb = thumbs.get(key);
       if (!thumb) thumbs.set(key, (thumb = stampThumbnail(st, 56, shownReagent())));
@@ -33,7 +47,7 @@ export function stampSection(lib: StampLibrary, s: Settings, select: (id: string
       del.classList.add('del');
       del.addEventListener('click', (e) => e.stopPropagation());
       const name = el('span', { class: 'name' }, st.name);
-      const tile = el('div', { class: 'tile', title: `${st.name} · ${st.w}×${st.h} · ${st.rule} · double-click to rename` }, thumb, name, del);
+      const tile = el('div', { class: fits(st) ? 'tile' : 'tile foreign', title: `${st.name} · ${st.w}×${st.h} · ${st.rule} · double-click to rename` }, thumb, name, del);
       tile.classList.toggle('active', s.stampId === st.id);
       tile.addEventListener('click', () => select(st.id));
       tile.addEventListener('dblclick', () => {
@@ -45,8 +59,8 @@ export function stampSection(lib: StampLibrary, s: Settings, select: (id: string
   }
 
   const node = section('Stamps',
-    grid, empty, error,
-    el('div', { class: 'checks' }, checkbox('params + walls', 'placeParams'), checkbox('chemistry', 'placeChem')),
+    grid, empty, hidden, error,
+    el('div', { class: 'checks' }, checkbox('params + walls', 'placeParams'), checkbox('chemistry', 'placeChem'), checkbox('all rules', 'showAllStamps', () => render())),
     el('p', { class: 'hint' }, 'Q/E rotate · X mirror while placing'),
     el('div', { class: 'buttons' }, button('Export…', io.export), button('Import…', io.import), button('+ Starters', starters, 'add the stamps that ship with rdui')),
   );
