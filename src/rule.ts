@@ -1255,7 +1255,67 @@ export const GS_SELECTION: RuleDef = {
   view: { reagent: 'b', low: 0, high: 0.5, tint: 'P_F' },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION];
+/** Gray-Scott Species' founders: spots, worms, maze, curly (the heredity scene's four behaviours). */
+export const SPECIES_TRAITS: [number, number][] = [[0.0367, 0.0649], [0.058, 0.065], [0.029, 0.057], [0.018, 0.051]];
+
+/**
+ * Gray-Scott Species: particulate rather than blending inheritance. Each species
+ * is its own molecule b1..b4 with its own feed and kill (F1, k1, ...), and
+ * a + b_i + b_j makes a copy of one parent, so a species is never diluted: it
+ * can only gain or lose ground. cross scales reactions between different species
+ * (0, the default: only same-species pairs reproduce; 1: as plain Gray-Scott,
+ * where the species with the lowest F + k takes every mixed cell). a's feed is
+ * the local b-weighted mean of the species' F, or the painted F where there is
+ * no b. b (total) and P_F (mean feed) are for display.
+ */
+export const GS_SPECIES: RuleDef = {
+  name: 'Gray-Scott Species',
+  description: 'Gray-Scott with four species of b instead of one, each with its own feed and kill (F1, k1 … F4, k4; by default spots, '
+    + 'worms, maze and curly). New b is always a copy of a parent, so species never blend: unlike Lineages, where overlapping traits '
+    + 'average out, each species keeps its own F and k and its own pattern, and can only win or lose ground. cross sets how readily '
+    + 'two different species reproduce together: 0 (default) = only with their own kind, so species hold territories; 1 = as plain '
+    + 'Gray-Scott, where the species with the lowest death rate (F + k) takes over every mixed cell and soon the whole field. '
+    + 'The paintable F is only the feed where there is no b. The brush seeds species 1. View b (total) tinted by P_F (local mean feed), '
+    + 'or view b1…b4 one at a time.',
+  reagents: ['a', 'b1', 'b2', 'b3', 'b4', 'b', 'P_F'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.5 },
+    { name: 'D_a', value: 0.3, min: 0, max: 0.37 },
+    { name: 'D_b', value: 0.15, min: 0, max: 0.37 },
+    { name: 'F', value: 0.03, min: 0, max: 0.1 },
+    ...SPECIES_TRAITS.flatMap(([F, k], i) => [
+      { name: `F${i + 1}`, value: F, min: 0, max: 0.1 },
+      { name: `k${i + 1}`, value: k, min: 0.03, max: 0.075 },
+    ]),
+    { name: 'cross', value: 0, min: 0, max: 1 },
+    { name: 'eps', value: 0.001, min: 0.0001, max: 0.05 },
+  ],
+  paintable: ['F'],
+  explore: ['cross', 'F1', 'F2', 'F3', 'F4'],
+  formula: `float bt = b1 + b2 + b3 + b4;
+float Fx = (F1*b1 + F2*b2 + F3*b3 + F4*b4 + eps*F)/(bt + eps);
+delta_b1 = D_b*laplacian_b1 + a*b1*(b1 + cross*(bt - b1)) - (F1 + k1)*b1;
+delta_b2 = D_b*laplacian_b2 + a*b2*(b2 + cross*(bt - b2)) - (F2 + k2)*b2;
+delta_b3 = D_b*laplacian_b3 + a*b3*(b3 + cross*(bt - b3)) - (F3 + k3)*b3;
+delta_b4 = D_b*laplacian_b4 + a*b4*(b4 + cross*(bt - b4)) - (F4 + k4)*b4;
+float made = a*(b1*b1 + b2*b2 + b3*b3 + b4*b4 + cross*(bt*bt - b1*b1 - b2*b2 - b3*b3 - b4*b4));
+delta_a = D_a*laplacian_a - made + Fx*(1.0 - a);
+delta_b = (bt - b)/timestep;
+delta_P_F = (Fx - P_F)/timestep;`,
+  rest: [1, 0, 0, 0, 0, 0, 0.03],
+  seed: [0.5, 0.25, null, null, null, null, null],
+  seedNoise: [0, 0.25, 0, 0, 0, 0, 0],
+  initial: [
+    { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    ...[1, 2, 3, 4].flatMap((i): Overlay[] => [
+      { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'spots', count: 4, minSize: 3, maxSize: 6, seed: 10 + i } },
+      { chem: `b${i}`, op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: { type: 'spots', count: 4, minSize: 3, maxSize: 6, seed: 10 + i } },
+    ]),
+  ],
+  view: { reagent: 'b', low: 0, high: 0.5, tint: 'P_F' },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));
