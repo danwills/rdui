@@ -8,9 +8,12 @@
 // difference of unit-mass Gaussians, K̂ = exp(−σ1²|k|²/2) − b·exp(−σ2²|k|²/2)
 // (a σ wider than the field keeps only k = 0: the field mean). With second = 3
 // (propagator), the first pair gets sin(θ) and the second cos(θ), θ = sigma1·|k|²
-// (sigma1 = timestep/2): the exact free Schrödinger step, e^{−iθ} on ψ = p + iq. λ = −|k|² (exact), or with `matched` the 9-point
+// (sigma1 = timestep/2): the exact free Schrödinger step, e^{−iθ} on ψ = p + iq.
+// λ = −|k|² (exact), or with `matched` the 9-point
 // stencil's own axis response −4 sin²(|k|·dx/2)/dx² applied in every direction:
 // isotropic, explicit-stable like the stencil, and close to it for tuned media.
+// With second = 4 (heat), each pair gets its own Gaussian, exp(σ²λ/2): exact
+// diffusion over a step when σ² = 2·D·timestep, unconditionally stable for any D.
 override S: u32 = 1u;
 override P: u32 = 1u;
 
@@ -50,7 +53,7 @@ fn unpack(@builtin(global_invocation_id) gid: vec3<u32>) {
 
 // Signed frequency of bin i in an n-point transform, in radians per unit length.
 fn wave(i: u32, n: u32) -> f32 {
-  let m = select(f32(i), f32(i) - f32(n), i >= n / 2u);
+  let m = select(f32(i), f32(i) - f32(n), n > 1u && i >= n / 2u);
   return 6.283185307179586 * m / (f32(n) * info.dx);
 }
 
@@ -76,6 +79,15 @@ fn kmul(@builtin(global_invocation_id) gid: vec3<u32>) {
     } else if (info.second == 2u) {
       bre[c + k] = r * kernel;
       bim[c + k] = i * kernel;
+    }
+    if (info.second == 4u) {
+      let h1 = exp(-0.5 * info.sigma1 * info.sigma1 * k2);
+      let h2 = exp(-0.5 * info.sigma2 * info.sigma2 * k2);
+      bre[c + k] = r * h2;
+      bim[c + k] = i * h2;
+      re[c + k] = r * h1;
+      im[c + k] = i * h1;
+      continue;
     }
     if (info.second == 3u) {
       let th = info.sigma1 * (kx * kx + ky * ky);

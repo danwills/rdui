@@ -4,7 +4,7 @@ import spectralWGSL from './shaders/spectral.wgsl?raw';
 const WG = 8;
 
 /** What the second spectral channel computes. */
-export type Second = 'none' | 'bilap' | 'kernel' | 'propagator';
+export type Second = 'none' | 'bilap' | 'kernel' | 'propagator' | 'heat';
 
 /**
  * Spectral Laplacian (and optionally a second operator: the bilaplacian, or
@@ -54,7 +54,8 @@ export class Spectral {
     const P = (this.P = Math.ceil(S / 2));
     const pow2 = (n: number) => n > 0 && (n & (n - 1)) === 0;
     if (!pow2(W) || !pow2(H) || W > 512 || H > 512) throw new Error(`spectral Laplacian needs power-of-two sizes ≤ 512 (got ${W}×${H})`);
-    // A 1×1 field (rest relaxation) has zero Laplacian: leave the buffers zeroed.
+    // A 1×1 field (rest relaxation) is its own spectrum: pack → kmul → unpack with no
+    // transforms gives Laplacian 0 and the k = 0 response of the other operators.
     this.trivial = W === 1 && H === 1;
     const usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC;
     const buf = (slots: number, label: string, used = true) => device.createBuffer({ size: used ? W * H * slots * 16 : 16, usage, label });
@@ -119,24 +120,25 @@ export class Spectral {
 
   private writeInfo() {
     const buf = new ArrayBuffer(32);
-    new Uint32Array(buf).set([this.W, this.H, ['none', 'bilap', 'kernel', 'propagator'].indexOf(this.second), this.matched ? 1 : 0]);
+    new Uint32Array(buf).set([this.W, this.H, ['none', 'bilap', 'kernel', 'propagator', 'heat'].indexOf(this.second), this.matched ? 1 : 0]);
     new Float32Array(buf).set([this.dx, this.kernel.sigma1, this.kernel.b, this.kernel.sigma2], 4);
     this.device.queue.writeBuffer(this.info, 0, buf);
   }
 
   /** Encode the transforms of state buffer `from` (index into `states`) into an open compute pass. */
   encode(pass: GPUComputePassEncoder, from: number) {
-    if (this.trivial) return;
     const gx = Math.ceil(this.W / WG), gy = Math.ceil(this.H / WG);
     pass.setPipeline(this.packPipeline);
     pass.setBindGroup(0, this.packGroups[from]);
     pass.dispatchWorkgroups(gx, gy);
-    this.lines(pass, 0, 0, 0);
-    this.lines(pass, 1, 0, 0);
+    if (!this.trivial) {
+      this.lines(pass, 0, 0, 0);
+      this.lines(pass, 1, 0, 0);
+    }
     pass.setPipeline(this.kmulPipeline);
     pass.setBindGroup(0, this.kmulGroup);
     pass.dispatchWorkgroups(gx, gy);
-    for (const pair of this.second !== 'none' ? [0, 1] : [0]) {
+    for (const pair of this.trivial ? [] : this.second !== 'none' ? [0, 1] : [0]) {
       this.lines(pass, 1, 1, pair);
       this.lines(pass, 0, 1, pair);
     }

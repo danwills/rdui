@@ -5,6 +5,8 @@ import { Spectral } from './spectral';
 
 /** Global params that shape the spectral kernel (see `kernel_` in rule.ts). */
 const KERNEL_PARAMS = [['kernel_sigma', 'sigma1'], ['kernel_b', 'b'], ['kernel_sigma2', 'sigma2']] as const;
+/** Global params that set the heat mode's diffusion (see `heat1_` in rule.ts). */
+const HEAT_PARAMS = ['heat_D1', 'heat_D2', 'zoom', 'timestep'];
 
 export const BrushMode = {
   Seed: 0,
@@ -149,6 +151,7 @@ export class Simulation {
       }
       const ts = compiled.globalIndex.get('timestep');
       if (compiled.spectral.second === 'propagator') this.spectral.setKernel({ sigma1: 0.5 * (ts !== undefined ? this.globals[ts] : 1) });
+      this.setHeat();
     }
     const usesLap = /\blapK\b/.test(compiled.stepWGSL), usesBilap = /\bbilapK\b/.test(compiled.stepWGSL);
     const stepGroup = (from: number) =>
@@ -199,6 +202,18 @@ export class Simulation {
     const kp = KERNEL_PARAMS.find(([n]) => n === name);
     if (kp) this.spectral?.setKernel({ [kp[1]]: value });
     if (name === 'timestep' && this.compiled.spectral?.second === 'propagator') this.spectral?.setKernel({ sigma1: 0.5 * value });
+    if (HEAT_PARAMS.includes(name)) this.setHeat();
+  }
+
+  /** Heat mode: Gaussian widths for exact diffusion over a step, σ² = 2·D·zoom²·timestep. */
+  private setHeat() {
+    if (this.compiled.spectral?.second !== 'heat') return;
+    const g = (n: string, d: number) => {
+      const i = this.compiled.globalIndex.get(n);
+      return i === undefined ? d : this.globals[i];
+    };
+    const zt = g('zoom', 1) ** 2 * g('timestep', 1);
+    this.spectral?.setKernel({ sigma1: Math.sqrt(2 * g('heat_D1', 0) * zt), sigma2: Math.sqrt(2 * g('heat_D2', 0) * zt) });
   }
 
   getGlobals(): Record<string, number> {

@@ -93,6 +93,13 @@ export interface RuleDef {
    * cos and sin of ½|k|²·timestep, so p' = wave_cos_p + wave_sin_q and
    * q' = wave_cos_q − wave_sin_p is e^{−i|k|²dt/2}ψ̂ (unconditionally stable).
    * They use both spectral channels, so no other spectral operator can join them.
+   *
+   * And exact diffusion: `heat1_<r>` / `heat2_<r>` are the reagent after
+   * diffusing for one timestep with diffusivity heat_D1 / heat_D2 times zoom²
+   * (zoom optional, default 1): stable at any zoom, so features can be made
+   * as wide as wanted at the same cost per step. Write the step as
+   * delta_a = (heat1_a - a)/timestep + reaction(heat1_a, …). Like wave_, this
+   * takes both channels.
    */
   laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
   /** Grid size the rule was authored for (imports). */
@@ -229,7 +236,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (mem && !rule.params.some((p) => p.name === mem.param)) throw new RuleError(`membrane param '${mem.param}' isn't a parameter`);
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
-    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin'].map((op) => `${op}_${r}`)),
+    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2'].map((op) => `${op}_${r}`)),
     ...rule.params.map((p) => p.name), 'timestep',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
@@ -262,8 +269,13 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const propagator = cosSlots.size + sinSlots.size > 0;
   if (propagator && !spectral) throw new RuleError(`wave_cos_ and wave_sin_ need laplacian: 'spectral'`);
   if (propagator && (lapSlots.size || kernelSlots.size || needs('bilaplacian').size)) throw new RuleError(`wave_cos_/wave_sin_ can't be combined with other spectral operators`);
-  for (const k of sinSlots) lapSlots.add(k);
-  for (const k of cosSlots) kernelSlots.add(k);
+  const heat1Slots = needs('heat1'), heat2Slots = needs('heat2');
+  const heat = heat1Slots.size + heat2Slots.size > 0;
+  if (heat && !spectral) throw new RuleError(`heat1_ and heat2_ need laplacian: 'spectral'`);
+  if (heat && (propagator || lapSlots.size || kernelSlots.size || needs('bilaplacian').size)) throw new RuleError(`heat1_/heat2_ can't be combined with other spectral operators`);
+  if (heat && !rule.params.some((p) => p.name === 'heat_D1')) throw new RuleError(`heat1_/heat2_ need 'heat_D1' (and 'heat_D2') parameters`);
+  for (const k of [...sinSlots, ...heat1Slots]) lapSlots.add(k);
+  for (const k of [...cosSlots, ...heat2Slots]) kernelSlots.add(k);
   const spectralBilap = spectral && (needs('bilaplacian').size > 0 || kernelSlots.size > 0);
   const L: string[] = [];
   const add = (s: string) => L.push(s);
@@ -358,6 +370,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (used.has(`kernel_${r}`)) add(`  let v_kernel_${r} = KR${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`wave_cos_${r}`)) add(`  let v_wave_cos_${r} = KR${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`wave_sin_${r}`)) add(`  let v_wave_sin_${r} = L${i >> 2}.${COMP[i & 3]};`);
+    if (used.has(`heat1_${r}`)) add(`  let v_heat1_${r} = L${i >> 2}.${COMP[i & 3]};`);
+    if (used.has(`heat2_${r}`)) add(`  let v_heat2_${r} = KR${i >> 2}.${COMP[i & 3]};`);
     add(`  var v_delta_${r} = 0.0;`);
     if (used.has(`laplacian_${r}`)) add(`  let v_laplacian_${r} = L${i >> 2}.${COMP[i & 3]};`);
     const c = `${i >> 2}.${COMP[i & 3]}`;
@@ -382,7 +396,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     add(`  dst[sb + ${k}u] = vec4<f32>(${comps.join(', ')});`);
   }
   add(`}`);
-  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: propagator ? 'propagator' : kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
+  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: heat ? 'heat' : propagator ? 'propagator' : kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
 }
 
 // --- initial state
@@ -879,7 +893,44 @@ delta_n = (P2*P2 + Q2*Q2 - n)/timestep;`,
   view: { reagent: 'n', low: 0, high: 4, tint: 'p', stepsPerFrame: 4 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS];
+/**
+ * Gray-Scott with exact spectral diffusion: each step diffuses a and b exactly
+ * (heat1_/heat2_, by FFT) and then reacts. Stable at any zoom, so the same
+ * chemistry plays out zoom times larger (zoom² wider diffusion), at one cost
+ * per step whatever the zoom.
+ */
+export const GRAY_SCOTT_ZOOM: RuleDef = {
+  name: 'Gray-Scott (zoom)',
+  description: 'Gray-Scott with exact diffusion by FFT: zoom scales every feature up (diffusion × zoom²) and stays stable at any zoom, '
+    + 'so the same patterns play out larger and smoother, at higher resolution. Each step diffuses exactly, then reacts. Bigger features '
+    + 'take longer to form (roughly zoom² more steps to cross the field), so raise steps/frame. Seed with a wide brush. Grid at most 512².',
+  reagents: ['a', 'b'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.5 },
+    { name: 'heat_D1', value: 0.3, min: 0, max: 1 },
+    { name: 'heat_D2', value: 0.15, min: 0, max: 1 },
+    { name: 'zoom', value: 3, min: 0.5, max: 12 },
+    { name: 'F', value: GS_PRESET_F, min: 0, max: 0.1 },
+    { name: 'k', value: GS_PRESET_K, min: 0.03, max: 0.075 },
+  ],
+  paintable: ['F', 'k'],
+  laplacian: 'spectral',
+  formula: `float A = heat1_a; float B = heat2_b;
+delta_a = (A - a)/timestep - A*B*B + F*(1.0 - A);
+delta_b = (B - b)/timestep + A*B*B - (F + k)*B;`,
+  rest: [1, 0],
+  seed: [0.5, 0.25],
+  seedNoise: [0, 0.25],
+  initial: [
+    { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'spots', count: 10, minSize: 12, maxSize: 26, seed: 1 } },
+    { chem: 'b', op: 'overwrite', fill: { type: 'white_noise', low: 0.25, high: 0.35 }, shape: { type: 'spots', count: 10, minSize: 12, maxSize: 26, seed: 1 } },
+  ],
+  view: { reagent: 'b', low: 0, high: 0.4, stepsPerFrame: 20 },
+  size: { width: 512, height: 512 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));

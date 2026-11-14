@@ -214,7 +214,7 @@ function pal(t: number) {
  * in [tlo, thi], with param-map outlines and labelled boxes.
  */
 export async function saveFrame(
-  name: string, lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string },
+  name: string, lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string; hsv?: boolean },
 ) {
   const { state, params } = await lab.read();
   const N = lab.N, S4 = lab.layout.S * 4, P4 = lab.layout.P * 4, sc = o.scale ?? 2;
@@ -223,7 +223,14 @@ export async function saveFrame(
   for (let i = 0; i < N * N; i++) {
     const v = (state[i * S4 + o.ri] - o.lo) / (o.hi - o.lo);
     let [r, g, b] = pal(v);
-    if (o.ti !== undefined) {
+    if (o.hsv) {
+      // as the app's HSV palette: ri → hue, ti → saturation, full value
+      const h = Math.max(0, Math.min(1, v)), s = o.ti === undefined ? 1 : Math.max(0, Math.min(1, (state[i * S4 + o.ti] - o.tlo!) / (o.thi! - o.tlo!)));
+      [r, g, b] = [1, 2 / 3, 1 / 3].map((d) => {
+        const k = Math.abs(((h + d) % 1) * 6 - 3);
+        return 255 * (1 + s * (Math.max(0, Math.min(1, k - 1)) - 1));
+      }) as [number, number, number];
+    } else if (o.ti !== undefined) {
       const t = Math.max(0, Math.min(1, (state[i * S4 + o.ti] - o.tlo!) / (o.thi! - o.tlo!)));
       // blend toward a hue ramp (blue → green → orange) by t
       const h: [number, number, number] = t < 0.5 ? [40, 90 + 300 * t, 200 - 200 * t] : [40 + 420 * (t - 0.5), 240, 100 - 160 * (t - 0.5)];

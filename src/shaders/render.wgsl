@@ -89,6 +89,11 @@ fn hue(t: f32) -> vec3<f32> {
   return cosPal(t, vec3<f32>(0.5), vec3<f32>(0.5), vec3<f32>(1.0), vec3<f32>(0.0, 0.33, 0.67));
 }
 
+fn hsv(h: f32, s: f32, v: f32) -> vec3<f32> {
+  let k = fract(vec3<f32>(h) + vec3<f32>(1.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0;
+  return v * mix(vec3<f32>(1.0), clamp(abs(k) - 1.0, vec3<f32>(0.0), vec3<f32>(1.0)), s);
+}
+
 fn norm(v: f32, lo: f32, hi: f32) -> f32 {
   return clamp((v - lo) / max(hi - lo, 1e-9), 0.0, 1.0);
 }
@@ -108,6 +113,13 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
       }
     }
     col = mix(pc * 0.55, pc, smoothstep(0.2, 0.6, t));
+  } else if (view.palette == 4u) {
+    // HSV: the shown reagent is the hue, the tint reagent the saturation (tint mix: how much).
+    var sat = 1.0;
+    if (view.tint < 8u) {
+      sat = mix(1.0, norm(sampleReagent(g, view.tint), view.tintLow, view.tintHigh), view.tintStrength);
+    }
+    col = hsv(t, sat, 1.0);
   } else {
     col = palette(t);
     if (view.tint < 8u) {

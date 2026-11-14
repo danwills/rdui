@@ -362,7 +362,14 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       rangeRow('tint low', 'tintLow', [-1, 1]),
       rangeRow('tint high', 'tintHigh', [-1, 2]),
       slider('tint mix', 'tintStrength', 0, 1, 0.01, 2),
-      select('palette', 'palette', () => [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral']]).row,
+      select('palette', 'palette', () => [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral'], [4, 'HSV: show → hue, tint → sat']], () => {
+        // HSV wants a second reagent for the saturation: default to the other one
+        const n = rc.rule().reagents.length;
+        if (s.palette === 4 && s.tint < 0 && n > 1) {
+          s.tint = s.reagent === 0 ? 1 : 0;
+          s.tintStrength = 1;
+        }
+      }).row,
     ),
     el('footer', {}, el('p', { class: 'hint' },
       '1–7 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle reagent · T cycle tint · right-click alt action · Esc cancel')),
