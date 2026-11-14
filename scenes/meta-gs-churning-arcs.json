@@ -1,0 +1,30 @@
+{
+  "name": "Meta Gray-Scott churning arcs",
+  "description": "From the metaGrayScott search (#45): F and D_a both raised only in narrow trails where b has been (reach ~1, memory 6.7k steps). Arcs and worms keep forming and breaking, then a dense churning field; ran 120k steps without settling. Tint = the D_a field. Try: lengthen F_mem for slower, wider swings, or switch F_reach to 20+ for territories.",
+  "rule": "builtin:11",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 333,
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.8,
+    "tint": "dDa",
+    "tintLow": 0,
+    "tintHigh": 0.6
+  },
+  "globals": {
+    "F_mem": 6667,
+    "F_gain": 0.416,
+    "F_reach": 1.155,
+    "k_mem": 40000,
+    "k_gain": 0,
+    "k_reach": 28.28,
+    "Da_mem": 6667,
+    "Da_gain": 1.213,
+    "Da_reach": 1.155,
+    "Db_mem": 6667,
+    "Db_gain": 0,
+    "Db_reach": 1.155
+  }
+}

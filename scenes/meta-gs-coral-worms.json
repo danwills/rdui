@@ -1,0 +1,31 @@
+{
+  "name": "Meta Gray-Scott coral worms",
+  "description": "From the metaGrayScott search (#43): F raised regionally where b has been (reach 28, memory 40k steps), while k and D_a are raised in narrow trails (reach ~1, memory 6.7k). Branching worms that keep rebuilding a coral-like web; ran 120k steps without settling. Tint = the D_a field. Try: Explore… with the gains unlocked, or raise Da_gain towards 2 for faster, looser growth.",
+  "rule": "builtin:11",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 333,
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.8,
+    "tint": "dDa",
+    "tintLow": 0,
+    "tintHigh": 0.6
+  },
+  "globals": {
+    "F_mem": 40000,
+    "F_gain": 1.248,
+    "F_reach": 28.28,
+    "F_ref": 0.12,
+    "k_mem": 6667,
+    "k_gain": 0.1144,
+    "k_reach": 1.155,
+    "Da_mem": 6667,
+    "Da_gain": 1.213,
+    "Da_reach": 1.155,
+    "Db_mem": 6667,
+    "Db_gain": 0,
+    "Db_reach": 1.155
+  }
+}

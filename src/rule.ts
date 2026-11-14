@@ -1009,7 +1009,76 @@ delta_c = (clamp(c + dc*timestep, 0.0, 1.0) - c)/timestep;`,
   size: { width: 512, height: 512 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK];
+/**
+ * Dan's metaGrayScott (Ready, grayscott-djw/metaGrayScott*.vti) with its 24 raw
+ * numbers re-expressed per meta field as four controls. Each field (dF, dk, dDa,
+ * dDb) holds its parameter's offset directly: a moving average, over X_mem steps,
+ * of the source b + X_diff·(1 − a − b), times X_gain, spread X_reach cells in
+ * that time (D = reach²/mem). The raw rule maps exactly onto these (see
+ * lab/meta.ts metaFromRaw); Dan's powF becomes F_forget (others are 1 in his tunes).
+ */
+export const META_GS: RuleDef = {
+  name: 'Meta Gray-Scott (meta controls)',
+  description: 'Dan\'s metaGrayScott: Gray-Scott whose F, k, D_a and D_b are offset by four extra fields (dF dk dDa dDb) that '
+    + 'remember where b has been. Each field has four controls: gain (how far it moves its parameter per unit of source), '
+    + 'mem (its memory in steps), reach (how far it spreads in that time, in cells) and diff (how much (1−a−b) adds to b as its source). '
+    + 'Regional fields (reach 20–40) make halos and territories; local ones (reach ~1) leave imprints and trails. '
+    + 'F_forget (Dan\'s powF − 1) makes the F field forget faster the lower it is (rate F_forget·ln(F_ref/|dF|) per step): '
+    + 'after a die-off the extra feed drains fast and growth restarts, which is what gives the default its boom-and-bust cycles; '
+    + 'at 0 it dies out instead. '
+    + 'D_a + dDa above about 1.5 is beyond what the solver can step at timestep 0.2 and blows up.',
+  reagents: ['a', 'b', 'dF', 'dk', 'dDa', 'dDb'],
+  params: [
+    { name: 'timestep', value: 0.2, min: 0, max: 0.4 },
+    { name: 'D_a', value: 0.8, min: 0, max: 1.2 },
+    { name: 'D_b', value: 0.4, min: 0, max: 0.8 },
+    { name: 'F', value: 0.059, min: 0, max: 0.1 },
+    { name: 'k', value: 0.065, min: 0.03, max: 0.075 },
+    { name: 'F_gain', value: 12.48, min: -20, max: 30 },
+    { name: 'F_mem', value: 200000, min: 1000, max: 400000 },
+    { name: 'F_reach', value: 37.4, min: 0.3, max: 80 },
+    { name: 'F_diff', value: 0.4, min: -2, max: 2 },
+    { name: 'F_forget', value: 0.00005, min: 0, max: 0.0003 },
+    { name: 'F_ref', value: 0.24, min: 0.01, max: 1 },
+    { name: 'k_gain', value: -0.0715, min: -0.5, max: 0.5 },
+    { name: 'k_mem', value: 6250, min: 1000, max: 400000 },
+    { name: 'k_reach', value: 1.118, min: 0.3, max: 80 },
+    { name: 'k_diff', value: -0.909, min: -2, max: 2 },
+    { name: 'Da_gain', value: 5.46, min: -10, max: 15 },
+    { name: 'Da_mem', value: 10000, min: 1000, max: 400000 },
+    { name: 'Da_reach', value: 18.9, min: 0.3, max: 80 },
+    { name: 'Da_diff', value: 1.286, min: -2, max: 2 },
+    { name: 'Db_gain', value: 2.487, min: -10, max: 15 },
+    { name: 'Db_mem', value: 86957, min: 1000, max: 400000 },
+    { name: 'Db_reach', value: 0.659, min: 0.3, max: 80 },
+    { name: 'Db_diff', value: 0.1818, min: -2, max: 2 },
+  ],
+  paintable: ['F', 'k'],
+  explore: ['F_gain', 'k_gain', 'Da_gain', 'Db_gain'],
+  formula: `float d = 1.0 - a - b;
+// per step: a moving average of gain·source over mem steps, diffusing reach²/mem per step (kept explicit-stable)
+delta_dF = ((F_gain*(b + F_diff*d) - dF)/F_mem + min(F_reach*F_reach/F_mem, 0.2)*laplacian_dF
+  + dF*(pow(max(abs(dF), 1e-12)/F_ref, F_forget) - 1.0))/timestep;
+delta_dk = ((k_gain*(b + k_diff*d) - dk)/k_mem + min(k_reach*k_reach/k_mem, 0.2)*laplacian_dk)/timestep;
+delta_dDa = ((Da_gain*(b + Da_diff*d) - dDa)/Da_mem + min(Da_reach*Da_reach/Da_mem, 0.2)*laplacian_dDa)/timestep;
+delta_dDb = ((Db_gain*(b + Db_diff*d) - dDb)/Db_mem + min(Db_reach*Db_reach/Db_mem, 0.2)*laplacian_dDb)/timestep;
+float Fx = F + dF;
+delta_a = (D_a + dDa)*laplacian_a - a*b*b + Fx*(1.0 - a);
+delta_b = (D_b + dDb)*laplacian_b + a*b*b - (Fx + k + dk)*b;`,
+  rest: [1, 0, 0, 0, 0, 0],
+  seed: [0.5, 0.25, null, null, null, null],
+  seedNoise: [0, 0.25, 0, 0, 0, 0],
+  initial: [
+    // as Dan's generator: noise in b over a rectangle (his a = 1 − b there; here a is noise too)
+    { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'a', op: 'overwrite', fill: { type: 'white_noise', low: 0, high: 1 }, shape: { type: 'rectangle', x0: 0.2, y0: 0.5, x1: 0.4, y1: 0.8 } },
+    { chem: 'b', op: 'overwrite', fill: { type: 'white_noise', low: 0, high: 1 }, shape: { type: 'rectangle', x0: 0.2, y0: 0.5, x1: 0.4, y1: 0.8 } },
+  ],
+  view: { reagent: 'b', low: 0, high: 0.8, tint: 'dDa', stepsPerFrame: 333 },
+  size: { width: 512, height: 512 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));
