@@ -51,6 +51,9 @@ export interface ViewOptions {
   tintLow: number;
   tintHigh: number;
   tintStrength: number;
+  /** Fleck palettes: hue contrast (smoothMap shape, 1 = linear) and cyclic hue shift. */
+  hueShape: number;
+  hueOffset: number;
   /** Up to three flat param slots (>0) with their display ranges. */
   paramSlots: { slot: number; min: number; max: number }[];
 }
@@ -305,6 +308,7 @@ export class Simulation {
     u[7] = v.tint >= 0 ? v.tint : 99;
     f[8] = v.low; f[9] = v.high;
     f[10] = v.tintLow; f[11] = v.tintHigh; f[12] = v.tintStrength;
+    f[13] = v.hueShape; f[14] = v.hueOffset;
     v.paramSlots.slice(0, 3).forEach((p, k) => {
       u[16 + k] = p.slot;
       f[20 + k] = p.min;

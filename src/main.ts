@@ -654,6 +654,8 @@ async function init() {
       tintLow: s.tintLow,
       tintHigh: s.tintHigh,
       tintStrength: s.tintStrength,
+      hueShape: s.hueShape,
+      hueOffset: s.hueOffset,
       paramSlots: rule.paintable.slice(0, 3).map((n, i) => {
         const spec = rule.params.find((p) => p.name === n)!;
         return { slot: i + 1, min: spec.min, max: spec.max };

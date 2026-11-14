@@ -213,8 +213,35 @@ function pal(t: number) {
  * Save a frame: reagent `ri` in [lo, hi], optionally hue-tinted by reagent `ti`
  * in [tlo, thi], with param-map outlines and labelled boxes.
  */
+/** As the app's fleck palettes (render.wgsl): (a, b, c) as RGB → (V, S, H) or (L, C, h) shown as RGB. */
+function fleck([R, G, B]: [number, number, number], mode: 'hsv' | 'oklch', shape: number, offset: number): [number, number, number] {
+  const shapeHue = (h: number) => {
+    const v = Math.max(-1, Math.min(1, Math.max(0, Math.min(1, h)) * 2 - 1));
+    const m = 0.5 + 0.5 * v / Math.sqrt(1 + (shape - 1) * v * v) + offset;
+    return m - Math.floor(m);
+  };
+  let t: [number, number, number];
+  if (mode === 'oklch') {
+    const [r, g, b] = [R, G, B].map((x) => Math.max(0, x));
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+    const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+    const Bb = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+    const h = Math.atan2(Bb, A) / (2 * Math.PI);
+    t = [L, Math.hypot(A, Bb) / 0.32, shapeHue(h - Math.floor(h))];
+  } else {
+    const mx = Math.max(R, G, B), mn = Math.min(R, G, B), d = mx - mn;
+    let h = 0;
+    if (d > 1e-9) h = mx === R ? ((G - B) / d) / 6 : mx === G ? (2 + (B - R) / d) / 6 : (4 + (R - G) / d) / 6;
+    t = [mx, d / (mx + 1e-5), shapeHue(h - Math.floor(h))];
+  }
+  return t.map((x) => 255 * Math.max(0, Math.min(1, x))) as [number, number, number];
+}
+
 export async function saveFrame(
-  name: string, lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string; hsv?: boolean },
+  name: string, lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string; hsv?: boolean; fleck?: 'hsv' | 'oklch'; hueShape?: number; hueOffset?: number },
 ) {
   const { state, params } = await lab.read();
   const N = lab.N, S4 = lab.layout.S * 4, P4 = lab.layout.P * 4, sc = o.scale ?? 2;
@@ -223,7 +250,9 @@ export async function saveFrame(
   for (let i = 0; i < N * N; i++) {
     const v = (state[i * S4 + o.ri] - o.lo) / (o.hi - o.lo);
     let [r, g, b] = pal(v);
-    if (o.hsv) {
+    if (o.fleck) {
+      [r, g, b] = fleck([0, 1, 2].map((k) => (k < lab.layout.reagents.length ? state[i * S4 + k] : 0)) as [number, number, number], o.fleck, o.hueShape ?? 1, o.hueOffset ?? 0);
+    } else if (o.hsv) {
       // as the app's HSV palette: ri → hue, ti → saturation, full value
       const h = Math.max(0, Math.min(1, v)), s = o.ti === undefined ? 1 : Math.max(0, Math.min(1, (state[i * S4 + o.ti] - o.tlo!) / (o.thi! - o.tlo!)));
       [r, g, b] = [1, 2 / 3, 1 / 3].map((d) => {

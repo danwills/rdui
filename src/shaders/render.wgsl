@@ -19,8 +19,8 @@ struct View {
   tintLow: f32,
   tintHigh: f32,
   tintStrength: f32,
-  _p0: f32,
-  _p1: f32,
+  hueShape: f32,   // fleck palettes: smoothMap shape (1 = linear) and cyclic hue shift
+  hueOffset: f32,
   _p2: f32,
   paramSlot: vec4<u32>,   // flat param slots for r, g, b (0 = unused)
   paramMin: vec4<f32>,
@@ -94,6 +94,52 @@ fn hsv(h: f32, s: f32, v: f32) -> vec3<f32> {
   return v * mix(vec3<f32>(1.0), clamp(abs(k) - 1.0, vec3<f32>(0.0), vec3<f32>(1.0)), s);
 }
 
+// "Fleck" palettes (after Dan's GrayScottHSVFleck shader): the first three
+// reagents (a, b, c) as an RGB colour, re-expressed in HSV or OKLCH, and that
+// triple shown as RGB: (V, S, H) or (L, C, h), the hue shaped and shifted.
+fn smoothMap(x: f32, shape: f32) -> f32 {
+  let v = clamp(x * 2.0 - 1.0, -1.0, 1.0);
+  return 0.5 + 0.5 * v / sqrt(1.0 + (shape - 1.0) * v * v);
+}
+
+fn shapeHue(h: f32) -> f32 {
+  return fract(smoothMap(clamp(h, 0.0, 1.0), view.hueShape) + view.hueOffset);
+}
+
+fn rgb2hsv(c: vec3<f32>) -> vec3<f32> {
+  let K = vec4<f32>(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+  let p = mix(vec4<f32>(c.bg, K.wz), vec4<f32>(c.gb, K.xy), step(c.b, c.g));
+  let q = mix(vec4<f32>(p.xyw, c.r), vec4<f32>(c.r, p.yzx), step(p.x, c.r));
+  let d = q.x - min(q.w, q.y);
+  let e = 1.0e-5;
+  return vec3<f32>(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+fn cbrt(x: f32) -> f32 {
+  return sign(x) * pow(abs(x), 1.0 / 3.0);
+}
+
+// (a, b, c) as linear sRGB → OKLab → (L, C / 0.32, hue turns)
+fn rgb2oklch(c: vec3<f32>) -> vec3<f32> {
+  let l = cbrt(0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b);
+  let m = cbrt(0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b);
+  let s = cbrt(0.0883024619 * c.r + 0.2817188376 * c.g + 0.6299787005 * c.b);
+  let L = 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s;
+  let A = 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s;
+  let B = 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s;
+  return vec3<f32>(L, length(vec2<f32>(A, B)) / 0.32, fract(atan2(B, A) / 6.283185307179586));
+}
+
+fn fleck(g: vec2<f32>) -> vec3<f32> {
+  let abc = vec3<f32>(sampleReagent(g, 0u), sampleReagent(g, 1u), select(0.0, sampleReagent(g, 2u), S * 4u > 2u));
+  if (view.palette == 6u) {
+    let lch = rgb2oklch(max(abc, vec3<f32>(0.0)));
+    return clamp(vec3<f32>(lch.x, lch.y, shapeHue(lch.z)), vec3<f32>(0.0), vec3<f32>(1.0));
+  }
+  let hsv = rgb2hsv(abc);
+  return clamp(vec3<f32>(hsv.z, hsv.y, shapeHue(hsv.x)), vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
 fn norm(v: f32, lo: f32, hi: f32) -> f32 {
   return clamp((v - lo) / max(hi - lo, 1e-9), 0.0, 1.0);
 }
@@ -113,6 +159,8 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
       }
     }
     col = mix(pc * 0.55, pc, smoothstep(0.2, 0.6, t));
+  } else if (view.palette == 5u || view.palette == 6u) {
+    col = fleck(g);
   } else if (view.palette == 4u) {
     // HSV: the shown reagent is the hue, the tint reagent the saturation (tint mix: how much).
     var sat = 1.0;

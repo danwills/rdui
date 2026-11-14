@@ -26,6 +26,9 @@ export interface Settings {
   tintHigh: number;
   tintStrength: number;
   palette: number;
+  /** Fleck palettes: hue contrast and shift. */
+  hueShape: number;
+  hueOffset: number;
   stampId: string | null;
   stampRot: number;
   stampFlip: boolean;
@@ -91,6 +94,8 @@ export function defaultSettings(): Settings {
     tintHigh: 1,
     tintStrength: 0.8,
     palette: 0,
+    hueShape: 1,
+    hueOffset: 0,
     stampId: null,
     stampRot: 0,
     stampFlip: false,
@@ -362,7 +367,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       rangeRow('tint low', 'tintLow', [-1, 1]),
       rangeRow('tint high', 'tintHigh', [-1, 2]),
       slider('tint mix', 'tintStrength', 0, 1, 0.01, 2),
-      select('palette', 'palette', () => [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral'], [4, 'HSV: show → hue, tint → sat']], () => {
+      slider('hue shape', 'hueShape', 0.1, 4, 0.01, 2),
+      slider('hue offset', 'hueOffset', 0, 1, 0.01, 2),
+      select('palette', 'palette', () => [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral'], [4, 'HSV: show → hue, tint → sat'], [5, 'HSV fleck: a b c → V S H'], [6, 'OKLCH fleck: a b c → L C h']], () => {
         // HSV wants a second reagent for the saturation: default to the other one
         const n = rc.rule().reagents.length;
         if (s.palette === 4 && s.tint < 0 && n > 1) {
