@@ -452,6 +452,21 @@ async function init() {
   new ResizeObserver(fit).observe(stage);
   fit();
 
+  // hide/show the panel (H, or the ⛶ button): the sim alone, centred, fullscreen where allowed
+  const app = document.querySelector<HTMLElement>('#app')!;
+  function toggleUI() {
+    const hide = !app.classList.contains('ui-hidden');
+    app.classList.toggle('ui-hidden', hide);
+    if (hide) document.documentElement.requestFullscreen?.().catch(() => {});
+    else if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+  const uiToggle = document.createElement('button');
+  uiToggle.className = 'ui-toggle';
+  uiToggle.textContent = '⛶';
+  uiToggle.title = 'hide/show the panel · H';
+  uiToggle.addEventListener('click', toggleUI);
+  stage.append(uiToggle);
+
   // --- stamp placement helpers: transform, then remap into the current layout by name
   let ghostCache: { key: string; stamp: Stamp; image: HTMLCanvasElement; state: Float32Array; params: Float32Array } | null = null;
   function placedStamp() {
@@ -642,6 +657,7 @@ async function init() {
     else if (e.key === 'q') s.stampRot = (s.stampRot + 3) % 4;
     else if (e.key === 'e') s.stampRot = (s.stampRot + 1) % 4;
     else if (e.key === 'x') s.stampFlip = !s.stampFlip;
+    else if (e.key === 'h') toggleUI();
     else if (e.key === 'Escape') { drag = null; rectDrag = null; }
     else return;
     ui.sync();

@@ -1,5 +1,5 @@
 import { PRESETS } from './presets';
-import { drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, pickFK } from './fkmap';
+import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, openLoupe, pickFK } from './fkmap';
 import type { RuleDef } from './rule';
 
 export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'capture' | 'stamp' | 'probe';
@@ -277,6 +277,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         ruleSyncers.push(() => b.classList.toggle('active', s.fkTarget === id));
         targetRow.append(b);
       }
+      targetRow.append(button('Map ⤢', () => openFKMap(s, () => globals, setFK, sync), 'the whole map, with Pearson\'s classes and the bifurcation curves'));
       const presetRow = el('div', { class: 'presets' });
       for (const p of PRESETS) {
         const b = button(p.name, () => setFK(p.feed, p.kill), p.note);
@@ -380,7 +381,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       }).row,
     ),
     el('footer', {}, el('p', { class: 'hint' },
-      '1–7 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle reagent · T cycle tint · right-click alt action · Esc cancel')),
+      '1–7 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle reagent · T cycle tint · H hide panel · right-click alt action · Esc cancel')),
   );
 
   rebuildRule();
@@ -389,14 +390,14 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
 
 /**
  * The small (kill → x, feed ↑ y) map in the panel: the simulated map dimmed
- * behind presets and the brush/background markers. A drag picks values; a tap
- * opens the full map (fkmap.ts).
+ * behind presets and the brush/background markers. Pressing picks and shows a
+ * magnifier for fine dragging (fkmap.ts).
  */
 function buildFKPad(s: Settings, background: () => Record<string, number>, set: (F: number, k: number) => void) {
   const W = 260;
   const H = 170;
   const dpr = window.devicePixelRatio || 1;
-  const canvas = el('canvas', { class: 'fkpad', title: 'tap to open the full map · drag to pick feed (y) and kill (x)' });
+  const canvas = el('canvas', { class: 'fkpad', title: 'press to pick feed (y) and kill (x); drag for fine control on the magnified map' });
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width = `${W}px`;
@@ -411,26 +412,31 @@ function buildFKPad(s: Settings, background: () => Record<string, number>, set: 
   }
   onMapLoaded(draw);
 
-  const pick = (e: PointerEvent) => {
-    const r = canvas.getBoundingClientRect();
-    set(...pickFK((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height));
+  // Press: pick the value under the finger and show the magnifier; drag: move it
+  // at the magnifier's scale (fine control); lift: the magnifier goes.
+  let drag: { x: number; y: number; F: number; k: number; loupe: ReturnType<typeof openLoupe> } | null = null;
+  const end = () => {
+    drag?.loupe.close();
+    drag = null;
   };
-  // a press that moves more than a few px is a drag (picks live); one that doesn't is a tap (opens the map)
-  let down: { x: number; y: number; drag: boolean } | null = null;
   canvas.addEventListener('pointerdown', (e) => {
     canvas.setPointerCapture(e.pointerId);
-    down = { x: e.clientX, y: e.clientY, drag: false };
+    const r = canvas.getBoundingClientRect();
+    const [F, k] = pickFK((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    set(F, k);
+    drag = { x: e.clientX, y: e.clientY, F, k, loupe: openLoupe(s, background) };
   });
   canvas.addEventListener('pointermove', (e) => {
-    if (!down) return;
-    if (!down.drag && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4) down.drag = true;
-    if (down.drag) pick(e);
+    if (!drag) return;
+    const r = canvas.getBoundingClientRect();
+    const dk = ((e.clientX - drag.x) / r.width) * (K_RANGE[1] - K_RANGE[0]) / LOUPE_ZOOM;
+    const dF = (-(e.clientY - drag.y) / r.height) * (F_RANGE[1] - F_RANGE[0]) / LOUPE_ZOOM;
+    const clamp = (v: number, [lo, hi]: readonly [number, number]) => Math.min(Math.max(v, lo), hi);
+    set(clamp(drag.F + dF, F_RANGE), clamp(drag.k + dk, K_RANGE));
+    drag.loupe.draw();
   });
-  canvas.addEventListener('pointerup', () => {
-    if (down && !down.drag) openFKMap(s, background, set, draw);
-    down = null;
-  });
-  canvas.addEventListener('pointercancel', () => (down = null));
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
 
   return { canvas, draw };
 }

@@ -1,9 +1,10 @@
 /**
  * The Gray-Scott (kill → x, feed ↑ y) map: drawing shared by the panel's small
- * pad and the full-screen map it opens. The backdrop is a real simulation of the
- * region (lab/gs-map.ts: every cell its own F and k, run 40k steps; b shown),
- * with the uniform state's saddle-node and Hopf curves, Pearson's classes and
- * rdui's presets over it.
+ * pad, the magnifier shown while dragging on it, and the full map. The backdrop
+ * is a real simulation of the region (lab/gs-map.ts: 2048², every cell its own
+ * F and k, 40k steps; b shown): a 1024² overview plus 4×4 tiles of 512² at full
+ * resolution, loaded when a zoomed view needs them. Over it go the uniform
+ * state's saddle-node and Hopf curves, Pearson's classes and rdui's presets.
  */
 import mapUrl from './assets/gs-map.webp';
 import { PEARSON, PRESETS } from './presets';
@@ -15,20 +16,46 @@ export const K_RANGE = [0.03, 0.075] as const;
 const mapImage = new Image();
 mapImage.src = mapUrl;
 
-/** Where to draw: a W×H box, F/k ↔ pixels. */
+// full-resolution tiles: t<x><y>.webp, x rightward (k), y downward (falling F)
+const TILES = 4;
+const tileUrls = import.meta.glob('./assets/gs-map-tiles/*.webp', { query: '?url', import: 'default', eager: true }) as Record<string, string>;
+const tileImages = new Map<string, HTMLImageElement>();
+let tileLoaded: (() => void) | null = null;
+function tile(tx: number, ty: number) {
+  const key = `${tx}${ty}`;
+  let im = tileImages.get(key);
+  if (!im) {
+    const url = tileUrls[`./assets/gs-map-tiles/t${key}.webp`];
+    if (!url) return null;
+    tileImages.set(key, (im = new Image()));
+    im.addEventListener('load', () => tileLoaded?.(), { once: true });
+    im.src = url;
+  }
+  return im.complete && im.naturalWidth ? im : null;
+}
+
+/** Where to draw: a W×H box showing the window k ∈ kv, F ∈ Fv (default: the whole map). */
 export interface MapFrame {
   W: number;
   H: number;
+  kv: readonly [number, number];
+  Fv: readonly [number, number];
   toX(k: number): number;
   toY(f: number): number;
 }
 
-export function mapFrame(W: number, H: number): MapFrame {
+export function mapFrame(W: number, H: number, kv: readonly [number, number] = K_RANGE, Fv: readonly [number, number] = F_RANGE): MapFrame {
   return {
-    W, H,
-    toX: (k) => ((k - K_RANGE[0]) / (K_RANGE[1] - K_RANGE[0])) * W,
-    toY: (f) => H - ((f - F_RANGE[0]) / (F_RANGE[1] - F_RANGE[0])) * H,
+    W, H, kv, Fv,
+    toX: (k) => ((k - kv[0]) / (kv[1] - kv[0])) * W,
+    toY: (f) => H - ((f - Fv[0]) / (Fv[1] - Fv[0])) * H,
   };
+}
+
+/** A W×H window zoomed `zoom`× about (F, k). */
+export function zoomFrame(W: number, H: number, F: number, k: number, zoom: number) {
+  const hk = (K_RANGE[1] - K_RANGE[0]) / zoom / 2, hF = ((F_RANGE[1] - F_RANGE[0]) / zoom / 2) * (H / W);
+  return mapFrame(W, H, [k - hk, k + hk], [F - hF, F + hF]);
 }
 
 /** F, k under a point given as 0–1 fractions of the box. */
@@ -60,12 +87,22 @@ export function drawMap(ctx: CanvasRenderingContext2D, f: MapFrame, o: { dim: nu
   const { W, H, toX, toY } = f;
   ctx.fillStyle = '#0d0f14';
   ctx.fillRect(0, 0, W, H);
-  if (mapImage.complete && mapImage.naturalWidth) {
-    ctx.globalAlpha = 1 - o.dim;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(mapImage, 0, 0, W, H);
-    ctx.globalAlpha = 1;
+  // the map's own extent in this frame
+  const x0 = toX(K_RANGE[0]), x1 = toX(K_RANGE[1]), y0 = toY(F_RANGE[1]), y1 = toY(F_RANGE[0]);
+  ctx.globalAlpha = 1 - o.dim;
+  ctx.imageSmoothingQuality = 'high';
+  if (mapImage.complete && mapImage.naturalWidth) ctx.drawImage(mapImage, x0, y0, x1 - x0, y1 - y0);
+  // zoomed past the overview's resolution: the visible full-resolution tiles over it
+  if ((x1 - x0) * (window.devicePixelRatio || 1) > mapImage.naturalWidth * 1.2) {
+    const tw = (x1 - x0) / TILES, th = (y1 - y0) / TILES;
+    for (let ty = 0; ty < TILES; ty++) for (let tx = 0; tx < TILES; tx++) {
+      const X = x0 + tx * tw, Y = y0 + ty * th;
+      if (X > W || Y > H || X + tw < 0 || Y + th < 0) continue;
+      const im = tile(tx, ty);
+      if (im) ctx.drawImage(im, X, Y, tw + 0.5, th + 0.5);
+    }
   }
+  ctx.globalAlpha = 1;
   if (!o.guides) return;
   const curve = (pts: [number, number][], style: string, dash: number[]) => {
     ctx.strokeStyle = style;
@@ -118,13 +155,21 @@ export function drawMap(ctx: CanvasRenderingContext2D, f: MapFrame, o: { dim: nu
       ctx.strokeText(s, x, y);
       ctx.fillText(s, x, y);
     };
-    for (let i = 1; i < 9; i++) t((0.03 + i * 0.005).toFixed(3), toX(0.03 + i * 0.005) - 16, H - 6);
-    for (let i = 1; i < 10; i++) t((i / 100).toFixed(2), 6, toY(i / 100) + 4);
+    // ~6 ticks per axis at a round step, inset from the edges
+    const ticks = (lo: number, hi: number, put: (v: number, s: string) => void) => {
+      const raw = (hi - lo) / 6, p = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 5, 10].map((m) => m * p).find((m) => m >= raw)!;
+      const dec = Math.max(0, -Math.floor(Math.log10(step)));
+      for (let v = Math.ceil(lo / step) * step; v < hi; v += step) put(v, v.toFixed(dec));
+    };
+    ticks(f.kv[0] + (f.kv[1] - f.kv[0]) * 0.06, f.kv[1] - (f.kv[1] - f.kv[0]) * 0.1, (v, s) => t(s, toX(v) - 16, H - 6));
+    ticks(f.Fv[0] + (f.Fv[1] - f.Fv[0]) * 0.04, f.Fv[1] - (f.Fv[1] - f.Fv[0]) * 0.06, (v, s) => t(s, 6, toY(v) + 4));
     t('kill k →', W - 70, H - 22);
     t('feed F ↑', 6, 16);
-    const snF = 0.012, hF = 0.03;
-    t('saddle-node', toX(Math.sqrt(snF) / 2 - snF) + 6, toY(snF));
-    t('Hopf', toX(hopfK(hF)) - 40, toY(hF));
+    if (f.kv[0] === K_RANGE[0] && f.kv[1] === K_RANGE[1]) {
+      const snF = 0.012, hF = 0.03;
+      t('saddle-node', toX(Math.sqrt(snF) / 2 - snF) + 6, toY(snF));
+      t('Hopf', toX(hopfK(hF)) - 40, toY(hF));
+    }
   } else {
     ctx.fillStyle = '#5b6b85';
     ctx.fillText('kill →', W - 38, H - 4);
@@ -156,6 +201,60 @@ export function drawMarkers(ctx: CanvasRenderingContext2D, f: MapFrame, s: Setti
 export function onMapLoaded(then: () => void) {
   if (mapImage.complete) return;
   mapImage.addEventListener('load', then, { once: true });
+}
+
+/**
+ * The magnifier shown while dragging on the small pad: the map zoomed `ZOOM`×
+ * about the value being picked (which stays at its centre, the map moving under
+ * it), in the largest stretch of screen beside the simulation so the sim stays
+ * in view. Gone when the finger lifts.
+ */
+export const LOUPE_ZOOM = 4;
+export function openLoupe(s: Settings, background: () => Record<string, number>) {
+  const W = window.innerWidth, H = window.innerHeight;
+  const vr = document.querySelector('#viewport')?.getBoundingClientRect();
+  // candidate regions clear of the sim: left, right, above, below it
+  const regions = vr ? [[0, 0, vr.left, H], [vr.right, 0, W - vr.right, H], [0, 0, W, vr.top], [0, vr.bottom, W, H - vr.bottom]] : [[0, 0, W, H]];
+  let [rx, ry, rw, rh] = regions.reduce((a, b) => (Math.min(b[2], b[3]) > Math.min(a[2], a[3]) ? b : a));
+  if (Math.min(rw, rh) < 180) [rx, ry, rw, rh] = [0, 0, W, H]; // no room beside it: cover the middle
+  const size = Math.floor(Math.min(rw, rh, 720) - 16);
+  const dpr = window.devicePixelRatio || 1;
+  const canvas = el('canvas', { class: 'fkloupe-canvas' });
+  canvas.width = canvas.height = size * dpr;
+  canvas.style.width = canvas.style.height = `${size}px`;
+  const readout = el('div', { class: 'fkloupe-readout' });
+  const root = el('div', { class: 'fkloupe' }, canvas, readout);
+  root.style.left = `${rx + (rw - size) / 2}px`;
+  root.style.top = `${ry + (rh - size) / 2}px`;
+  document.body.append(root);
+  const ctx = canvas.getContext('2d')!;
+
+  function draw() {
+    const bg = background();
+    const [F, k] = s.fkTarget === 'brush' ? [s.paint.F, s.paint.k] : [bg.F, bg.k];
+    const frame = zoomFrame(size, size, F, k, LOUPE_ZOOM);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawMap(ctx, frame, { dim: 0, big: true, guides: true });
+    drawMarkers(ctx, frame, s, bg, 1.6);
+    // crosshair on the value being picked
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 1;
+    const c = size / 2;
+    ctx.beginPath();
+    ctx.moveTo(c - 14, c); ctx.lineTo(c - 5, c); ctx.moveTo(c + 5, c); ctx.lineTo(c + 14, c);
+    ctx.moveTo(c, c - 14); ctx.lineTo(c, c - 5); ctx.moveTo(c, c + 5); ctx.lineTo(c, c + 14);
+    ctx.stroke();
+    readout.textContent = `${s.fkTarget} F ${F.toFixed(4)} k ${k.toFixed(4)}`;
+  }
+  tileLoaded = draw;
+  draw();
+  return {
+    draw,
+    close() {
+      tileLoaded = null;
+      root.remove();
+    },
+  };
 }
 
 /**
