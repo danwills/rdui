@@ -1,0 +1,304 @@
+{
+  "name": "Schrödinger soliton collisions",
+  "description": "Saturable nonlinear Schrödinger equation — light in a self-focusing, saturable medium (photorefractive crystals, atomic vapours). The field ψ = p + iq disperses, and focuses itself where it is bright; the two balance in 2D solitons ('light bullets'), and saturation stops them collapsing. It's computed by exact split steps (FFT for the dispersion, a local phase rotation for the nonlinearity), so it's reversible and conserves total power to float precision. Brightness is the intensity n = |ψ|², tint shows the real part p (so the phase). Top: two solitons in phase collide head-on — they attract and fuse. Bottom: the same pair a half-cycle out of phase repel and bounce apart. The relative phase is invisible in the intensity but decides the outcome: this is the information solitons carry. A sponge border (gamma) absorbs radiation, as an open space would. Things to try: the seed brush adds light (in phase with nothing — watch what it does to nearby solitons); s lower (≈0.1) makes solitons tighter and collisions more violent; g negative makes the medium defocusing (everything disperses); timestep up to ≈0.2 stays stable.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        232,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        232,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        240,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        240,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        248,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        248,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    }
+  ],
+  "initial": [
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0,
+        "phase": 0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.32,
+        "cy": 0.3,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0,
+        "phase": 0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.32,
+        "cy": 0.3,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0,
+        "phase": 0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.68,
+        "cy": 0.3,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0,
+        "phase": 0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.68,
+        "cy": 0.3,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0,
+        "phase": 0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.32,
+        "cy": 0.7,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0,
+        "phase": 0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.32,
+        "cy": 0.7,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0,
+        "phase": 3.141592653589793,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.68,
+        "cy": 0.7,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0,
+        "phase": 3.141592653589793,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.68,
+        "cy": 0.7,
+        "r": 0.1
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 5,
+    "tint": "p",
+    "tintLow": -2.5,
+    "tintHigh": 2.5
+  }
+}

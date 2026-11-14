@@ -6,7 +6,9 @@
 // `kmul` turns spectra into Laplacian (×λ) and, into the second pair,
 // bilaplacian (×λ²) spectra, or (second = 2) a kernel convolution: a
 // difference of unit-mass Gaussians, K̂ = exp(−σ1²|k|²/2) − b·exp(−σ2²|k|²/2)
-// (a σ wider than the field keeps only k = 0: the field mean). λ = −|k|² (exact), or with `matched` the 9-point
+// (a σ wider than the field keeps only k = 0: the field mean). With second = 3
+// (propagator), the first pair gets sin(θ) and the second cos(θ), θ = sigma1·|k|²
+// (sigma1 = timestep/2): the exact free Schrödinger step, e^{−iθ} on ψ = p + iq. λ = −|k|² (exact), or with `matched` the 9-point
 // stencil's own axis response −4 sin²(|k|·dx/2)/dx² applied in every direction:
 // isotropic, explicit-stable like the stencil, and close to it for tuned media.
 override S: u32 = 1u;
@@ -74,6 +76,14 @@ fn kmul(@builtin(global_invocation_id) gid: vec3<u32>) {
     } else if (info.second == 2u) {
       bre[c + k] = r * kernel;
       bim[c + k] = i * kernel;
+    }
+    if (info.second == 3u) {
+      let th = info.sigma1 * (kx * kx + ky * ky);
+      bre[c + k] = r * cos(th);
+      bim[c + k] = i * cos(th);
+      re[c + k] = r * sin(th);
+      im[c + k] = i * sin(th);
+      continue;
     }
     re[c + k] = -k2 * r;
     im[c + k] = -k2 * i;

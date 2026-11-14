@@ -147,6 +147,8 @@ export class Simulation {
         const i = compiled.globalIndex.get(name);
         if (i !== undefined) this.spectral.setKernel({ [key]: this.globals[i] });
       }
+      const ts = compiled.globalIndex.get('timestep');
+      if (compiled.spectral.second === 'propagator') this.spectral.setKernel({ sigma1: 0.5 * (ts !== undefined ? this.globals[ts] : 1) });
     }
     const usesLap = /\blapK\b/.test(compiled.stepWGSL), usesBilap = /\bbilapK\b/.test(compiled.stepWGSL);
     const stepGroup = (from: number) =>
@@ -196,6 +198,7 @@ export class Simulation {
     if (name === 'dx') this.spectral?.setDx(value);
     const kp = KERNEL_PARAMS.find(([n]) => n === name);
     if (kp) this.spectral?.setKernel({ [kp[1]]: value });
+    if (name === 'timestep' && this.compiled.spectral?.second === 'propagator') this.spectral?.setKernel({ sigma1: 0.5 * value });
   }
 
   getGlobals(): Record<string, number> {

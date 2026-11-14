@@ -4,7 +4,7 @@ import spectralWGSL from './shaders/spectral.wgsl?raw';
 const WG = 8;
 
 /** What the second spectral channel computes. */
-export type Second = 'none' | 'bilap' | 'kernel';
+export type Second = 'none' | 'bilap' | 'kernel' | 'propagator';
 
 /**
  * Spectral Laplacian (and optionally a second operator: the bilaplacian, or
@@ -119,7 +119,7 @@ export class Spectral {
 
   private writeInfo() {
     const buf = new ArrayBuffer(32);
-    new Uint32Array(buf).set([this.W, this.H, ['none', 'bilap', 'kernel'].indexOf(this.second), this.matched ? 1 : 0]);
+    new Uint32Array(buf).set([this.W, this.H, ['none', 'bilap', 'kernel', 'propagator'].indexOf(this.second), this.matched ? 1 : 0]);
     new Float32Array(buf).set([this.dx, this.kernel.sigma1, this.kernel.b, this.kernel.sigma2], 4);
     this.device.queue.writeBuffer(this.info, 0, buf);
   }

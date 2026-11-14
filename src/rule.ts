@@ -29,7 +29,13 @@ export type Fill =
   | { type: 'constant'; value: number }
   | { type: 'white_noise'; low: number; high: number }
   /** On a circle: value · ½(1 − tanh((d − r)/edge)), a flat top with a smooth rim `edge` cells wide (default 2). Elsewhere: value. */
-  | { type: 'bump'; value: number; edge?: number };
+  | { type: 'bump'; value: number; edge?: number }
+  /**
+   * On a circle: a Gaussian wave packet, amp·exp(−d²/2sigma²)·cos(kx·x + ky·y + phase)
+   * (sigma in cells, k in radians per cell, relative to the centre), or its
+   * sin part with part 'sin'. Covers the circle's r; elsewhere 0.
+   */
+  | { type: 'packet'; amp: number; sigma: number; kx?: number; ky?: number; phase?: number; part?: 'cos' | 'sin' };
 export type Shape =
   | { type: 'everywhere' }
   | { type: 'rectangle'; x0: number; y0: number; x1: number; y1: number } // normalized, y down
@@ -80,6 +86,12 @@ export interface RuleDef {
    * set by the params kernel_sigma, kernel_b (default 0) and kernel_sigma2, in
    * dx units. A σ wider than the field gives the field's mean. A rule can use
    * bilaplacian_ or kernel_, not both.
+   *
+   * They also offer the exact free Schrödinger step for a complex field
+   * ψ = p + iq: `wave_cos_<r>` and `wave_sin_<r>` are the reagent filtered by
+   * cos and sin of ½|k|²·timestep, so p' = wave_cos_p + wave_sin_q and
+   * q' = wave_cos_q − wave_sin_p is e^{−i|k|²dt/2}ψ̂ (unconditionally stable).
+   * They use both spectral channels, so no other spectral operator can join them.
    */
   laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
   /** Grid size the rule was authored for (imports). */
@@ -216,7 +228,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (mem && !rule.params.some((p) => p.name === mem.param)) throw new RuleError(`membrane param '${mem.param}' isn't a parameter`);
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
-    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel'].map((op) => `${op}_${r}`)),
+    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin'].map((op) => `${op}_${r}`)),
     ...rule.params.map((p) => p.name), 'timestep',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
@@ -245,6 +257,12 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (kernelSlots.size && !spectral) throw new RuleError(`kernel_ needs laplacian: 'spectral'`);
   if (kernelSlots.size && needs('bilaplacian').size) throw new RuleError(`a rule can use bilaplacian_ or kernel_, not both`);
   if (kernelSlots.size && !rule.params.some((p) => p.name === 'kernel_sigma')) throw new RuleError(`kernel_ needs a 'kernel_sigma' parameter`);
+  const cosSlots = needs('wave_cos'), sinSlots = needs('wave_sin');
+  const propagator = cosSlots.size + sinSlots.size > 0;
+  if (propagator && !spectral) throw new RuleError(`wave_cos_ and wave_sin_ need laplacian: 'spectral'`);
+  if (propagator && (lapSlots.size || kernelSlots.size || needs('bilaplacian').size)) throw new RuleError(`wave_cos_/wave_sin_ can't be combined with other spectral operators`);
+  for (const k of sinSlots) lapSlots.add(k);
+  for (const k of cosSlots) kernelSlots.add(k);
   const spectralBilap = spectral && (needs('bilaplacian').size > 0 || kernelSlots.size > 0);
   const L: string[] = [];
   const add = (s: string) => L.push(s);
@@ -337,6 +355,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   R.forEach((r, i) => {
     add(`  var v_${r} = s${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`kernel_${r}`)) add(`  let v_kernel_${r} = KR${i >> 2}.${COMP[i & 3]};`);
+    if (used.has(`wave_cos_${r}`)) add(`  let v_wave_cos_${r} = KR${i >> 2}.${COMP[i & 3]};`);
+    if (used.has(`wave_sin_${r}`)) add(`  let v_wave_sin_${r} = L${i >> 2}.${COMP[i & 3]};`);
     add(`  var v_delta_${r} = 0.0;`);
     if (used.has(`laplacian_${r}`)) add(`  let v_laplacian_${r} = L${i >> 2}.${COMP[i & 3]};`);
     const c = `${i >> 2}.${COMP[i & 3]}`;
@@ -361,7 +381,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     add(`  dst[sb + ${k}u] = vec4<f32>(${comps.join(', ')});`);
   }
   add(`}`);
-  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
+  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: propagator ? 'propagator' : kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
 }
 
 // --- initial state
@@ -375,6 +395,13 @@ function mulberry32(seed: number) {
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+function packetValue(f: Extract<Fill, { type: 'packet' }>, at: { cx: number; cy: number } | null, x: number, y: number) {
+  if (!at) return 0;
+  const dx = x + 0.5 - at.cx, dy = y + 0.5 - at.cy;
+  const th = (f.kx ?? 0) * dx + (f.ky ?? 0) * dy + (f.phase ?? 0);
+  return f.amp * Math.exp(-(dx * dx + dy * dy) / (2 * f.sigma * f.sigma)) * (f.part === 'sin' ? Math.sin(th) : Math.cos(th));
 }
 
 /** Cell indices covered by a shape. */
@@ -430,10 +457,12 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
     // a smooth bump reaches past the circle's rim, so its tail isn't cut off
     const sh = o.shape, fill = o.fill;
     const bump = fill.type === 'bump' && sh.type === 'circle' ? { cx: sh.cx * w, cy: sh.cy * h, r: sh.r * Math.max(w, h), e: fill.edge ?? 2 } : null;
+    const pk = fill.type === 'packet' && sh.type === 'circle' ? { cx: sh.cx * w, cy: sh.cy * h } : null;
     const cellsOf = bump ? shapeCells({ ...sh, r: (bump.r + 4 * bump.e) / Math.max(w, h) } as Shape, w, h, salt) : shapeCells(sh, w, h, salt);
     for (const c of cellsOf) {
       const v =
         fill.type === 'constant' ? fill.value
+        : fill.type === 'packet' ? packetValue(fill, pk, c % w, Math.floor(c / w))
         : fill.type === 'bump' ? (bump ? fill.value * 0.5 * (1 - Math.tanh((Math.hypot((c % w) + 0.5 - bump.cx, Math.floor(c / w) + 0.5 - bump.cy) - bump.r) / bump.e)) : fill.value)
         : fill.low + Math.random() * (fill.high - fill.low);
       const k = c * S * 4 + r;
@@ -800,7 +829,52 @@ delta_a = (u - a)/tau_a;`,
   view: { reagent: 'u', low: 0, high: 1, tint: 'a', stepsPerFrame: 8 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD];
+/**
+ * Saturable nonlinear Schrödinger equation (light in a saturable medium):
+ * i ψ_t = −½∇²ψ − g·|ψ|²/(1 + s|ψ|²)·ψ, ψ = p + iq. Split-step: the dispersion
+ * is applied exactly by FFT (wave_cos/wave_sin), then the nonlinearity as an
+ * exact local phase rotation; both keep |ψ|, so any timestep is stable and
+ * the total power is conserved (gamma, paintable, absorbs for sponge borders).
+ * Self-focusing balances dispersion in 2D solitons ("light bullets"); saturation
+ * stops them collapsing. n shows the intensity |ψ|².
+ */
+export const SATURABLE_NLS: RuleDef = {
+  name: 'Saturable Schrödinger (NLS)',
+  description:
+    'i ψ_t = −½∇²ψ − g·I/(1 + s·I)·ψ, I = |ψ|², ψ = p + iq, by exact split steps (FFT dispersion, local phase rotation). ' +
+    'Conservative: solitons collide elastically, merge, repel or swap power depending on their relative phase. gamma absorbs.',
+  reagents: ['p', 'q', 'n'],
+  params: [
+    { name: 'timestep', value: 0.05, min: 0, max: 0.5 },
+    { name: 'dx', value: 0.25, min: 0.05, max: 1 },
+    { name: 'g', value: 1, min: -2, max: 4 },
+    { name: 's', value: 0.5, min: 0, max: 5 },
+    { name: 'gamma', value: 0, min: 0, max: 1 },
+  ],
+  paintable: ['gamma'],
+  formula: `float P = wave_cos_p + wave_sin_q;
+float Q = wave_cos_q - wave_sin_p;
+float I = P*P + Q*Q;
+float ph = g*I/(1.0 + s*I)*timestep;
+float damp = exp(-gamma*timestep);
+float P2 = damp*(P*cos(ph) - Q*sin(ph));
+float Q2 = damp*(P*sin(ph) + Q*cos(ph));
+delta_p = (P2 - p)/timestep;
+delta_q = (Q2 - q)/timestep;
+delta_n = (P2*P2 + Q2*Q2 - n)/timestep;`,
+  laplacian: 'spectral',
+  size: { width: 256, height: 256 },
+  rest: [0, 0, 0],
+  seed: [1, null, null],
+  seedNoise: [0, 0, 0],
+  initial: [
+    { chem: 'p', op: 'add', fill: { type: 'packet', amp: 2, sigma: 6 }, shape: { type: 'circle', cx: 0.35, cy: 0.5, r: 0.12 } },
+    { chem: 'p', op: 'add', fill: { type: 'packet', amp: 2, sigma: 6 }, shape: { type: 'circle', cx: 0.65, cy: 0.5, r: 0.12 } },
+  ],
+  view: { reagent: 'n', low: 0, high: 4, tint: 'p', stepsPerFrame: 4 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));

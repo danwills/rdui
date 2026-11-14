@@ -1,0 +1,220 @@
+{
+  "name": "Schrödinger spiralling soliton pair",
+  "description": "Saturable nonlinear Schrödinger equation: two in-phase solitons 30 cells apart, launched with opposite sideways momentum. Their attraction swings them round each other — about a third of a turn — as they spiral in and fuse into one breathing soliton. With less momentum they fuse straight away; with a little more (the lab found the edge at kx ≈ 0.023 in the packet's units) the pull only bends their paths and they escape. The bound orbit in between is a knife edge here, as for coherent light beams in photorefractive crystals (Shih, Segev & Salamo 1997), where lasting spirals need partial coherence or anisotropy. Things to try: the collision scene; the seed brush adds light a soliton can capture; s lower makes solitons tighter and their interactions shorter-range.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        232,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        232,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        240,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        240,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        248,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        248,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    }
+  ],
+  "initial": [
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.022,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.44140625,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.022,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.44140625,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.022,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.55859375,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.022,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.55859375,
+        "r": 0.1
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 5,
+    "tint": "p",
+    "tintLow": -2.5,
+    "tintHigh": 2.5
+  }
+}
