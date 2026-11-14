@@ -7,10 +7,7 @@ export default async function (cfg: { N?: number; cands: [string, number, number
   const N = cfg.N ?? 256, warm = cfg.warm ?? 20000, every = cfg.every ?? 2000, snaps = cfg.snaps ?? 6;
   for (const [name, F, k] of cfg.cands) {
     const lab = await makeLab(R.GS_LINEAGES, N, { F, k }, 'initial');
-    const { state, params } = await lab.read();
-    const S4 = lab.layout.S * 4;
-    for (let i = 0; i < N * N; i++) { state[i * S4 + 2] = F; state[i * S4 + 3] = k; }
-    lab.sim.load(state, params);
+    const S4 = lab.layout.S * 4; // the opening spots are untagged b: they found lineages with the globals F, k
     await runAll([lab], warm);
     let prev: Uint8Array | null = null, turn = 0, fill = 0;
     for (let s = 0; s < snaps; s++) {

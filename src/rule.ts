@@ -43,7 +43,7 @@ export type Shape =
   | { type: 'spots'; count: number; minSize: number; maxSize: number; seed: number }; // cells; same seed → same spots
 
 export interface Overlay {
-  /** A reagent, or a paintable parameter (then the overlay paints its per-cell value). */
+  /** A reagent, or a paintable parameter or 'wall' (then the overlay paints its per-cell value). */
   chem: string;
   op: 'overwrite' | 'add' | 'subtract' | 'multiply';
   fill: Fill;
@@ -488,7 +488,7 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
   const salt = Math.floor(Math.random() * 2 ** 31);
   for (const o of rule.initial) {
     const r = rule.reagents.indexOf(o.chem), pslot = r < 0 ? paramNames.indexOf(o.chem) : -1;
-    if (r < 0 && pslot < 1) continue;
+    if (r < 0 && pslot < 0) continue;
     const [arr, stride, slot] = r >= 0 ? [state, S * 4, r] : [params, P * 4, pslot];
     // a smooth bump reaches past the circle's rim, so its tail isn't cut off
     const sh = o.shape, fill = o.fill;

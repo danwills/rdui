@@ -729,6 +729,7 @@ async function init() {
       case 'erase': mode = BrushMode.Erase; break;
       case 'params': mode = BrushMode.Params; break;
       case 'wall': mode = alt ? BrushMode.Unwall : BrushMode.Wall; break;
+      case 'unwall': mode = alt ? BrushMode.Wall : BrushMode.Unwall; break;
       default: mode = alt ? BrushMode.Erase : BrushMode.Seed; break;
     }
     return {

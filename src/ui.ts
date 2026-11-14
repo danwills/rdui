@@ -2,7 +2,7 @@ import { PRESETS } from './presets';
 import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, openLoupe } from './fkmap';
 import type { RuleDef } from './rule';
 
-export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'capture' | 'stamp' | 'probe';
+export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'capture' | 'stamp' | 'probe';
 
 export interface Settings {
   tool: Tool;
@@ -86,6 +86,7 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'erase', label: 'Erase', key: '2', hint: 'reset reagents to their rest values' },
   { id: 'params', label: 'Params', key: '3', hint: 'paint the paintable parameters · right-click samples' },
   { id: 'wall', label: 'Wall', key: '4', hint: 'no-flux barrier · right-drag removes' },
+  { id: 'unwall', label: 'Unwall', key: '8', hint: 'remove walls (e.g. open a door)' },
   { id: 'capture', label: 'Capture', key: '5', hint: 'drag a rectangle to capture it as a stamp' },
   { id: 'stamp', label: 'Stamp', key: '6', hint: 'click to place the selected stamp · Q/E rotate · X mirror' },
   { id: 'probe', label: 'Probe', key: '7', hint: 'drag a rectangle to measure it · right-click a probe removes it' },
