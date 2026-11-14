@@ -85,8 +85,9 @@ export interface RuleDef {
    * Spectral modes also offer `kernel_<reagent>`: the reagent convolved with
    * a difference of unit-mass Gaussians, exp(−r²/2σ1²)/2πσ1² − b·(same with σ2),
    * set by the params kernel_sigma, kernel_b (default 0) and kernel_sigma2, in
-   * dx units. A σ wider than the field gives the field's mean. A rule can use
-   * bilaplacian_ or kernel_, not both.
+   * dx units. A σ wider than the field gives the field's mean. Instead of
+   * kernel_sigma a rule can have lap_size, a flat disc's radius: σ = lap_size/2
+   * (the Gaussian with the disc's spread). A rule can use bilaplacian_ or kernel_, not both.
    *
    * They also offer the exact free Schrödinger step for a complex field
    * ψ = p + iq: `wave_cos_<r>` and `wave_sin_<r>` are the reagent filtered by
@@ -264,7 +265,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const kernelSlots = needs('kernel');
   if (kernelSlots.size && !spectral) throw new RuleError(`kernel_ needs laplacian: 'spectral'`);
   if (kernelSlots.size && needs('bilaplacian').size) throw new RuleError(`a rule can use bilaplacian_ or kernel_, not both`);
-  if (kernelSlots.size && !rule.params.some((p) => p.name === 'kernel_sigma')) throw new RuleError(`kernel_ needs a 'kernel_sigma' parameter`);
+  if (kernelSlots.size && !rule.params.some((p) => p.name === 'kernel_sigma' || p.name === 'lap_size')) throw new RuleError(`kernel_ needs a 'kernel_sigma' (or 'lap_size') parameter`);
   const cosSlots = needs('wave_cos'), sinSlots = needs('wave_sin');
   const propagator = cosSlots.size + sinSlots.size > 0;
   if (propagator && !spectral) throw new RuleError(`wave_cos_ and wave_sin_ need laplacian: 'spectral'`);
@@ -944,10 +945,11 @@ delta_b = (B - b)/timestep + A*B*B - (F + k)*B;`,
 export const GS_FLECK: RuleDef = {
   name: 'Gray-Scott + c (fleck)',
   description: 'Dan\'s GrayScottHSVFleck: Gray-Scott with a third chemical c that b produces and that decays slowly; c lowers the feed, '
-    + 'raises the kill and speeds a\'s diffusion, so where b has been the medium changes. A wide, smooth Laplacian (kernel_sigma: '
-    + 'larger = bigger features) and a long timestep. Shown in the HSV fleck palette: (a, b, c) as an RGB colour, re-expressed as '
+    + 'raises the kill and speeds a\'s diffusion, so where b has been the medium changes. A wide, smooth Laplacian: lap_size is '
+    + 'its radius in cells (the shader\'s 9), and features scale with it; lap_gain is its strength. A long timestep. Shown in the HSV fleck palette: (a, b, c) as an RGB colour, re-expressed as '
     + '(value, saturation, hue); try the OKLCH fleck palette and the hue shape/offset sliders too. Seed with a wide brush (radius 10+): '
-    + 'small seeds die at this scale. Lively for F 0.009–0.019, k 0.046–0.056 (the shader\'s mouse range).',
+    + 'small seeds die at this scale (roughly: seed radius ≥ lap_size).'
+    + ' Lively for F 0.009–0.019, k 0.046–0.056 (the shader\'s mouse range).',
   reagents: ['a', 'b', 'c'],
   params: [
     { name: 'timestep', value: 3, min: 0, max: 4 },
@@ -962,7 +964,7 @@ export const GS_FLECK: RuleDef = {
     { name: 'c_to_Db', value: 0, min: -0.1, max: 0.1 },
     { name: 'c_damp', value: 0.0055, min: 0, max: 0.05 },
     { name: 'b_to_c', value: 0.05, min: 0, max: 0.2 },
-    { name: 'kernel_sigma', value: 4.41, min: 1, max: 12 },
+    { name: 'lap_size', value: 8.82, min: 2, max: 40 },
     { name: 'lap_gain', value: 2.42, min: 0.5, max: 5 },
   ],
   paintable: ['F', 'k'],

@@ -5,6 +5,8 @@ import { Spectral } from './spectral';
 
 /** Global params that shape the spectral kernel (see `kernel_` in rule.ts). */
 const KERNEL_PARAMS = [['kernel_sigma', 'sigma1'], ['kernel_b', 'b'], ['kernel_sigma2', 'sigma2']] as const;
+/** Alternative to kernel_sigma: the radius of a flat disc, as the Gaussian with its spread (σ = R/2). */
+const KERNEL_RADIUS = 'lap_size';
 /** Global params that set the heat mode's diffusion (see `heat1_` in rule.ts). */
 const HEAT_PARAMS = ['heat_D1', 'heat_D2', 'zoom', 'timestep'];
 
@@ -152,6 +154,8 @@ export class Simulation {
         const i = compiled.globalIndex.get(name);
         if (i !== undefined) this.spectral.setKernel({ [key]: this.globals[i] });
       }
+      const ri = compiled.globalIndex.get(KERNEL_RADIUS);
+      if (ri !== undefined) this.spectral.setKernel({ sigma1: this.globals[ri] / 2 });
       const ts = compiled.globalIndex.get('timestep');
       if (compiled.spectral.second === 'propagator') this.spectral.setKernel({ sigma1: 0.5 * (ts !== undefined ? this.globals[ts] : 1) });
       this.setHeat();
@@ -204,6 +208,7 @@ export class Simulation {
     if (name === 'dx') this.spectral?.setDx(value);
     const kp = KERNEL_PARAMS.find(([n]) => n === name);
     if (kp) this.spectral?.setKernel({ [kp[1]]: value });
+    if (name === KERNEL_RADIUS) this.spectral?.setKernel({ sigma1: value / 2 });
     if (name === 'timestep' && this.compiled.spectral?.second === 'propagator') this.spectral?.setKernel({ sigma1: 0.5 * value });
     if (HEAT_PARAMS.includes(name)) this.setHeat();
   }
