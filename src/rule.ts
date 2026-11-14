@@ -638,9 +638,10 @@ export const PHYLLOTAXIS: RuleDef = {
 export const OREGONATOR: RuleDef = {
   name: 'Sub-excitable BZ (Oregonator)',
   description:
-    'Two-variable Oregonator with illumination phi: delta_u = (u − u² − (f v + phi)(u − q)/(u + q))/eps + D_u ∇²u, delta_v = u − v. ' +
-    'Near phi ≈ 0.079 the medium is sub-excitable and broken waves travel as compact wave fragments.',
-  reagents: ['u', 'v'],
+    'Two-variable Oregonator with illumination phi: delta_u = (u − u² − (f v + phi_e)(u − q)/(u + q))/eps + D_u ∇²u, delta_v = u − v. ' +
+    'Near phi ≈ 0.084 the medium is sub-excitable and broken waves travel as compact wave fragments. ' +
+    'Optional size control: a slow long-range inhibitor h (driven by u) adds K_h·h to the light, phi_e = phi + K_h h.',
+  reagents: ['u', 'v', 'h'],
   params: [
     { name: 'timestep', value: 0.001, min: 0, max: 0.004 },
     { name: 'dx', value: 0.25, min: 0.1, max: 0.5 },
@@ -649,16 +650,20 @@ export const OREGONATOR: RuleDef = {
     { name: 'q', value: 0.002, min: 0.0005, max: 0.01 },
     { name: 'phi', value: 0.079, min: 0, max: 0.15 },
     { name: 'D_u', value: 1, min: 0, max: 2 },
+    { name: 'K_h', value: 0, min: 0, max: 0.5 },
+    { name: 'tau_h', value: 1, min: 0.05, max: 20 },
+    { name: 'D_h', value: 8, min: 0, max: 20 },
   ],
   paintable: ['phi'],
   // the light term is very stiff near u ≈ 0 (rate ~ (f v + phi) 2q/(u+q)²/eps, up to ~10⁴):
   // it is taken implicitly (linearised backward Euler), which divides the
   // explicit delta by 1 + timestep·A/(u + q)
-  formula: `delta_u = ((u - u*u)/eps + D_u*laplacian_u - ((f*v + phi)/eps)*(u - q)/(u + q)) / (1.0 + timestep*((f*v + phi)/eps)/(u + q));
-delta_v = u - v;`,
-  rest: [0.0019, 0.0019],
-  seed: [0.9, null],
-  seedNoise: [0, 0],
+  formula: `delta_u = ((u - u*u)/eps + D_u*laplacian_u - ((f*v + phi + K_h*h)/eps)*(u - q)/(u + q)) / (1.0 + timestep*((f*v + phi + K_h*h)/eps)/(u + q));
+delta_v = u - v;
+delta_h = (u - h)/tau_h + D_h*laplacian_h;`,
+  rest: [0.0019, 0.0019, 0.0019],
+  seed: [0.9, null, null],
+  seedNoise: [0, 0, 0],
   initial: [
     // a broken wave: an excited strip with a refractory strip behind it, so it can only go right
     { chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 0.9 }, shape: { type: 'rectangle', x0: 0.46, y0: 0.4, x1: 0.48, y1: 0.6 } },

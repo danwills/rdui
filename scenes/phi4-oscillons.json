@@ -1,6 +1,6 @@
 {
   "name": "φ⁴ oscillons",
-  "description": "Klein–Gordon with a double-well (φ⁴) potential: the vacua are u = −1 and u = +1. Bubbles of the +1 vacuum collapse, and instead of vanishing they settle into oscillons: lumps that pulse for a very long time, shedding only a little radiation. Domain walls between the vacua are kinks that straighten and shrink. The field is reversible apart from a little viscosity (nu) that damps grid-scale ripples; raise gamma to add friction, or set nu = 0 for pure conservative dynamics. The seed brush (u = 2π) is a big kick; paint gamma to make absorbing regions.",
+  "description": "Klein–Gordon with a double-well (φ⁴) potential: the vacua are u = −1 and u = +1. Bubbles of the +1 vacuum collapse, and instead of vanishing they settle into oscillons: lumps that pulse for a very long time, shedding only a little radiation. Domain walls between the vacua are kinks that straighten and shrink. The interior is conservative (no friction): radiation shed by the collapsing bubbles would circle the wrap-around field forever, so a sponge border (gamma ramping up over the outer ~28 px) soaks it up, as an infinite domain would let it escape. A small viscosity nu damps only grid-scale ripples; set nu = 0 for purely reversible dynamics. Paint gamma to add or remove absorbers.",
   "rule": "builtin:5",
   "size": 256,
   "start": "initial",
@@ -127,5 +127,183 @@
     "tintLow": -1,
     "tintHigh": 1
   },
-  "stepsPerFrame": 20
+  "stepsPerFrame": 20,
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        28
+      ],
+      "values": {
+        "gamma": 0.01
+      }
+    },
+    {
+      "rect": [
+        0,
+        228,
+        256,
+        28
+      ],
+      "values": {
+        "gamma": 0.01
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        28,
+        256
+      ],
+      "values": {
+        "gamma": 0.01
+      }
+    },
+    {
+      "rect": [
+        228,
+        0,
+        28,
+        256
+      ],
+      "values": {
+        "gamma": 0.01
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        20
+      ],
+      "values": {
+        "gamma": 0.03
+      }
+    },
+    {
+      "rect": [
+        0,
+        236,
+        256,
+        20
+      ],
+      "values": {
+        "gamma": 0.03
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        20,
+        256
+      ],
+      "values": {
+        "gamma": 0.03
+      }
+    },
+    {
+      "rect": [
+        236,
+        0,
+        20,
+        256
+      ],
+      "values": {
+        "gamma": 0.03
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        12
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        244,
+        256,
+        12
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        12,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        244,
+        0,
+        12,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        6
+      ],
+      "values": {
+        "gamma": 0.2
+      }
+    },
+    {
+      "rect": [
+        0,
+        250,
+        256,
+        6
+      ],
+      "values": {
+        "gamma": 0.2
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        6,
+        256
+      ],
+      "values": {
+        "gamma": 0.2
+      }
+    },
+    {
+      "rect": [
+        250,
+        0,
+        6,
+        256
+      ],
+      "values": {
+        "gamma": 0.2
+      }
+    }
+  ]
 }

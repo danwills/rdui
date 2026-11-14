@@ -1,6 +1,6 @@
 {
   "name": "Sine-Gordon kinks and breathers",
-  "description": "Sine-Gordon field: u has a vacuum at every multiple of 2π, and walls between neighbouring vacua are kinks. Discs at u = 2π are rings of kink; they collapse, bounce, and leave breathers (localized lumps that keep oscillating) plus radiation. Reversible apart from the small viscosity nu (damps grid-scale ripples); set gamma > 0 for friction that lets breathers stand out from the radiation.",
+  "description": "Sine-Gordon field: u has a vacuum at every multiple of 2π, and walls between neighbouring vacua are kinks. Discs at u = 2π are rings of kink; they collapse, bounce, and leave breathers (localized lumps that keep oscillating) plus radiation. The interior is conservative (no friction): radiation shed by the collapsing bubbles would circle the wrap-around field forever, so a sponge border (gamma ramping up over the outer ~28 px) soaks it up, as an infinite domain would let it escape. A small viscosity nu damps only grid-scale ripples; set nu = 0 for purely reversible dynamics. Paint gamma to add or remove absorbers.",
   "rule": "builtin:5",
   "size": 256,
   "start": "initial",
@@ -8,7 +8,7 @@
     "sg": 1,
     "phi4": 0,
     "nu": 0.005,
-    "gamma": 0.006,
+    "gamma": 0,
     "dx": 0.25,
     "timestep": 0.05
   },
@@ -82,5 +82,183 @@
     "tintLow": -1,
     "tintHigh": 1
   },
-  "stepsPerFrame": 20
+  "stepsPerFrame": 20,
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        28
+      ],
+      "values": {
+        "gamma": 0.01
+      }
+    },
+    {
+      "rect": [
+        0,
+        228,
+        256,
+        28
+      ],
+      "values": {
+        "gamma": 0.01
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        28,
+        256
+      ],
+      "values": {
+        "gamma": 0.01
+      }
+    },
+    {
+      "rect": [
+        228,
+        0,
+        28,
+        256
+      ],
+      "values": {
+        "gamma": 0.01
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        20
+      ],
+      "values": {
+        "gamma": 0.03
+      }
+    },
+    {
+      "rect": [
+        0,
+        236,
+        256,
+        20
+      ],
+      "values": {
+        "gamma": 0.03
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        20,
+        256
+      ],
+      "values": {
+        "gamma": 0.03
+      }
+    },
+    {
+      "rect": [
+        236,
+        0,
+        20,
+        256
+      ],
+      "values": {
+        "gamma": 0.03
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        12
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        244,
+        256,
+        12
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        12,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        244,
+        0,
+        12,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        6
+      ],
+      "values": {
+        "gamma": 0.2
+      }
+    },
+    {
+      "rect": [
+        0,
+        250,
+        256,
+        6
+      ],
+      "values": {
+        "gamma": 0.2
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        6,
+        256
+      ],
+      "values": {
+        "gamma": 0.2
+      }
+    },
+    {
+      "rect": [
+        250,
+        0,
+        6,
+        256
+      ],
+      "values": {
+        "gamma": 0.2
+      }
+    }
+  ]
 }
