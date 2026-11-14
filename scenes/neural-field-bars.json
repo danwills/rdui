@@ -1,0 +1,25 @@
+{
+  "name": "Neural field bars and bumps",
+  "description": "Neural field found by the class-4 search: travelling bars (sheets of activity sliding sideways) coexisting with travelling bumps; bars shed bumps at their ends and absorb bumps that hit them. Things to try: the seed brush (drag a line for a new bar, tap for a bump); raise I slightly to make bars grow, lower it to break them into bumps; paint g to change speed locally.",
+  "rule": "builtin:7",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "globals": {
+    "A": 7.44,
+    "g": 1.99,
+    "kernel_b": 0.943,
+    "kernel_sigma2": 3,
+    "theta": 0.95,
+    "tau_a": 19.3,
+    "I": -0.185
+  },
+  "view": {
+    "reagent": "u",
+    "low": 0,
+    "high": 1,
+    "tint": "a",
+    "tintLow": 0,
+    "tintHigh": 0.5
+  }
+}

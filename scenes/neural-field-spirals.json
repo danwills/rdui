@@ -1,0 +1,25 @@
+{
+  "name": "Neural field spirals and fragments",
+  "description": "Neural field found by the class-4 search: strong coupling with a narrow inhibitory surround (kernel_sigma2 ≈ 1.4) and strong, slow adaptation. Seeds break into free-travelling fragments, which curl up into rotating spirals; the spirals compete and the largest slowly takes over the field. Things to try: the seed brush starts new activity; paint g lower to anchor a spiral; nudge kernel_sigma2 up toward 2 for more separate bumps, or tau_a down for faster turnover.",
+  "rule": "builtin:7",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "globals": {
+    "A": 14.2,
+    "g": 2.46,
+    "kernel_b": 0.846,
+    "kernel_sigma2": 1.37,
+    "theta": 0.653,
+    "tau_a": 26.5,
+    "I": 0
+  },
+  "view": {
+    "reagent": "u",
+    "low": 0,
+    "high": 1,
+    "tint": "a",
+    "tintLow": 0,
+    "tintHigh": 0.5
+  }
+}
