@@ -201,6 +201,7 @@ async function init() {
       r = imp.rule;
     }
     if (sc.paintable) r = { ...r, paintable: sc.paintable };
+    if (sc.initial) r = { ...r, initial: sc.initial };
     const size = sc.size ? { width: sc.size, height: sc.size } : r.size;
     const ok = await applyRule(r, { field: 'initial', id, globals: { ...defaultGlobals(r), ...sc.globals }, size, image: imp?.image, warnings: imp?.warnings });
     if (!ok) return;

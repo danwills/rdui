@@ -1,0 +1,86 @@
+{
+  "name": "Sine-Gordon kinks and breathers",
+  "description": "Sine-Gordon field: u has a vacuum at every multiple of 2π, and walls between neighbouring vacua are kinks. Discs at u = 2π are rings of kink; they collapse, bounce, and leave breathers (localized lumps that keep oscillating) plus radiation. Reversible apart from the small viscosity nu (damps grid-scale ripples); set gamma > 0 for friction that lets breathers stand out from the radiation.",
+  "rule": "builtin:5",
+  "size": 256,
+  "start": "initial",
+  "globals": {
+    "sg": 1,
+    "phi4": 0,
+    "nu": 0.005,
+    "gamma": 0.006,
+    "dx": 0.25,
+    "timestep": 0.05
+  },
+  "initial": [
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 6.2832,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.25,
+        "cy": 0.25,
+        "r": 0.07
+      }
+    },
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 6.2832,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.72,
+        "cy": 0.3,
+        "r": 0.05
+      }
+    },
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 6.2832,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.72,
+        "r": 0.09
+      }
+    },
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 6.2832,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.75,
+        "r": 0.04
+      }
+    }
+  ],
+  "view": {
+    "reagent": "u",
+    "low": -2,
+    "high": 7,
+    "tint": "v",
+    "tintLow": -1,
+    "tintHigh": 1
+  },
+  "stepsPerFrame": 20
+}

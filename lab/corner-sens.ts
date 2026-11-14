@@ -10,14 +10,15 @@ type StampJSON = ReturnType<typeof stampToJSON>;
 import { makeLab, runAll, blobs, log, STARTERS, HW_STD, type Lab } from './lab';
 import { clusterPts } from './reflect-ring';
 
-export default async function (cfg: { aAng?: number; bAng?: number; aShape?: string; bShape?: string; bShift?: [number, number]; lane?: number; lats?: number[]; alongs?: number[]; rot?: number; N?: number; steps?: number; tag?: string }) {
+export default async function (cfg: { aAng?: number; bAng?: number; aShape?: string; bShape?: string; bShift?: [number, number]; lane?: number; lats?: number[]; alongs?: number[]; rot?: number; N?: number; steps?: number; tag?: string; round?: boolean }) {
   const N = cfg.N ?? 640, A = [160, 160];
   const relaxed = stampFromJSON(((await (await fetch('/lab/fixtures/relaxed-glider-hw.json')).json()) as StampJSON[])[0]);
   const B = [A[0] + 123.1 + (cfg.bShift?.[0] ?? 0), A[1] + 156.2 + (cfg.bShift?.[1] ?? 0)];
+  // `round`: every soliton on a whole pixel, so 90° rotated copies are exact
   const pts = [
     ...clusterPts(cfg.aShape ?? 'line3', cfg.aAng ?? 30).map(([x, y]) => [A[0] + x, A[1] + y]),
     ...clusterPts(cfg.bShape ?? 'line3', cfg.bAng ?? 72).map(([x, y]) => [B[0] + x, B[1] + y]),
-  ];
+  ].map(([x, y]) => (cfg.round ? [Math.round(x), Math.round(y)] : [x, y]));
   const jobs = (cfg.lats ?? [-1, -0.5, 0, 0.5, 1]).flatMap((lat) => (cfg.alongs ?? [0, 1, 2, 3]).map((along) => ({ lat, along })));
   const runs: { lat: number; along: number; lab: Lab; trail: number[][] }[] = [];
   for (const j of jobs) {

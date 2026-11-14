@@ -1,3 +1,4 @@
+import type { Overlay } from './rule';
 /**
  * Scenes: small declarative setups (rule, painted regions, walls, placed
  * stamps, probes, view) kept as JSON in /scenes, loadable from the Rule menu.
@@ -15,6 +16,8 @@ export interface Scene {
   paintable?: string[];
   /** "rest" = clean field at the rule's rest state; "initial" = its generator. */
   start?: 'rest' | 'initial';
+  /** Replace the rule's initial generator (shapes of constant or noise values per reagent); used with start "initial". */
+  initial?: Overlay[];
   /** Param values per rect [x, y, w, h]; unlisted paintables keep their global value. */
   paint?: { rect: [number, number, number, number]; values: Record<string, number> }[];
   walls?: [number, number, number, number][];

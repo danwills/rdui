@@ -1,0 +1,121 @@
+{
+  "name": "Swift–Hohenberg localized spots",
+  "description": "Swift–Hohenberg with quadratic and cubic terms at r = −0.2: the flat state and a hexagonal pattern are both stable, so isolated spots and hexagonal patches of any size persist (homoclinic snaking), each with a rippled halo. Single seeds become spots; the larger seed grows into a hexagonal patch that slowly crystallises outward (at r ≈ −0.25 patches shrink back to single spots instead). Things to try: paint r up (≈0) to let patches invade, down (≈ −0.4) to erase; seed brush adds spots — near a patch they snap onto its lattice. kappa > 0 switches on a slow inhibitor w (tau, D_w) — at some settings patches grow, at others spots move (still being explored).",
+  "rule": "builtin:6",
+  "size": 256,
+  "start": "initial",
+  "globals": {
+    "kappa": 0,
+    "r": -0.2,
+    "b": 1.6
+  },
+  "initial": [
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1.2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.2,
+        "cy": 0.2,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1.2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.35,
+        "cy": 0.3,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1.2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8,
+        "cy": 0.2,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1.2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.2,
+        "cy": 0.8,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1.2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.8,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1.2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.15,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1.2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.55,
+        "cy": 0.55,
+        "r": 0.06
+      }
+    }
+  ],
+  "view": {
+    "reagent": "u",
+    "low": -0.5,
+    "high": 1.5,
+    "tint": "w",
+    "tintLow": 0,
+    "tintHigh": 1
+  },
+  "stepsPerFrame": 100
+}

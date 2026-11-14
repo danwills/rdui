@@ -102,7 +102,7 @@ export async function importReady(text: string, fileName: string): Promise<Ready
   }
 
   // --- rest / seed heuristics from the generator
-  const mid = (f: Fill) => (f.type === 'constant' ? f.value : (f.low + f.high) / 2);
+  const mid = (f: Fill) => (f.type === 'white_noise' ? (f.low + f.high) / 2 : f.value);
   const rest = reagents.map((r) => {
     const o = [...initial].reverse().find((o) => o.chem === r && o.shape.type === 'everywhere' && o.op === 'overwrite');
     return o ? mid(o.fill) : 0;

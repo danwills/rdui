@@ -9,7 +9,7 @@ import { clusterPts } from './reflect-ring';
 const rot = ([x, y]: number[], q: number) => { for (let i = 0; i < q; i++) [x, y] = [-y, x]; return [x, y]; };
 const B_REL = [123.1, 156.2];
 
-export function corners(L: number, cx: number, cy: number, n = 4, across = 114.5, bLater = 70, bFirst = bLater) {
+export function corners(L: number, cx: number, cy: number, n = 4, across = 114.5, bLater = 70, bFirst = bLater, round = false) {
   // corner i's A, relative to corner 0's A, before centring
   const As: number[][] = [[0, 0]];
   for (let i = 1; i < 4; i++) { const step = rot([L, -across], i); As.push([As[i - 1][0] + step[0], As[i - 1][1] + step[1]]); }
@@ -24,24 +24,30 @@ export function corners(L: number, cx: number, cy: number, n = 4, across = 114.5
   const base = (bAng: number) => [
     ...clusterPts('line3', 30).map((p) => [A0[0] + p[0], A0[1] + p[1]]),
     ...clusterPts('line3', bAng).map((p) => [A0[0] + B_REL[0] + p[0], A0[1] + B_REL[1] + p[1]]),
-  ];
+  ].map(([x, y]) => (round ? [Math.round(x), Math.round(y)] : [x, y]));
   const pts: number[][] = [], rots: number[] = [];
   for (let i = 0; i < n; i++) for (const p of base(i ? bLater : bFirst)) { const q = rot([p[0] - C[0], p[1] - C[1]], i); pts.push([C[0] + q[0], C[1] + q[1]]); rots.push(i); }
   return { pts, rots, A0, glider: [A0[0] + Math.min(...clusterPts('line3', 30).map((p) => p[0])) - 45, A0[1] - 4] };
 }
 
-export default async function (cfg: { Ls?: number[]; n?: number; N?: number; steps?: number; across?: number[]; bLater?: number[]; runIn?: number[] }) {
+export default async function (cfg: { Ls?: number[]; n?: number; N?: number; steps?: number; across?: number[]; bLater?: number[]; runIn?: number[]; relaxed?: { run: number; lane: number }; round?: boolean }) {
   const N = cfg.N ?? 768;
   const jobs = (cfg.Ls ?? [441]).flatMap((L) => (cfg.across ?? [115]).flatMap((ac) => (cfg.bLater ?? [70]).flatMap((bl) => (cfg.runIn ?? [0]).map((ri) => ({ L, ac, bl, ri })))));
   const runs: { L: number; ac: number; bl: number; ri: number; lab: Lab; c: ReturnType<typeof corners> }[] = [];
   for (const { L, ac, bl, ri } of jobs) {
     const l = await makeLab(GS_HISTORY_WAVE, N, HW_STD);
-    const c = corners(L, N / 2, N / 2, cfg.n ?? 4, ac, bl);
+    const c = corners(L, N / 2, N / 2, cfg.n ?? 4, ac, bl, bl, cfg.round);
     for (const [j, [x, y]] of c.pts.entries()) await l.place(STARTERS('starter-soliton-hw65'), x, y, { rot: c.rots[j] });
     runs.push({ L, ac, bl, ri, lab: l, c });
   }
   await runAll(runs.map((r) => r.lab), 4000);
-  for (const r of runs) await r.lab.place(STARTERS('starter-glider-hw65'), r.c.glider[0] - r.ri, r.c.glider[1]);
+  if (cfg.relaxed) {
+    // the relaxed glider fixture (captured heading 90°; rot 3 heads it east), `run` px before corner 0's
+    // first soliton on lane A0.y + lane — the middle of the corner's capture window is lane −3.5…−3
+    const { stampFromJSON } = await import('../src/stamps');
+    const relaxed = stampFromJSON((await (await fetch('/lab/fixtures/relaxed-glider-hw.json')).json())[0]);
+    for (const r of runs) await r.lab.place(relaxed, r.c.glider[0] + 45 - cfg.relaxed.run, r.c.A0[1] + cfg.relaxed.lane, { rot: 3 });
+  } else for (const r of runs) await r.lab.place(STARTERS('starter-glider-hw65'), r.c.glider[0] - r.ri, r.c.glider[1]);
   const T = cfg.steps ?? 80000, chunk = 2000;
   const trails = runs.map(() => [] as number[][]);
   for (let t = chunk; t <= T; t += chunk) {

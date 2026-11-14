@@ -1,0 +1,111 @@
+{
+  "name": "BZ wave fragments (sub-excitable)",
+  "description": "Light-sensitive Belousov–Zhabotinsky (Oregonator). Under strong light (phi ≈ 0.084) the medium is sub-excitable: a broken wave neither spreads into a full wave nor dies at once, but travels as a compact fragment. Top: a lone fragment. Below: two fragments meet head-on, overlapping by half — colliding excitation waves annihilate, so the overlap cancels and the leftover halves carry on as shorter fragments (the basic gate of Adamatzky's collision-based computing). Fragment length is an unstable balance point (as theory says for a uniform medium): at this phi they slowly widen, and a little more light makes them shrink instead — stabilising them is next on the list. Things to try: paint phi high (≈0.1) for light barriers fragments die at, or lower (≈0.07) for channels where they widen; lower phi globally (≈0.05) for full excitable waves and spirals; the seed brush excites.",
+  "rule": "builtin:4",
+  "size": 384,
+  "start": "initial",
+  "globals": {
+    "phi": 0.0843
+  },
+  "initial": [
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.9
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.1,
+        "y0": 0.06,
+        "x1": 0.12,
+        "y1": 0.3
+      }
+    },
+    {
+      "chem": "v",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.04,
+        "y0": 0.04,
+        "x1": 0.1,
+        "y1": 0.32
+      }
+    },
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.9
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.2,
+        "y0": 0.42,
+        "x1": 0.22,
+        "y1": 0.72
+      }
+    },
+    {
+      "chem": "v",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.14,
+        "y0": 0.4,
+        "x1": 0.2,
+        "y1": 0.74
+      }
+    },
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.9
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.78,
+        "y0": 0.57,
+        "x1": 0.8,
+        "y1": 0.87
+      }
+    },
+    {
+      "chem": "v",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.8,
+        "y0": 0.55,
+        "x1": 0.86,
+        "y1": 0.89
+      }
+    }
+  ],
+  "view": {
+    "reagent": "u",
+    "low": 0,
+    "high": 0.8,
+    "tint": "v",
+    "tintLow": 0,
+    "tintHigh": 0.4
+  },
+  "stepsPerFrame": 100
+}

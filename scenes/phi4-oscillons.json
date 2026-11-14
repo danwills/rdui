@@ -1,0 +1,131 @@
+{
+  "name": "φ⁴ oscillons",
+  "description": "Klein–Gordon with a double-well (φ⁴) potential: the vacua are u = −1 and u = +1. Bubbles of the +1 vacuum collapse, and instead of vanishing they settle into oscillons: lumps that pulse for a very long time, shedding only a little radiation. Domain walls between the vacua are kinks that straighten and shrink. The field is reversible apart from a little viscosity (nu) that damps grid-scale ripples; raise gamma to add friction, or set nu = 0 for pure conservative dynamics. The seed brush (u = 2π) is a big kick; paint gamma to make absorbing regions.",
+  "rule": "builtin:5",
+  "size": 256,
+  "start": "initial",
+  "globals": {
+    "sg": 0,
+    "phi4": 1,
+    "nu": 0.005,
+    "gamma": 0,
+    "dx": 0.25,
+    "timestep": 0.05
+  },
+  "initial": [
+    {
+      "chem": "u",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": -1
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 2,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.25,
+        "cy": 0.3,
+        "r": 0.045
+      }
+    },
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 2,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.25,
+        "r": 0.055
+      }
+    },
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 2,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.6,
+        "r": 0.04
+      }
+    },
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 2,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.2,
+        "cy": 0.75,
+        "r": 0.06
+      }
+    },
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 2,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.78,
+        "cy": 0.72,
+        "r": 0.05
+      }
+    },
+    {
+      "chem": "u",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 2,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.12,
+        "r": 0.035
+      }
+    }
+  ],
+  "view": {
+    "reagent": "u",
+    "low": -1.3,
+    "high": 1.3,
+    "tint": "v",
+    "tintLow": -1,
+    "tintHigh": 1
+  },
+  "stepsPerFrame": 20
+}

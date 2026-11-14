@@ -24,7 +24,11 @@ export interface ParamSpec {
   max: number;
 }
 
-export type Fill = { type: 'constant'; value: number } | { type: 'white_noise'; low: number; high: number };
+export type Fill =
+  | { type: 'constant'; value: number }
+  | { type: 'white_noise'; low: number; high: number }
+  /** On a circle: value · ½(1 − tanh((d − r)/edge)), a flat top with a smooth rim `edge` cells wide (default 2). Elsewhere: value. */
+  | { type: 'bump'; value: number; edge?: number };
 export type Shape =
   | { type: 'everywhere' }
   | { type: 'rectangle'; x0: number; y0: number; x1: number; y1: number } // normalized, y down
@@ -410,8 +414,15 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
   for (const o of rule.initial) {
     const r = rule.reagents.indexOf(o.chem);
     if (r < 0) continue;
-    for (const c of shapeCells(o.shape, w, h, salt)) {
-      const v = o.fill.type === 'constant' ? o.fill.value : o.fill.low + Math.random() * (o.fill.high - o.fill.low);
+    // a smooth bump reaches past the circle's rim, so its tail isn't cut off
+    const sh = o.shape, fill = o.fill;
+    const bump = fill.type === 'bump' && sh.type === 'circle' ? { cx: sh.cx * w, cy: sh.cy * h, r: sh.r * Math.max(w, h), e: fill.edge ?? 2 } : null;
+    const cellsOf = bump ? shapeCells({ ...sh, r: (bump.r + 4 * bump.e) / Math.max(w, h) } as Shape, w, h, salt) : shapeCells(sh, w, h, salt);
+    for (const c of cellsOf) {
+      const v =
+        fill.type === 'constant' ? fill.value
+        : fill.type === 'bump' ? (bump ? fill.value * 0.5 * (1 - Math.tanh((Math.hypot((c % w) + 0.5 - bump.cx, Math.floor(c / w) + 0.5 - bump.cy) - bump.r) / bump.e)) : fill.value)
+        : fill.low + Math.random() * (fill.high - fill.low);
       const k = c * S * 4 + r;
       switch (o.op) {
         case 'overwrite': state[k] = v; break;
@@ -617,9 +628,116 @@ export const PHYLLOTAXIS: RuleDef = {
   view: { reagent: 'a', low: -0.6, high: 1.2, stepsPerFrame: 100 },
 };
 
+/**
+ * Light-sensitive Belousov–Zhabotinsky (two-variable Oregonator, Field & Noyes;
+ * Krug et al.). Under strong light (phi) the medium is sub-excitable: a broken
+ * wave neither spreads nor dies but travels as a compact fragment, and
+ * fragments collide deterministically — the basis of Adamatzky's
+ * collision-based computing.
+ */
+export const OREGONATOR: RuleDef = {
+  name: 'Sub-excitable BZ (Oregonator)',
+  description:
+    'Two-variable Oregonator with illumination phi: delta_u = (u − u² − (f v + phi)(u − q)/(u + q))/eps + D_u ∇²u, delta_v = u − v. ' +
+    'Near phi ≈ 0.079 the medium is sub-excitable and broken waves travel as compact wave fragments.',
+  reagents: ['u', 'v'],
+  params: [
+    { name: 'timestep', value: 0.001, min: 0, max: 0.004 },
+    { name: 'dx', value: 0.25, min: 0.1, max: 0.5 },
+    { name: 'eps', value: 0.022, min: 0.01, max: 0.05 },
+    { name: 'f', value: 1.4, min: 0.5, max: 3 },
+    { name: 'q', value: 0.002, min: 0.0005, max: 0.01 },
+    { name: 'phi', value: 0.079, min: 0, max: 0.15 },
+    { name: 'D_u', value: 1, min: 0, max: 2 },
+  ],
+  paintable: ['phi'],
+  // the light term is very stiff near u ≈ 0 (rate ~ (f v + phi) 2q/(u+q)²/eps, up to ~10⁴):
+  // it is taken implicitly (linearised backward Euler), which divides the
+  // explicit delta by 1 + timestep·A/(u + q)
+  formula: `delta_u = ((u - u*u)/eps + D_u*laplacian_u - ((f*v + phi)/eps)*(u - q)/(u + q)) / (1.0 + timestep*((f*v + phi)/eps)/(u + q));
+delta_v = u - v;`,
+  rest: [0.0019, 0.0019],
+  seed: [0.9, null],
+  seedNoise: [0, 0],
+  initial: [
+    // a broken wave: an excited strip with a refractory strip behind it, so it can only go right
+    { chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 0.9 }, shape: { type: 'rectangle', x0: 0.46, y0: 0.4, x1: 0.48, y1: 0.6 } },
+    { chem: 'v', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'rectangle', x0: 0.4, y0: 0.38, x1: 0.46, y1: 0.62 } },
+  ],
+  view: { reagent: 'u', low: 0, high: 0.8, tint: 'v', stepsPerFrame: 200 },
+};
+
+/**
+ * Conservative relativistic fields: sine-Gordon (sg) and φ⁴ (phi4) potentials
+ * in one rule, stepped symplectically (v first, then u with the new v), so
+ * energy is kept and nothing grows or dies numerically. Kinks are domain walls
+ * between vacua; breathers and oscillons are long-lived localized pulses.
+ */
+export const KLEIN_GORDON: RuleDef = {
+  name: 'Klein–Gordon (sine-Gordon / φ⁴)',
+  description:
+    'u_tt = ∇²u − sg sin u − phi4 (u³ − u) − mass u − gamma u_t + nu ∇²u_t, with v = u_t. Reversible when gamma = nu = 0: ' +
+    'kinks (walls between vacua), breathers and oscillons (pulsing lumps) that collide without friction.',
+  reagents: ['u', 'v'],
+  params: [
+    { name: 'timestep', value: 0.05, min: 0, max: 0.15 },
+    { name: 'dx', value: 0.25, min: 0.1, max: 1 },
+    { name: 'sg', value: 1, min: 0, max: 2 },
+    { name: 'phi4', value: 0, min: 0, max: 2 },
+    { name: 'mass', value: 0, min: -1, max: 1 },
+    { name: 'gamma', value: 0, min: 0, max: 0.1 },
+    { name: 'nu', value: 0.02, min: 0, max: 0.2 },
+  ],
+  paintable: ['gamma'],
+  // nu: viscosity on v, which damps grid-scale ripples (~k²) and barely touches smooth kinks and breathers
+  formula: `delta_v = laplacian_u - sg*sin(u) - phi4*(u*u*u - u) - mass*u - gamma*v + nu*laplacian_v;
+delta_u = v + timestep*(laplacian_u - sg*sin(u) - phi4*(u*u*u - u) - mass*u - gamma*v + nu*laplacian_v);`,
+  rest: [0, 0],
+  seed: [6.2832, null],
+  seedNoise: [0, 0],
+  initial: [
+    { chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 6.2832 }, shape: { type: 'spots', count: 6, minSize: 10, maxSize: 24, seed: 3 } },
+  ],
+  view: { reagent: 'u', low: -1, high: 7, tint: 'v', stepsPerFrame: 20 },
+};
+
+/**
+ * Swift–Hohenberg with quadratic and cubic terms (localized spots and patches
+ * for slightly negative r) and a slow inhibitor w that u switches on: −kappa·w.
+ * When w lags enough (tau large), a resting spot is unstable and drifts off its
+ * own inhibition (Krischer–Mikhailov drift bifurcation).
+ */
+export const SWIFT_HOHENBERG_FB: RuleDef = {
+  name: 'Swift–Hohenberg + inhibitor',
+  description:
+    'delta_u = r u − (∇⁴u + 2∇²u + u) + b u² − u³ − kappa w, delta_w = (u − w)/tau + D_w ∇²w. ' +
+    'Localized spots and patches for r slightly below 0; a slow inhibitor (kappa, tau) can set them moving.',
+  reagents: ['u', 'w'],
+  params: [
+    { name: 'timestep', value: 0.002, min: 0, max: 0.004 },
+    { name: 'dx', value: 0.55, min: 0.3, max: 1 },
+    { name: 'r', value: -0.2, min: -1, max: 0.5 },
+    { name: 'b', value: 1.6, min: 0, max: 3 },
+    { name: 'kappa', value: 0, min: 0, max: 2 },
+    { name: 'tau', value: 10, min: 0.1, max: 100 },
+    { name: 'D_w', value: 0.5, min: 0, max: 5 },
+  ],
+  paintable: ['r', 'kappa'],
+  formula: `delta_u = r*u - (bilaplacian_u + 2.0*laplacian_u + u) + b*u*u - u*u*u - kappa*w;
+delta_w = (u - w)/tau + D_w*laplacian_w;`,
+  rest: [0, 0],
+  seed: [1.2, null],
+  seedNoise: [0, 0],
+  initial: [
+    { chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1.2 }, shape: { type: 'spots', count: 8, minSize: 4, maxSize: 8, seed: 5 } },
+  ],
+  view: { reagent: 'u', low: -0.5, high: 1.5, tint: 'w', stepsPerFrame: 100 },
+};
+
 // FHN3 is exported for lab experiments but not listed until its parameters
 // are pinned down (spots don't survive on this lattice scaling yet).
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS];
+// New rules go at the end: scenes refer to built-ins by index.
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));
