@@ -1080,7 +1080,55 @@ delta_b = (D_b + dDb)*laplacian_b + a*b*b - (Fx + k + dk)*b;`,
   size: { width: 512, height: 512 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS];
+const WEATHER_FIELDS = ['F', 'k', 'Da', 'Db'];
+
+/**
+ * Gray-Scott Weather: Meta Gray-Scott's four fields given dynamics of their own.
+ * Fields are dimensionless (uX ~ b), each a moving average over X_mem steps of
+ * b + X_diff·(1 − a − b) plus the saturated fields, Σ Y_to_X·tanh(uY), spread
+ * X_reach cells; X_gain turns uX into its parameter's offset. With every
+ * coupling 0 it is Meta Gray-Scott (with F_forget 0).
+ */
+export const WEATHER_GS: RuleDef = {
+  name: 'Gray-Scott Weather',
+  description: 'Gray-Scott over four fields that have weather of their own. As in Meta Gray-Scott, fields uF uk uDa uDb remember where b has been '
+    + '(X_mem steps, spreading X_reach cells, fed by b + X_diff·(1−a−b)) and offset F, k, D_a, D_b by X_gain·uX. Here they also drive each other '
+    + 'through Y_to_X couplings (field Y into field X, via tanh(uY), so they saturate): positive couplings excite, negative ones inhibit; X_to_X '
+    + 'makes a field self-exciting (bistable when above 1). Fields with different memories or reaches that excite and inhibit each other '
+    + 'can oscillate, travel or pattern by themselves, and the Gray-Scott layer rides on that weather. Every coupling 0 = Meta Gray-Scott.',
+  reagents: ['a', 'b', 'uF', 'uk', 'uDa', 'uDb'],
+  params: [
+    { name: 'timestep', value: 0.2, min: 0, max: 0.4 },
+    { name: 'D_a', value: 0.8, min: 0, max: 1.2 },
+    { name: 'D_b', value: 0.4, min: 0, max: 0.8 },
+    { name: 'F', value: 0.059, min: 0, max: 0.1 },
+    { name: 'k', value: 0.065, min: 0.03, max: 0.075 },
+    ...WEATHER_FIELDS.flatMap((X) => [
+      { name: `${X}_gain`, value: 0, min: X === 'k' ? -0.3 : -3, max: X === 'k' ? 0.3 : 3 },
+      { name: `${X}_mem`, value: 20000, min: 1000, max: 300000 },
+      { name: `${X}_reach`, value: 5, min: 0.3, max: 60 },
+      { name: `${X}_diff`, value: 0, min: -2, max: 2 },
+    ]),
+    ...WEATHER_FIELDS.flatMap((X) => WEATHER_FIELDS.map((Y) => ({ name: `${Y}_to_${X}`, value: 0, min: -4, max: 4 }))),
+  ],
+  paintable: ['F', 'k'],
+  explore: WEATHER_FIELDS.flatMap((X) => WEATHER_FIELDS.map((Y) => `${Y}_to_${X}`)),
+  formula: `float d = 1.0 - a - b;
+float tF = tanh(uF); float tk = tanh(uk); float tDa = tanh(uDa); float tDb = tanh(uDb);
+${WEATHER_FIELDS.map((X) => `delta_u${X} = ((b + ${X}_diff*d + ${WEATHER_FIELDS.map((Y) => `${Y}_to_${X}*t${Y}`).join(' + ')} - u${X})/${X}_mem
+  + min(${X}_reach*${X}_reach/${X}_mem, 0.2)*laplacian_u${X})/timestep;`).join('\n')}
+float Fx = F + F_gain*uF;
+delta_a = (D_a + Da_gain*uDa)*laplacian_a - a*b*b + Fx*(1.0 - a);
+delta_b = (D_b + Db_gain*uDb)*laplacian_b + a*b*b - (Fx + k + k_gain*uk)*b;`,
+  rest: [1, 0, 0, 0, 0, 0],
+  seed: [0.5, 0.25, null, null, null, null],
+  seedNoise: [0, 0.25, 0, 0, 0, 0],
+  initial: META_GS.initial,
+  view: { reagent: 'b', low: 0, high: 0.8, tint: 'uDa', stepsPerFrame: 333 },
+  size: { width: 256, height: 256 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));
