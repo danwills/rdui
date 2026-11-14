@@ -285,7 +285,7 @@ async function init() {
         alert(`Could not import stamps: ${(e as Error).message}`);
       }
     },
-  }, () => rule.reagents[s.reagent], () => rule.reagents);
+  }, () => rule.reagents[s.reagent], () => rule);
   stamps.onChange = () => {
     stampPanel.render(); // also moves the selection off deleted or unlisted stamps
   };
@@ -488,7 +488,7 @@ async function init() {
     const L = sim.layout;
     const stamp: Stamp = {
       id: newStampId(), name: `stamp ${stamps.stamps.length + 1}`, w: r.w, h: r.h,
-      rule: rule.name, reagents: L.reagents, paramNames: L.paramNames, S: L.S, P: L.P, params, state,
+      rule: rule.name, formula: rule.formula, reagents: L.reagents, paramNames: L.paramNames, S: L.S, P: L.P, params, state,
     };
     s.stampRot = 0;
     s.stampFlip = false;

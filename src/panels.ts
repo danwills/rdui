@@ -5,9 +5,10 @@ import { probeColor } from './overlay';
 
 /**
  * Stamp library: thumbnail grid, placement options, import/export. Only stamps
- * captured with the current rule's reagents are listed, unless showAllStamps.
+ * captured with the current rule are listed (same formula when the stamp
+ * recorded one, else the same reagents), unless showAllStamps.
  */
-export function stampSection(lib: StampLibrary, s: Settings, select: (id: string) => void, io: { export(): void; import(): void }, shownReagent: () => string, reagents: () => string[]) {
+export function stampSection(lib: StampLibrary, s: Settings, select: (id: string) => void, io: { export(): void; import(): void }, shownReagent: () => string, rule: () => { reagents: string[]; formula: string }) {
   const starters = () => {
     const n = lib.addStarters();
     if (!n) alert('All starter stamps are already in your library.');
@@ -16,7 +17,8 @@ export function stampSection(lib: StampLibrary, s: Settings, select: (id: string
   const empty = el('p', { class: 'hint' }, 'No stamps yet — use Capture (5) and drag over the field.');
   const error = el('p', { class: 'hint error' });
   const hidden = el('p', { class: 'hint' });
-  const fits = (st: Stamp) => st.reagents.join() === reagents().join();
+  const squash = (f: string) => f.replace(/\s+/g, ' ').trim();
+  const fits = (st: Stamp) => st.reagents.join() === rule().reagents.join() && (st.formula === undefined || squash(st.formula) === squash(rule().formula));
   const thumbs = new Map<string, HTMLCanvasElement>();
 
   function checkbox(label: string, key: 'placeParams' | 'placeChem' | 'showAllStamps', then?: () => void) {

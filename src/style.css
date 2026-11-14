@@ -71,6 +71,7 @@ html, body {
 header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
 h1 { font-size: 18px; margin: 0; letter-spacing: 0.04em; color: var(--accent); }
 .sub { color: var(--muted); }
+.sub.build { margin-left: auto; font-size: 10px; }
 
 section { border-top: 1px solid var(--line); padding: 10px 0 6px; }
 h2 {

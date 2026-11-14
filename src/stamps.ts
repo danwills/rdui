@@ -10,6 +10,8 @@ export interface Stamp {
   h: number;
   /** Rule it was captured from (informational; placement matches by name). */
   rule: string;
+  /** The rule's formula at capture (stamps made before this was recorded lack it). */
+  formula?: string;
   reagents: string[];
   /** Per-cell param names, [0] = 'wall'. */
   paramNames: string[];
@@ -198,6 +200,7 @@ interface StampJSON {
   state: string;
   // absent in v1 stamps (Gray-Scott u,v / feed,kill,diffusion,wall)
   rule?: string;
+  formula?: string;
   reagents?: string[];
   paramNames?: string[];
   S?: number;
@@ -206,7 +209,7 @@ interface StampJSON {
 
 export function stampToJSON(s: Stamp): StampJSON {
   return {
-    id: s.id, name: s.name, w: s.w, h: s.h, rule: s.rule, reagents: s.reagents, paramNames: s.paramNames, S: s.S, P: s.P,
+    id: s.id, name: s.name, w: s.w, h: s.h, rule: s.rule, formula: s.formula, reagents: s.reagents, paramNames: s.paramNames, S: s.S, P: s.P,
     params: f32ToB64(s.params), state: f32ToB64(s.state),
   };
 }
@@ -223,6 +226,7 @@ export function stampFromJSON(j: StampJSON): Stamp {
   const s: Stamp = {
     id: j.id || newStampId(), name: j.name, w: j.w, h: j.h,
     rule: j.rule ?? 'Gray-Scott',
+    formula: j.formula,
     reagents: j.reagents ?? ['a', 'b'],
     paramNames: j.paramNames ?? ['F', 'k', 'D', 'wall'],
     S: j.S ?? 1,

@@ -39,4 +39,11 @@ self.addEventListener('fetch', (e) => {
   };
 }
 
-export default defineConfig({ plugins: [serviceWorker()] });
+// shown in the panel header, so it's easy to see which version the installed app runs
+const now = new Date();
+const build = `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+export default defineConfig({
+  plugins: [serviceWorker()],
+  define: { __BUILD__: JSON.stringify(process.env.NODE_ENV === 'production' ? `build ${build}` : 'dev') },
+});

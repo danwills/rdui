@@ -78,7 +78,7 @@ export function defaultSettings(): Settings {
     strength: 1,
     hardness: 0.6,
     paint: {},
-    fkTarget: 'brush',
+    fkTarget: 'background',
     running: true,
     stepsPerFrame: 10,
     gridSize: 512,
@@ -336,7 +336,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const importBtn = button('Import .vti…', actions.importRule, 'load a Ready formula pattern');
 
   root.append(
-    el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox')),
+    el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox'), el('span', { class: 'sub build' }, __BUILD__)),
     section('Tool', toolRow, toolHint,
       slider('radius', 'radius', 1, 80, 1, 0),
       slider('strength', 'strength', 0.02, 1, 0.01, 2),
