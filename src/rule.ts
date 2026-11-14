@@ -280,7 +280,8 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const spectralBilap = spectral && (needs('bilaplacian').size > 0 || kernelSlots.size > 0);
   const L: string[] = [];
   const add = (s: string) => L.push(s);
-  add(`struct Info { width: u32, height: u32, _p0: u32, _p1: u32 };`);
+  // cell: grid spacing relative to full resolution (the app's resolution scale), multiplies dx
+  add(`struct Info { width: u32, height: u32, cell: f32, _p1: u32 };`);
   add(`@group(0) @binding(0) var<uniform> info: Info;`);
   add(`@group(0) @binding(1) var<uniform> g: array<vec4<f32>, ${globalVec4s}>;`);
   add(`@group(0) @binding(2) var<storage, read> params: array<vec4<f32>>;`);
@@ -327,7 +328,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   const memValue = (cell: string) =>
     memSlot > 0 ? slotRef('params', `${cell} * ${P}u`, memSlot) : `g[${(rule.params.findIndex((p) => p.name === mem!.param)) >> 2}].${COMP[rule.params.findIndex((p) => p.name === mem!.param) & 3]}`;
 
-  add(`  let rd_dx = ${dxExpr};`);
+  add(`  let rd_dx = ${dxExpr} * info.cell;`);
   if (lapSlots.size && spectral) {
     for (const k of lapSlots) add(`  let L${k} = lapK[sb + ${k}u];`);
   } else if (lapSlots.size) {
@@ -456,7 +457,21 @@ function shapeCells(shape: Shape, w: number, h: number, salt: number): number[] 
  * Like Ready, reagents start at 0 and the overlays are applied on top; pass
  * `base: 'rest'` to start from the rule's rest state instead (a clean field).
  */
-export function initialField(rule: RuleDef, w: number, h: number, globals: Record<string, number>, base: 'zero' | 'rest' = 'zero') {
+function scaleOverlay(o: Overlay, cell: number): Overlay {
+  const f = o.fill, sh = o.shape;
+  const fill: Fill = f.type === 'packet' ? { ...f, sigma: f.sigma / cell, kx: (f.kx ?? 0) * cell, ky: (f.ky ?? 0) * cell }
+    : f.type === 'bump' ? { ...f, edge: (f.edge ?? 2) / cell } : f;
+  const shape: Shape = sh.type === 'spots' ? { ...sh, minSize: Math.max(1, Math.round(sh.minSize / cell)), maxSize: Math.max(1, Math.round(sh.maxSize / cell)) } : sh;
+  return { ...o, fill, shape };
+}
+
+/**
+ * The rule's initial field on a w×h grid. `cell` is the grid spacing relative to
+ * full resolution (2 at half resolution): sizes given in cells (spots, packet
+ * widths and wavenumbers, bump rims) are scaled so the field looks the same.
+ */
+export function initialField(rule: RuleDef, w: number, h: number, globals: Record<string, number>, base: 'zero' | 'rest' = 'zero', cell = 1) {
+  if (cell !== 1) rule = { ...rule, initial: rule.initial.map((o) => scaleOverlay(o, cell)) };
   const { S, P, paramNames } = layoutOf(rule);
   const state = new Float32Array(w * h * S * 4);
   const params = new Float32Array(w * h * P * 4);

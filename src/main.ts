@@ -78,6 +78,11 @@ async function init() {
   for (const n of rule.paintable) s.paint[n] = globals[n];
   let compiled: CompiledRule = compileRule(rule);
   let sim = new Simulation(device, format, s.gridSize, s.gridSize, compiled);
+  // the field's full-resolution size; the sim runs at full × s.resScale. Separately,
+  // feature size sets the grid spacing (cellScale = 1/featureSize): features, seeds
+  // and the brush grow with it (so resolution ½ + feature size ½ shows the same picture)
+  let full = { width: s.gridSize, height: s.gridSize };
+  let cellScale = 1;
 
   const probes = new ProbeSet(device);
   const stamps = new StampLibrary();
@@ -107,12 +112,17 @@ async function init() {
   }
 
   function initialData(w: number, h: number, image?: Float32Array[]) {
-    const f = initialField(rule, w, h, globals);
+    const f = initialField(rule, w, h, globals, 'zero', cellScale);
     if (image) {
       const S4 = layoutOf(rule).S * 4;
       image.forEach((img, r) => img.forEach((v, i) => (f.state[i * S4 + r] = v)));
     }
     return f;
+  }
+
+  /** Whether a rule's diffusion is unconditionally stable (exact spectral operators), so features can be made larger than full size. */
+  function stableAtAnySize(c: CompiledRule) {
+    return ['heat', 'kernel', 'propagator'].includes(c.spectral?.second ?? '');
   }
 
   /** Switch to a (possibly modified) rule, rebuilding the simulation. */
@@ -125,8 +135,12 @@ async function init() {
       alert(`Can't use rule "${next.name}": ${e instanceof RuleError ? e.message : e}`);
       return false;
     }
-    const width = o.size?.width ?? sim.width;
-    const height = o.size?.height ?? sim.height;
+    // a loaded field or imported image comes at its own resolution: run it as given
+    const fixed = (o.field !== 'initial' && o.field !== 'carry') || !!o.image;
+    if (o.size) full = fixed ? { width: o.size.width / s.resScale, height: o.size.height / s.resScale } : o.size;
+    const scale = o.field === 'carry' ? sim.width / full.width : s.resScale;
+    const width = Math.max(8, Math.round(full.width * scale));
+    const height = Math.max(8, Math.round(full.height * scale));
     let carried: FieldData | null = null;
     if (o.field === 'carry') {
       const { state, params } = await sim.readRegion(0, 0, sim.width, sim.height);
@@ -155,6 +169,9 @@ async function init() {
     globals = { ...defaultGlobals(rule), ...(o.globals ?? globals) };
     for (const k of Object.keys(globals)) if (!rule.params.some((p) => p.name === k)) delete globals[k];
     sim = new Simulation(device, format, width, height, compiled);
+    if (!stableAtAnySize(compiled)) s.featureSize = Math.min(s.featureSize, 1);
+    cellScale = 1 / s.featureSize;
+    sim.setCellScale(cellScale);
     for (const [k, v] of Object.entries(globals)) sim.setGlobal(k, v);
 
     if (!o.keepView) s.paint = {};
@@ -184,7 +201,7 @@ async function init() {
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
     if (s.tint >= rule.reagents.length) s.tint = -1;
-    if (width === height) s.gridSize = width;
+    if (full.width === full.height) s.gridSize = full.width;
 
     // Probe rects stay valid on the same grid; their histories restart either way.
     if (sizeChanged) probes.clear();
@@ -329,6 +346,11 @@ async function init() {
       sim.setGlobal(name, v);
     },
     setBackground,
+    setFeatureSize: () => {
+      cellScale = 1 / s.featureSize;
+      sim.setCellScale(cellScale);
+    },
+    toggleUI: () => toggleUI(),
     togglePaintable: (name) => {
       const paintable = rule.paintable.includes(name) ? rule.paintable.filter((n) => n !== name) : [...rule.paintable, name];
       if (paintable.length > 7) {
@@ -344,6 +366,7 @@ async function init() {
     currentId: () => ruleId,
     warnings: () => warnings,
     note: () => note,
+    bigFeatures: () => stableAtAnySize(compiled),
   }, [stampPanel.node, probePanel.node]);
 
   if (import.meta.env.DEV) {
@@ -460,10 +483,11 @@ async function init() {
     if (hide) document.documentElement.requestFullscreen?.().catch(() => {});
     else if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }
+  // shown only while the panel is hidden: the way back (the panel's header has the other)
   const uiToggle = document.createElement('button');
   uiToggle.className = 'ui-toggle';
   uiToggle.textContent = '⛶';
-  uiToggle.title = 'hide/show the panel · H';
+  uiToggle.title = 'show the panel · H';
   uiToggle.addEventListener('click', toggleUI);
   stage.append(uiToggle);
 
@@ -627,7 +651,7 @@ async function init() {
     }
     return {
       ax, ay, bx, by, mode,
-      radius: s.radius, strength: s.strength, hardness: s.hardness,
+      radius: s.radius / cellScale, strength: s.strength, hardness: s.hardness,
       paint: paintValues(),
     };
   }

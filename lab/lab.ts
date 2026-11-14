@@ -251,7 +251,9 @@ export async function saveFrame(
     const v = (state[i * S4 + o.ri] - o.lo) / (o.hi - o.lo);
     let [r, g, b] = pal(v);
     if (o.fleck) {
-      [r, g, b] = fleck([0, 1, 2].map((k) => (k < lab.layout.reagents.length ? state[i * S4 + k] : 0)) as [number, number, number], o.fleck, o.hueShape ?? 1, o.hueOffset ?? 0);
+      // as the app: with no third reagent, c → 9.1·b (where the shader's c settles)
+      const b1 = state[i * S4 + 1], c = lab.layout.reagents.length > 2 ? state[i * S4 + 2] : Math.min(1, Math.max(0, 9.1 * b1));
+      [r, g, b] = fleck([state[i * S4], b1, c], o.fleck, o.hueShape ?? 1, o.hueOffset ?? 0);
     } else if (o.hsv) {
       // as the app's HSV palette: ri → hue, ti → saturation, full value
       const h = Math.max(0, Math.min(1, v)), s = o.ti === undefined ? 1 : Math.max(0, Math.min(1, (state[i * S4 + o.ti] - o.tlo!) / (o.thi! - o.tlo!)));

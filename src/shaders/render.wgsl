@@ -21,7 +21,7 @@ struct View {
   tintStrength: f32,
   hueShape: f32,   // fleck palettes: smoothMap shape (1 = linear) and cyclic hue shift
   hueOffset: f32,
-  _p2: f32,
+  reagents: f32,   // the rule's reagent count
   paramSlot: vec4<u32>,   // flat param slots for r, g, b (0 = unused)
   paramMin: vec4<f32>,
   paramMax: vec4<f32>,
@@ -131,7 +131,12 @@ fn rgb2oklch(c: vec3<f32>) -> vec3<f32> {
 }
 
 fn fleck(g: vec2<f32>) -> vec3<f32> {
-  let abc = vec3<f32>(sampleReagent(g, 0u), sampleReagent(g, 1u), select(0.0, sampleReagent(g, 2u), S * 4u > 2u));
+  let a = sampleReagent(g, 0u);
+  let b = sampleReagent(g, 1u);
+  // With no third reagent, c is stood in by where the shader's c settles: it's made
+  // by b and decays (b_to_c 0.05, c_damp 0.0055), so c → 9.1·b, clamped to 1.
+  let c = select(clamp(9.1 * b, 0.0, 1.0), sampleReagent(g, 2u), view.reagents > 2.5);
+  let abc = vec3<f32>(a, b, c);
   if (view.palette == 6u) {
     let lch = rgb2oklch(max(abc, vec3<f32>(0.0)));
     return clamp(vec3<f32>(lch.x, lch.y, shapeHue(lch.z)), vec3<f32>(0.0), vec3<f32>(1.0));

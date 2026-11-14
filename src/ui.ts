@@ -16,6 +16,10 @@ export interface Settings {
   running: boolean;
   stepsPerFrame: number;
   gridSize: number;
+  /** Fraction of full resolution the sim runs at (1, ½, ¼, ⅛). */
+  resScale: number;
+  /** Feature size relative to the rule's own (grid spacing = 1/featureSize); above 1 only for unconditionally stable rules. */
+  featureSize: number;
   viewMode: 'reagent' | 'params';
   /** Displayed reagent index and its range. */
   reagent: number;
@@ -53,6 +57,10 @@ export interface Actions {
   togglePaintable(name: string): void;
   /** Set the rule's base values for paintable params and retune every cell still holding the old ones. */
   setBackground(values: Record<string, number>): void;
+  /** Hide/show the panel (the sim alone, centred, fullscreen). */
+  toggleUI(): void;
+  /** Apply s.featureSize to the running sim. */
+  setFeatureSize(): void;
 }
 
 /** What the panel needs to know about the current rule. */
@@ -63,6 +71,8 @@ export interface RuleContext {
   currentId(): string;
   warnings(): string[];
   note(): string;
+  /** Whether feature sizes above 1 are stable for the current rule. */
+  bigFeatures(): boolean;
 }
 
 export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
@@ -86,6 +96,8 @@ export function defaultSettings(): Settings {
     running: true,
     stepsPerFrame: 10,
     gridSize: 512,
+    resScale: 1,
+    featureSize: 1,
     viewMode: 'reagent',
     reagent: 1,
     low: 0,
@@ -325,6 +337,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     ruleBody.replaceChildren(...nodes);
     viewReagent.fill();
     viewTint.fill();
+    featureSel.fill();
     sync();
   }
 
@@ -341,9 +354,13 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const viewTint = select('tint by', 'tint', () => [[-1, 'none'], ...reagentOptions()]);
 
   const importBtn = button('Import .vti…', actions.importRule, 'load a Ready formula pattern');
+  // feature size: ¼–1 for any rule, up to 4 where the rule's diffusion is exact (stable at any size)
+  const featureSel = select('feature size', 'featureSize', () => [
+    [0.125, '⅛'], [0.25, '¼'], [0.5, '½'], [1, '1×'], ...(rc.bigFeatures() ? [[2, '2×'], [4, '4×']] as [number, string][] : []),
+  ], actions.setFeatureSize);
 
   root.append(
-    el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox'), el('span', { class: 'sub build' }, __BUILD__)),
+    el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox'), el('span', { class: 'sub build' }, __BUILD__), button('⛶', actions.toggleUI, 'hide the panel: just the sim, fullscreen · H')),
     section('Tool', toolRow, toolHint,
       slider('radius', 'radius', 1, 80, 1, 0),
       slider('strength', 'strength', 0.02, 1, 0.01, 2),
@@ -354,6 +371,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Clear chem', actions.clearChemistry, 'C')),
       slider('steps/frame', 'stepsPerFrame', 1, 200, 1, 0),
       select('grid', 'gridSize', () => [[128, '128²'], [256, '256²'], [512, '512²'], [1024, '1024²'], [2048, '2048²']], () => actions.resize(s.gridSize)).row,
+      select('resolution', 'resScale', () => [[1, 'full'], [0.5, '½'], [0.25, '¼'], [0.125, '⅛']], () => actions.resize(s.gridSize)).row,
+      featureSel.row,
       el('div', { class: 'buttons' },
         button('Save field…', actions.saveField, 'download the rule, params, walls, chemistry and probes · ctrl+S'),
         button('Load field…', actions.loadField, 'ctrl+O'),

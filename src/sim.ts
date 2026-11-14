@@ -81,6 +81,7 @@ export class Simulation {
 
   private infoUniform: GPUBuffer;
   private globalsUniform: GPUBuffer;
+  private cell = 1;
   private brushUniform: GPUBuffer;
   private viewUniform: GPUBuffer;
 
@@ -119,7 +120,7 @@ export class Simulation {
     this.globalsUniform = device.createBuffer({ size: compiled.globalVec4s * 16, usage: uniform });
     this.brushUniform = device.createBuffer({ size: 208, usage: uniform });
     this.viewUniform = device.createBuffer({ size: 112, usage: uniform });
-    device.queue.writeBuffer(this.infoUniform, 0, new Uint32Array([width, height, 0, 0]));
+    this.writeInfo();
     this.globals = new Float32Array(compiled.globalVec4s * 4);
     compiled.rule.params.forEach((p, i) => (this.globals[i] = p.value));
     device.queue.writeBuffer(this.globalsUniform, 0, this.globals);
@@ -148,8 +149,7 @@ export class Simulation {
 
     if (compiled.spectral) {
       this.spectral = new Spectral(device, width, height, S, compiled.spectral.second, this.state, !compiled.spectral.exact);
-      const dx = compiled.globalIndex.get('dx');
-      if (dx !== undefined) this.spectral.setDx(this.globals[dx]);
+      this.applyDx();
       for (const [name, key] of KERNEL_PARAMS) {
         const i = compiled.globalIndex.get(name);
         if (i !== undefined) this.spectral.setKernel({ [key]: this.globals[i] });
@@ -200,12 +200,35 @@ export class Simulation {
     this.renderGroups = [renderGroup(0), renderGroup(1)];
   }
 
+  /**
+   * Grid spacing relative to full resolution (2 = half resolution): multiplies dx
+   * in the step's stencils and the spectral wavenumbers, so a coarser grid shows
+   * the same picture.
+   */
+  setCellScale(cell: number) {
+    this.cell = cell;
+    this.writeInfo();
+    this.applyDx();
+  }
+
+  private writeInfo() {
+    const buf = new ArrayBuffer(16);
+    new Uint32Array(buf).set([this.width, this.height]);
+    new Float32Array(buf)[2] = this.cell;
+    this.device.queue.writeBuffer(this.infoUniform, 0, buf);
+  }
+
+  private applyDx() {
+    const i = this.compiled.globalIndex.get('dx');
+    this.spectral?.setDx((i !== undefined ? this.globals[i] : 1) * this.cell);
+  }
+
   setGlobal(name: string, value: number) {
     const i = this.compiled.globalIndex.get(name);
     if (i === undefined) return;
     this.globals[i] = value;
     this.device.queue.writeBuffer(this.globalsUniform, 0, this.globals);
-    if (name === 'dx') this.spectral?.setDx(value);
+    if (name === 'dx') this.applyDx();
     const kp = KERNEL_PARAMS.find(([n]) => n === name);
     if (kp) this.spectral?.setKernel({ [kp[1]]: value });
     if (name === KERNEL_RADIUS) this.spectral?.setKernel({ sigma1: value / 2 });
@@ -313,7 +336,7 @@ export class Simulation {
     u[7] = v.tint >= 0 ? v.tint : 99;
     f[8] = v.low; f[9] = v.high;
     f[10] = v.tintLow; f[11] = v.tintHigh; f[12] = v.tintStrength;
-    f[13] = v.hueShape; f[14] = v.hueOffset;
+    f[13] = v.hueShape; f[14] = v.hueOffset; f[15] = this.compiled.rule.reagents.length;
     v.paramSlots.slice(0, 3).forEach((p, k) => {
       u[16 + k] = p.slot;
       f[20 + k] = p.min;
