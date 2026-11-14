@@ -67,7 +67,7 @@ export interface RuleDef {
   seedNoise: number[];
   initial: Overlay[];
   /** Suggested view: reagent shown, its range, and steps per frame. */
-  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number };
+  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number; palette?: number; hueShape?: number; hueOffset?: number };
   /**
    * Membranes: for the listed reagents, neighbours whose `param` value differs
    * (a painted compartment id) are treated as no-flux, like walls but only for
@@ -930,7 +930,67 @@ delta_b = (B - b)/timestep + A*B*B - (F + k)*B;`,
   size: { width: 512, height: 512 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM];
+/**
+ * Dan's GrayScottHSVFleck shader as a rule: Gray-Scott plus a third chemical c,
+ * made by b and decaying slowly, that lowers the feed, raises the kill and
+ * speeds a's diffusion. The shader's wide Laplacian (a flat disc of radius 9,
+ * weight 0.02 per cell, halved) is replaced by its smooth equivalent through
+ * the FFT: lap_gain·(Gaussian blur − field), with the disc's total weight
+ * (gain 2.42) and spread (σ² = ⟨x²⟩ = 19.4). Its 8-bit storage workarounds
+ * (neighbour smoothing, spike filter, dither) aren't needed with float state, but
+ * its clamp to [0, 1] is kept: it's part of the dynamics (c would otherwise climb
+ * to ~9 and a's diffusion with it, past stability).
+ */
+export const GS_FLECK: RuleDef = {
+  name: 'Gray-Scott + c (fleck)',
+  description: 'Dan\'s GrayScottHSVFleck: Gray-Scott with a third chemical c that b produces and that decays slowly; c lowers the feed, '
+    + 'raises the kill and speeds a\'s diffusion, so where b has been the medium changes. A wide, smooth Laplacian (kernel_sigma: '
+    + 'larger = bigger features) and a long timestep. Shown in the HSV fleck palette: (a, b, c) as an RGB colour, re-expressed as '
+    + '(value, saturation, hue); try the OKLCH fleck palette and the hue shape/offset sliders too. Seed with a wide brush (radius 10+): '
+    + 'small seeds die at this scale. Lively for F 0.009–0.019, k 0.046–0.056 (the shader\'s mouse range).',
+  reagents: ['a', 'b', 'c'],
+  params: [
+    { name: 'timestep', value: 3, min: 0, max: 4 },
+    { name: 'D_a', value: 0.08, min: 0, max: 0.2 },
+    { name: 'D_b', value: 0.04, min: 0, max: 0.2 },
+    { name: 'D_c', value: 0.03, min: 0, max: 0.2 },
+    { name: 'F', value: 0.014, min: 0, max: 0.1 },
+    { name: 'k', value: 0.051, min: 0.03, max: 0.075 },
+    { name: 'c_to_F', value: -0.004, min: -0.02, max: 0.02 },
+    { name: 'c_to_k', value: 0.002, min: -0.02, max: 0.02 },
+    { name: 'c_to_Da', value: 0.03, min: -0.1, max: 0.1 },
+    { name: 'c_to_Db', value: 0, min: -0.1, max: 0.1 },
+    { name: 'c_damp', value: 0.0055, min: 0, max: 0.05 },
+    { name: 'b_to_c', value: 0.05, min: 0, max: 0.2 },
+    { name: 'kernel_sigma', value: 4.41, min: 1, max: 12 },
+    { name: 'lap_gain', value: 2.42, min: 0.5, max: 5 },
+  ],
+  paintable: ['F', 'k'],
+  laplacian: 'spectral',
+  formula: `float La = lap_gain*(kernel_a - a); float Lb = lap_gain*(kernel_b - b); float Lc = lap_gain*(kernel_c - c);
+float Fc = F + c_to_F*c; float kc = k + c_to_k*c; float r = a*b*b;
+float da = (D_a + c*c_to_Da)*La - r + Fc*(1.0 - a);
+float db = (D_b + c*c_to_Db)*Lb + r - (Fc + kc)*b;
+float dc = -c*c_damp + b*b_to_c + D_c*Lc;
+// the shader's state lives in a colour buffer: every step is clamped to [0, 1]
+delta_a = (clamp(a + da*timestep, 0.0, 1.0) - a)/timestep;
+delta_b = (clamp(b + db*timestep, 0.0, 1.0) - b)/timestep;
+delta_c = (clamp(c + dc*timestep, 0.0, 1.0) - c)/timestep;`,
+  rest: [1, 0, 0],
+  seed: [0.5, 0.25, 0],
+  seedNoise: [0, 0.25, 0],
+  initial: [
+    // (the shader starts white, a = b = c = 1, but that collapses uniformly and takes
+    // seeds with it; seeds sized for the wide Laplacian, 16–30 px, take off instead)
+    { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'spots', count: 14, minSize: 16, maxSize: 30, seed: 3 } },
+    { chem: 'b', op: 'overwrite', fill: { type: 'white_noise', low: 0.2, high: 0.4 }, shape: { type: 'spots', count: 14, minSize: 16, maxSize: 30, seed: 3 } },
+  ],
+  view: { reagent: 'b', low: 0, high: 0.4, stepsPerFrame: 10, palette: 5 },
+  size: { width: 512, height: 512 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));

@@ -176,6 +176,11 @@ async function init() {
       s.tintLow = 0;
       s.tintHigh = s.tint >= 0 ? 0.4 : 1;
       if (rule.view.stepsPerFrame) s.stepsPerFrame = rule.view.stepsPerFrame;
+      // a rule may ask for a palette; leaving one that only it suits goes back to the default
+      if (rule.view.palette !== undefined) s.palette = rule.view.palette;
+      else if (s.palette >= 5) s.palette = 0;
+      s.hueShape = rule.view.hueShape ?? 1;
+      s.hueOffset = rule.view.hueOffset ?? 0;
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
     if (s.tint >= rule.reagents.length) s.tint = -1;
