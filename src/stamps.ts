@@ -60,11 +60,28 @@ export function transformStamp(s: Stamp, t: Transform): Stamp {
 }
 
 /**
+ * A stamp's background: the mean of its border cells per reagent. Usually the
+ * rest state, but not for stamps cut from a non-rest background (e.g. U-skates,
+ * which are holes in an excited field), so compositing uses this rather than
+ * the rule's rest.
+ */
+export function stampBackground(stamp: Float32Array, w: number, h: number, S: number, n: number): number[] {
+  const sum = new Array(n).fill(0);
+  let count = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (x > 0 && y > 0 && x < w - 1 && y < h - 1) continue;
+    for (let r = 0; r < n; r++) sum[r] += stamp[(y * w + x) * S * 4 + r];
+    count++;
+  }
+  return sum.map((v) => v / Math.max(1, count));
+}
+
+/**
  * Composite stamp chemistry onto existing chemistry by adding the stamp's
- * deviation from the rest state: out = current + (stamp − rest). A stamp's
+ * deviation from its background: out = current + (stamp − background). A stamp's
  * quiet border adds ~nothing, so overlapping stamps superpose smoothly instead
  * of cutting square seams into each other. `stamp` and `current` share the
- * destination layout (S vec4s per cell); `rest` is per reagent.
+ * destination layout (S vec4s per cell); `rest` (the background) is per reagent.
  */
 export function compositeOnto(current: Float32Array, stamp: Float32Array, rest: number[], S: number, cells: number) {
   const out = new Float32Array(current);

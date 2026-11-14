@@ -1,0 +1,61 @@
+{
+  "name": "U-skate world",
+  "description": "Gray-Scott at F = 0.062, k = 0.0609, Robert Munafo's 'U-skate world'. Here the excited uniform state (pale) is the stable background, and structures are holes in it: still negatons (dots), negative worms, and the U-skate — a U-shaped hole that glides closed end first at about 1.9 px per 1000 steps, in any direction (it isn't locked to the grid). The U-skate is a knife-edge object: at k ≈ 0.0610 it slowly stretches into a worm, at k ≈ 0.06085 it collapses into a single negaton. Here three skates meet and freeze into a still cluster of six negatons. Things to try: place the U-skate stamp (rotate it to aim); paint k a little higher to make a skate grow a tail, or lower to stop it dead; the erase brush punches holes (erasing restores a = 1, b = 0, which here is a hole): small ones settle into negatons for skates to hit, long strokes become worms.",
+  "rule": "builtin:0",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 40,
+  "globals": {
+    "F": 0.062,
+    "k": 0.0609
+  },
+  "initial": [
+    {
+      "chem": "a",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.42012
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "b",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.29253
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    }
+  ],
+  "stamps": [
+    {
+      "stamp": "starter-uskate",
+      "x": 40,
+      "y": 100,
+      "rot": 2
+    },
+    {
+      "stamp": "starter-uskate",
+      "x": 216,
+      "y": 112,
+      "rot": 0
+    },
+    {
+      "stamp": "starter-uskate",
+      "x": 128,
+      "y": 215,
+      "rot": 1
+    }
+  ],
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.4
+  }
+}

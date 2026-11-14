@@ -4,7 +4,7 @@
  */
 import * as R from '../src/rule';
 import { Simulation } from '../src/sim';
-import { STARTER_STAMPS, compositeOnto, transformStamp, type Stamp } from '../src/stamps';
+import { STARTER_STAMPS, compositeOnto, stampBackground, transformStamp, type Stamp } from '../src/stamps';
 
 declare global {
   interface Window {
@@ -83,7 +83,7 @@ export async function makeLab(base: R.RuleDef, N: number, globals: Record<string
       const w = (v: number) => ((v % N) + N) % N;
       if (t.overwrite) return sim.writeRegion(w(x), w(y), s.w, s.h, undefined, st);
       const cur = (await sim.readRegion(w(x), w(y), s.w, s.h)).state;
-      sim.writeRegion(w(x), w(y), s.w, s.h, undefined, compositeOnto(cur, st, rest!, L.S, s.w * s.h));
+      sim.writeRegion(w(x), w(y), s.w, s.h, undefined, compositeOnto(cur, st, stampBackground(st, s.w, s.h, L.S, rest!.length), L.S, s.w * s.h));
     },
   };
   return lab;

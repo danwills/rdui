@@ -12,7 +12,7 @@ import {
 } from './rule';
 import { BUNDLED_PATTERNS, importReady, loadBundled } from './ready';
 import { SCENES, type Scene } from './scenes';
-import { STARTER_STAMPS, compositeOnto } from './stamps';
+import { STARTER_STAMPS, compositeOnto, stampBackground } from './stamps';
 
 const RECT_TOOLS = new Set(['capture', 'probe']);
 const PROBE_SAMPLE_EVERY = 3; // frames
@@ -427,7 +427,7 @@ async function init() {
   }
 
   /**
-   * Add a stamp's chemistry as a deviation from rest (current + stamp − rest),
+   * Add a stamp's chemistry as a deviation from its background (current + stamp − background),
    * so overlapping stamps superpose instead of cutting square seams.
    */
   async function compositeStamp(x: number, y: number, w: number, h: number, state: Float32Array, params?: Float32Array) {
@@ -436,7 +436,7 @@ async function init() {
     const target = sim;
     const cur = await target.readRegion(ox, oy, w, h);
     if (target !== sim) return; // the rule changed while reading
-    sim.writeRegion(ox, oy, w, h, params, compositeOnto(cur.state, state, rule.rest, sim.layout.S, w * h));
+    sim.writeRegion(ox, oy, w, h, params, compositeOnto(cur.state, state, stampBackground(state, w, h, sim.layout.S, rule.rest.length), sim.layout.S, w * h));
   }
 
   async function captureStamp(r: Rect) {
