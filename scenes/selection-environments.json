@@ -1,12 +1,12 @@
 {
   "name": "Gray-Scott Selection: environments",
-  "description": "Gray-Scott Selection with each founder's square also painted as its environment, and a stronger seed bank (trait_eps 0.01): a trace of b everywhere carrying the local painted traits, which mixes into the thin leading edge of any lineage colonising that ground. Spots keep dying and being reborn; lineages spread across the squares and compete, while the environment keeps feeding local traits back in, so diversity lasts (3–5 lineages above 2% for 300k steps in the lab) and the population drifts slowly towards lower kill. Tint = each spot's own feed. Try: repaint a square's F/k (Background target) to change its environment; set trait_eps back to 0.001 to see blending wipe out diversity.",
+  "description": "Gray-Scott Selection with each founder's square also painted as its environment, and a weak seed bank (seed_bank 0.0005): a trace of the local painted traits mixed into every new b, which matters most at the thin leading edge of a lineage colonising that ground. Spots keep dying and being reborn; lineages spread across the squares and compete, while the environment keeps feeding local traits back in, so diversity lasts, but unevenly: in the lab 11 of the 16 lineages held above 2% at 150k steps, the low-feed founders and the high-kill corner squeezed out and the middle ones spreading. seed_bank 0.01 lets the environment win (every square keeps its own); 0 lets blending win (two left). Tint = each spot's own feed. Try: repaint a square's F/k (Background target) to change its environment; set seed_bank to 0 to see blending wipe out diversity.",
   "rule": "builtin:14",
   "size": 256,
   "start": "initial",
   "stepsPerFrame": 20,
   "globals": {
-    "trait_eps": 0.01
+    "seed_bank": 0.0005
   },
   "paint": [
     {

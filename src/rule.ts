@@ -1129,47 +1129,60 @@ delta_b = (D_b + Db_gain*uDb)*laplacian_b + a*b*b - (Fx + k + k_gain*uk)*b;`,
 };
 
 /**
- * Gray-Scott Lineages: each b molecule carries its own feed and kill (traits
- * P_F, P_k), inherited by the b it makes (a + 2b → 3b) and lost when it decays.
- * For the mean trait P = q/b of the trait mass q = b·P, Gray-Scott's own terms
- * give ∂P/∂t = D_b (∇²P + 2 ∇ln b · ∇P): the reaction terms cancel exactly and
- * what remains is diffusion plus transport along b's own gradients. Where
- * there is no b the trait is undefined; it settles there to the painted
- * background F, k (so painting F/k chooses where each lineage is born).
+ * Gray-Scott Lineages: each b molecule carries its own feed and kill, inherited
+ * by the b it makes (a + 2b → 3b) and lost when it decays. Tracked as trait mass
+ * q = b·P, which diffuses with b, is made with new b at the parents' trait and
+ * decays with b (the conservative form: stable at sharp trait edges). t is the
+ * tagged b, the b made by reproduction; untagged b (brush seeds, the opening
+ * spots) carry the painted F, k, so painting chooses which lineage a new spot
+ * founds; seed_bank mixes that much of the painted traits into all new b (0:
+ * pure inheritance). trait_eps only stands in for b's traits where there is no
+ * b (the feed there). P_F, P_k show the traits.
  */
+export const LINEAGE_FORMULA = `float wild = max(b - t, 0.0);
+// the traits feed and kill act with; trait_eps fills in the painted values where there is no b
+float ib = 1.0/(b + trait_eps);
+float PF = (q_F + (wild + trait_eps)*F)*ib;
+float Pk = (q_k + (wild + trait_eps)*k)*ib;
+// the traits new b inherits: its parents' (tagged q/b, untagged b the paint), plus seed_bank of the paint
+float bank = seed_bank + 1e-9;
+float ih = 1.0/(b + bank);
+float HF = (q_F + (wild + bank)*F)*ih;
+float Hk = (q_k + (wild + bank)*k)*ih;
+float made = a*b*b;
+float kill = PF + Pk;
+delta_t = D_b*laplacian_t + made - kill*t;
+delta_q_F = D_b*laplacian_q_F + made*HF - kill*q_F;
+delta_q_k = D_b*laplacian_q_k + made*Hk - kill*q_k;
+delta_P_F = (PF - P_F)/timestep;
+delta_P_k = (Pk - P_k)/timestep;
+delta_a = D_a*laplacian_a - made + PF*(1.0 - a);
+delta_b = D_b*laplacian_b + made - kill*b;`;
+
 export const GS_LINEAGES: RuleDef = {
   name: 'Gray-Scott Lineages',
-  description: 'Gray-Scott where the feed and kill belong to the spots: every b molecule carries a trait (P_F, P_k) that the b it makes '
-    + 'inherits, so spots keep their own F and k as they move, and pass them on when they split. The traits move exactly as tagged b '
-    + 'molecules would: diffusing with b, and drifting along b\'s own gradients (2·D_b·∇ln b). Where there is no b they settle to the painted '
-    + 'F and k (rate settle), so painting F/k chooses where each lineage is born; spots then carry it out into other regions. '
+  description: 'Gray-Scott where the feed and kill belong to the spots: every b molecule carries a trait (shown in P_F, P_k) that the b it '
+    + 'makes inherits, so spots keep their own F and k as they move, and pass them on when they split. Traits travel as trait mass '
+    + '(q_F, q_k) that diffuses with b and is made and lost along with it; t is the b made by reproduction. Brush seeds and the opening '
+    + 'spots carry the painted F and k, so painting chooses which lineage a new spot founds; spots then carry it into other regions. '
+    + 'seed_bank (0 = pure inheritance) mixes that much of the local paint into every new b. '
     + 'Paint two areas with different F/k and watch the lineages compete (tint by P_F).',
-  reagents: ['a', 'b', 'P_F', 'P_k'],
+  reagents: ['a', 'b', 't', 'q_F', 'q_k', 'P_F', 'P_k'],
   params: [
     { name: 'timestep', value: 1, min: 0, max: 1.5 },
     { name: 'D_a', value: 0.3, min: 0, max: 0.37 },
     { name: 'D_b', value: 0.15, min: 0, max: 0.37 },
     { name: 'F', value: GS_PRESET_F, min: 0, max: 0.1 },
     { name: 'k', value: GS_PRESET_K, min: 0.03, max: 0.075 },
-    { name: 'settle', value: 0.002, min: 0, max: 0.05 },
     { name: 'trait_eps', value: 0.001, min: 0.0001, max: 0.05 },
+    { name: 'seed_bank', value: 0, min: 0, max: 0.05 },
   ],
   paintable: ['F', 'k'],
-  formula: `float ib = 1.0/(b + trait_eps);
-float empty = trait_eps*ib;
-float gx = x_gradient_b*ib; float gy = y_gradient_b*ib;
-delta_P_F = D_b*(laplacian_P_F + 2.0*(gx*x_gradient_P_F + gy*y_gradient_P_F)) + settle*empty*(F - P_F);
-delta_P_k = D_b*(laplacian_P_k + 2.0*(gx*x_gradient_P_k + gy*y_gradient_P_k)) + settle*empty*(k - P_k);
-delta_a = D_a*laplacian_a - a*b*b + P_F*(1.0 - a);
-delta_b = D_b*laplacian_b + a*b*b - (P_F + P_k)*b;`,
-  rest: [1, 0, GS_PRESET_F, GS_PRESET_K],
-  seed: [0.5, 0.25, null, null],
-  seedNoise: [0, 0.25, 0, 0],
-  initial: [
-    ...GRAY_SCOTT.initial,
-    { chem: 'P_F', op: 'overwrite', fill: { type: 'constant', value: GS_PRESET_F }, shape: { type: 'everywhere' } },
-    { chem: 'P_k', op: 'overwrite', fill: { type: 'constant', value: GS_PRESET_K }, shape: { type: 'everywhere' } },
-  ],
+  formula: LINEAGE_FORMULA,
+  rest: [1, 0, 0, 0, 0, GS_PRESET_F, GS_PRESET_K],
+  seed: [0.5, 0.25, null, null, null, null, null],
+  seedNoise: [0, 0.25, 0, 0, 0, 0, 0],
+  initial: GRAY_SCOTT.initial,
   view: { reagent: 'b', low: 0, high: 0.4, tint: 'P_F' },
 };
 
@@ -1185,9 +1198,10 @@ export function selectionTrait(ix: number, iy: number): [number, number] {
   return [F, 0.0485 + (F - 0.013) + 0.001 * iy];
 }
 
-/** The founders as trait mass q = b·P in the initial spots (b = 0.3 there), 0 elsewhere. */
+/** The founders as tagged b and trait mass q = b·P in the initial spots (b = 0.3 there), 0 elsewhere. */
 const SELECTION_SPOTS = { type: 'spots' as const, count: 48, minSize: 3, maxSize: 8, seed: 2 };
 const SELECTION_FOUNDERS: Overlay[] = [
+  { chem: 't', op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: SELECTION_SPOTS },
   { chem: 'q_F', op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: SELECTION_SPOTS },
   { chem: 'q_k', op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: SELECTION_SPOTS },
   ...[0, 1, 2, 3].flatMap((ix) => [0, 1, 2, 3].flatMap((iy): Overlay[] => {
@@ -1202,11 +1216,8 @@ const SELECTION_FOUNDERS: Overlay[] = [
 /**
  * Gray-Scott Selection: Gray-Scott with lineages in a regime with turnover
  * (Pearson ε: spots keep dying and being reborn), started from a grid of
- * founder lineages. b carries trait mass q = b·P (P = own feed / kill): q
- * diffuses as b does and is made and lost with b, carrying the trait of the b
- * that made it, P = (q + ε·background)/(b + ε). That is exactly Gray-Scott
- * Lineages' transport, in conservative form (stable at sharp trait edges).
- * P_F and P_k show the traits. No mutation and no randomness.
+ * founder lineages (tagged b with their trait mass in the opening spots), with
+ * Gray-Scott Lineages' formula. No mutation and no randomness.
  */
 export const GS_SELECTION: RuleDef = {
   name: 'Gray-Scott Selection',
@@ -1217,7 +1228,7 @@ export const GS_SELECTION: RuleDef = {
     + 'lineages that replicate and survive better take over the others\' squares, and where lineages merge their traits blend into hybrids. '
     + 'Nothing random: variation comes only from the founders, the blending and the chaos of the turnover. Seeding with the brush founds '
     + 'a lineage with the painted F and k.',
-  reagents: ['a', 'b', 'q_F', 'q_k', 'P_F', 'P_k'],
+  reagents: ['a', 'b', 't', 'q_F', 'q_k', 'P_F', 'P_k'],
   params: [
     { name: 'timestep', value: 1, min: 0, max: 1.5 },
     { name: 'D_a', value: 0.3, min: 0, max: 0.37 },
@@ -1225,23 +1236,14 @@ export const GS_SELECTION: RuleDef = {
     { name: 'F', value: 0.017, min: 0, max: 0.1 },
     { name: 'k', value: 0.0535, min: 0.03, max: 0.075 },
     { name: 'trait_eps', value: 0.001, min: 0.0001, max: 0.05 },
+    { name: 'seed_bank', value: 0, min: 0, max: 0.05 },
   ],
   paintable: ['F', 'k'],
-  formula: `float ib = 1.0/(b + trait_eps);
-float PF = (q_F + trait_eps*F)*ib;
-float Pk = (q_k + trait_eps*k)*ib;
-float made = a*b*b;
-float net = made - (PF + Pk)*b;
-delta_q_F = D_b*laplacian_q_F + PF*net;
-delta_q_k = D_b*laplacian_q_k + Pk*net;
-delta_P_F = (PF - P_F)/timestep;
-delta_P_k = (Pk - P_k)/timestep;
-delta_a = D_a*laplacian_a - made + PF*(1.0 - a);
-delta_b = D_b*laplacian_b + net;`,
-  rest: [1, 0, 0, 0, 0.017, 0.0535],
-  // a seeded spot founds a lineage with the default traits
-  seed: [0.5, 0.25, 0.25 * 0.017, 0.25 * 0.0535, null, null],
-  seedNoise: [0, 0, 0, 0, 0, 0],
+  formula: LINEAGE_FORMULA,
+  rest: [1, 0, 0, 0, 0, 0.017, 0.0535],
+  // a seeded spot founds a lineage with the painted traits
+  seed: [0.5, 0.25, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0],
   initial: [
     { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
     { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: SELECTION_SPOTS },
