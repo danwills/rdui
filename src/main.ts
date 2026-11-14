@@ -385,6 +385,13 @@ async function init() {
       const f = initialData(sim.width, sim.height);
       sim.load(f.state, f.params);
     },
+    restart: () => {
+      if (/^(scene|builtin|user|pattern):/.test(ruleId)) void selectRule(ruleId);
+      else {
+        const f = initialData(sim.width, sim.height);
+        sim.load(f.state, f.params);
+      }
+    },
     clearChemistry: () => sim.clearChemistry(),
     resize: (size) => applyRule(rule, { field: 'initial', size: { width: size, height: size }, keepView: true }),
     stepOnce: () => {

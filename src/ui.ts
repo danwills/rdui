@@ -46,6 +46,8 @@ export interface Settings {
 export interface Actions {
   fillParams(): void;
   reset(): void;
+  /** Reload the current rule or scene from scratch, as if picked from the menu. */
+  restart(): void;
   clearChemistry(): void;
   resize(size: number): void;
   stepOnce(): void;
@@ -420,7 +422,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     ),
     section('Rule', el('div', { class: 'rule-row' }, ruleSel, importBtn), ruleBody),
     section('Simulation',
-      el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Clear chem', actions.clearChemistry, 'C')),
+      el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Restart', actions.restart, 'start the rule or scene over from scratch: its own parameters, opening, paint and stamps (Reset keeps your parameters)'), button('Clear chem', actions.clearChemistry, 'C')),
       logSlider('steps/frame', 'stepsPerFrame', 64, 5000),
       select('grid', 'gridSize', () => [[128, '128²'], [256, '256²'], [512, '512²'], [1024, '1024²'], [2048, '2048²']], () => actions.resize(s.gridSize)).row,
       select('resolution', 'resScale', () => [[1, 'full'], [0.5, '½'], [0.25, '¼'], [0.125, '⅛']], () => actions.resize(s.gridSize)).row,
