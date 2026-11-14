@@ -1,0 +1,213 @@
+{
+  "name": "Gray-Scott Selection: environments",
+  "description": "Gray-Scott Selection with each founder's square also painted as its environment, and a stronger seed bank (trait_eps 0.01): a trace of b everywhere carrying the local painted traits, which mixes into the thin leading edge of any lineage colonising that ground. Spots keep dying and being reborn; lineages spread across the squares and compete, while the environment keeps feeding local traits back in, so diversity lasts (3–5 lineages above 2% for 300k steps in the lab) and the population drifts slowly towards lower kill. Tint = each spot's own feed. Try: repaint a square's F/k (Background target) to change its environment; set trait_eps back to 0.001 to see blending wipe out diversity.",
+  "rule": "builtin:14",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 20,
+  "globals": {
+    "trait_eps": 0.01
+  },
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.013,
+        "k": 0.0485
+      }
+    },
+    {
+      "rect": [
+        0,
+        64,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.013,
+        "k": 0.0495
+      }
+    },
+    {
+      "rect": [
+        0,
+        128,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.013,
+        "k": 0.0505
+      }
+    },
+    {
+      "rect": [
+        0,
+        192,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.013,
+        "k": 0.0515
+      }
+    },
+    {
+      "rect": [
+        64,
+        0,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.01567,
+        "k": 0.05117
+      }
+    },
+    {
+      "rect": [
+        64,
+        64,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.01567,
+        "k": 0.05217
+      }
+    },
+    {
+      "rect": [
+        64,
+        128,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.01567,
+        "k": 0.05317
+      }
+    },
+    {
+      "rect": [
+        64,
+        192,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.01567,
+        "k": 0.05417
+      }
+    },
+    {
+      "rect": [
+        128,
+        0,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.01833,
+        "k": 0.05383
+      }
+    },
+    {
+      "rect": [
+        128,
+        64,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.01833,
+        "k": 0.05483
+      }
+    },
+    {
+      "rect": [
+        128,
+        128,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.01833,
+        "k": 0.05583
+      }
+    },
+    {
+      "rect": [
+        128,
+        192,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.01833,
+        "k": 0.05683
+      }
+    },
+    {
+      "rect": [
+        192,
+        0,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.021,
+        "k": 0.0565
+      }
+    },
+    {
+      "rect": [
+        192,
+        64,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.021,
+        "k": 0.0575
+      }
+    },
+    {
+      "rect": [
+        192,
+        128,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.021,
+        "k": 0.0585
+      }
+    },
+    {
+      "rect": [
+        192,
+        192,
+        64,
+        64
+      ],
+      "values": {
+        "F": 0.021,
+        "k": 0.0595
+      }
+    }
+  ],
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.5,
+    "tint": "P_F",
+    "tintLow": 0.012,
+    "tintHigh": 0.022
+  }
+}
