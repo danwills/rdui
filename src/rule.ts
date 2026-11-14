@@ -1173,7 +1173,75 @@ delta_b = D_b*laplacian_b + a*b*b - (P_F + P_k)*b;`,
   view: { reagent: 'b', low: 0, high: 0.4, tint: 'P_F' },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES];
+/**
+ * A 4×4 grid of founder lineages (F across, k down) for Gray-Scott Selection:
+ * trait mass q = b·P in the initial spots (b = 0.3 there), 0 elsewhere.
+ */
+const SELECTION_SPOTS = { type: 'spots' as const, count: 48, minSize: 3, maxSize: 8, seed: 2 };
+const SELECTION_FOUNDERS: Overlay[] = [
+  { chem: 'q_F', op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: SELECTION_SPOTS },
+  { chem: 'q_k', op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: SELECTION_SPOTS },
+  ...[0, 1, 2, 3].flatMap((ix) => [0, 1, 2, 3].flatMap((iy): Overlay[] => {
+    const shape = { type: 'rectangle' as const, x0: ix / 4, y0: iy / 4, x1: (ix + 1) / 4, y1: (iy + 1) / 4 };
+    return [
+      { chem: 'q_F', op: 'multiply', fill: { type: 'constant', value: 0.012 + 0.004 * ix }, shape },
+      { chem: 'q_k', op: 'multiply', fill: { type: 'constant', value: 0.051 + 0.0027 * iy }, shape },
+    ];
+  })),
+];
+
+/**
+ * Gray-Scott Selection: Gray-Scott with lineages in a regime with turnover
+ * (Pearson ε: spots keep dying and being reborn), started from a grid of
+ * founder lineages. b carries trait mass q = b·P (P = own feed / kill): q
+ * diffuses as b does and is made and lost with b, carrying the trait of the b
+ * that made it, P = (q + ε·background)/(b + ε). That is exactly Gray-Scott
+ * Lineages' transport, in conservative form (stable at sharp trait edges).
+ * P_F and P_k show the traits. No mutation and no randomness.
+ */
+export const GS_SELECTION: RuleDef = {
+  name: 'Gray-Scott Selection',
+  description: 'Spots that carry their own feed and kill, in a regime where they keep dying and being reborn (Pearson ε), started from a '
+    + '4×4 grid of founder lineages: feed rises across, kill rises down. The tint (P_F) is each spot\'s own feed. b carries its trait as a '
+    + 'trait mass (q_F, q_k) that diffuses and is made and lost along with b, so every new spot inherits the traits of the spots that made it; '
+    + 'lineages that replicate and survive better take over the others\' squares, and where lineages merge their traits blend into hybrids. '
+    + 'Nothing random: variation comes only from the founders, the blending and the chaos of the turnover. Seeding with the brush founds '
+    + 'a lineage with the painted F and k.',
+  reagents: ['a', 'b', 'q_F', 'q_k', 'P_F', 'P_k'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.5 },
+    { name: 'D_a', value: 0.3, min: 0, max: 0.37 },
+    { name: 'D_b', value: 0.15, min: 0, max: 0.37 },
+    { name: 'F', value: 0.018, min: 0, max: 0.1 },
+    { name: 'k', value: 0.055, min: 0.03, max: 0.075 },
+    { name: 'trait_eps', value: 0.001, min: 0.0001, max: 0.05 },
+  ],
+  paintable: ['F', 'k'],
+  formula: `float ib = 1.0/(b + trait_eps);
+float PF = (q_F + trait_eps*F)*ib;
+float Pk = (q_k + trait_eps*k)*ib;
+float made = a*b*b;
+float net = made - (PF + Pk)*b;
+delta_q_F = D_b*laplacian_q_F + PF*net;
+delta_q_k = D_b*laplacian_q_k + Pk*net;
+delta_P_F = (PF - P_F)/timestep;
+delta_P_k = (Pk - P_k)/timestep;
+delta_a = D_a*laplacian_a - made + PF*(1.0 - a);
+delta_b = D_b*laplacian_b + net;`,
+  rest: [1, 0, 0, 0, 0.018, 0.055],
+  // a seeded spot founds a lineage with the default traits
+  seed: [0.5, 0.25, 0.25 * 0.018, 0.25 * 0.055, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0],
+  initial: [
+    { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: SELECTION_SPOTS },
+    { chem: 'b', op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: SELECTION_SPOTS },
+    ...SELECTION_FOUNDERS,
+  ],
+  view: { reagent: 'b', low: 0, high: 0.5, tint: 'P_F' },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));
