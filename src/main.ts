@@ -740,6 +740,8 @@ async function init() {
   }
 
   // --- keyboard
+  // A menu keeps focus after a choice, which would swallow the tool and view keys: let it go.
+  document.addEventListener('change', (e) => { if (e.target instanceof HTMLSelectElement) e.target.blur(); });
   window.addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
     if (e.ctrlKey || e.metaKey) {
