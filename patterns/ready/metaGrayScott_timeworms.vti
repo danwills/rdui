@@ -1,0 +1,261 @@
+<?xml version="1.0"?>
+<VTKFile type="ImageData" version="0.1" byte_order="LittleEndian" compressor="vtkZLibDataCompressor">
+  <RD format_version="4">
+    <description>
+      This formula implements an idea for adding abstract further controls to regular Gray Scott, hence the &apos;meta&apos;.
+
+&quot;Meta&quot; in the sense that parameters in the original are now controlled (or at least offset) by reagents.
+
+   Regular Gray-Scott Reaction-Diffusion, with reagents added for F, K, D_a and D_b.
+   The extra reagents each have a decay speed and a diffusion rate.
+
+   A mixable amount of these is used in the main formula, so that accumulation behaviour can be tuned before engaging its effect.
+
+   The difference (a - b) and the b reagent, can be used to &apos;emit&apos; value into the extra reagents.
+
+   Emission amplitude is scaled by ctrlAmp and the decay rates are scaled by decayAmp.
+    </description>
+    <rule name="Meta-Gray-Scott" type="formula" wrap="1" neighborhood_type="vertex" neighborhood_range="1" neighborhood_weight="laplacian">
+      <param name="timestep">
+        0.2
+      </param>
+      <param name="D_a">
+        0.8
+      </param>
+      <param name="D_b">
+        0.4
+      </param>
+      <param name="k">
+        0.065
+      </param>
+      <param name="F">
+        0.059
+      </param>
+      <param name="ctrlAmp">
+        0.026
+      </param>
+      <param name="decayAmp">
+        0.05
+      </param>
+      <param name="fDecay">
+        0.0001
+      </param>
+      <param name="kDecay">
+        0.0032
+      </param>
+      <param name="daDecay">
+        0.002
+      </param>
+      <param name="dbDecay">
+        0.00023
+      </param>
+      <param name="fEffect">
+        0.24
+      </param>
+      <param name="kEffect">
+        -0.01
+      </param>
+      <param name="daEffect">
+        1.5
+      </param>
+      <param name="dbEffect">
+        0.5
+      </param>
+      <param name="diffToF">
+        0.02
+      </param>
+      <param name="diffToK">
+        -0.2
+      </param>
+      <param name="diffToDa">
+        0.09
+      </param>
+      <param name="diffToDb">
+        0.002
+      </param>
+      <param name="bToF">
+        0.05
+      </param>
+      <param name="bToK">
+        0.22
+      </param>
+      <param name="bToDa">
+        0.07
+      </param>
+      <param name="bToDb">
+        0.011
+      </param>
+      <param name="D_F">
+        0.007
+      </param>
+      <param name="D_k">
+        0.0002
+      </param>
+      <param name="D_Da">
+        0.0358
+      </param>
+      <param name="D_Db">
+        5e-06
+      </param>
+      <param name="powF">
+        1.00005
+      </param>
+      <param name="powK">
+        1
+      </param>
+      <param name="powDa">
+        1
+      </param>
+      <param name="powDb">
+        1
+      </param>
+      <formula number_of_chemicals="6">
+        c = pow( D_F * laplacian_c + (1.0f - fDecay * decayAmp) * c, powF );
+d = pow( D_k * laplacian_d + (1.0f - kDecay * decayAmp) * d, powK );
+e = pow( D_Da * laplacian_e + (1.0f - daDecay * decayAmp) * e, powDa);
+f = pow( D_Db * laplacian_f + (1.0f - dbDecay * decayAmp) * f, powDb);
+
+delta_a = (D_a + e * daEffect) * laplacian_a - a*b*b + ( F + fEffect * c ) * (1.0f-a);
+delta_b = (D_b + f * dbEffect) * laplacian_b + a*b*b - ( ( F + fEffect * c ) + ( k + kEffect * d ) ) * b;
+
+delta_c = ctrlAmp * diffToF * ((1.0f - a) - b) + b * ctrlAmp * bToF;
+delta_d = ctrlAmp * diffToK * ((1.0f - a) - b) + b * ctrlAmp * bToK ;
+delta_e = ctrlAmp * diffToDa * ((1.0f - a) - b) + b * ctrlAmp * bToDa;
+delta_f = ctrlAmp * diffToDb * ((1.0f - a) - b) + b * ctrlAmp * bToDb;
+      </formula>
+      
+    </rule>
+    <initial_pattern_generator apply_when_loading="true">
+      <overlay chemical="a">
+        <overwrite>
+          
+        </overwrite>
+        <constant value="1">
+          
+        </constant>
+        <everywhere>
+          
+        </everywhere>
+        
+      </overlay>
+      <overlay chemical="b">
+        <overwrite>
+          
+        </overwrite>
+        <white_noise low="0" high="1">
+          
+        </white_noise>
+        <rectangle>
+          <point3D x="0.2" y="0.2" z="0.6">
+            
+          </point3D>
+          <point3D x="0.4" y="0.5" z="0.8">
+            
+          </point3D>
+          
+        </rectangle>
+        
+      </overlay>
+      <overlay chemical="a">
+        <subtract>
+          
+        </subtract>
+        <other_chemical chemical="b">
+          
+        </other_chemical>
+        <rectangle>
+          <point3D x="0.2" y="0.2" z="0.6">
+            
+          </point3D>
+          <point3D x="0.4" y="0.5" z="0.8">
+            
+          </point3D>
+          
+        </rectangle>
+        
+      </overlay>
+      
+    </initial_pattern_generator>
+    <render_settings>
+      <surface_color r="1" g="1" b="1">
+        
+      </surface_color>
+      <color_low r="0" g="0" b="0">
+        
+      </color_low>
+      <color_high r="1" g="1" b="1">
+        
+      </color_high>
+      <show_color_scale value="false">
+        
+      </show_color_scale>
+      <show_multiple_chemicals value="false">
+        
+      </show_multiple_chemicals>
+      <active_chemical value="d">
+        
+      </active_chemical>
+      <low value="0">
+        
+      </low>
+      <high value="1">
+        
+      </high>
+      <vertical_scale_1D value="30">
+        
+      </vertical_scale_1D>
+      <vertical_scale_2D value="15">
+        
+      </vertical_scale_2D>
+      <contour_level value="0.25">
+        
+      </contour_level>
+      <use_wireframe value="false">
+        
+      </use_wireframe>
+      <show_cell_edges value="false">
+        
+      </show_cell_edges>
+      <show_bounding_box value="true">
+        
+      </show_bounding_box>
+      <slice_3D value="true">
+        
+      </slice_3D>
+      <slice_3D_axis value="z">
+        
+      </slice_3D_axis>
+      <slice_3D_position value="0.5">
+        
+      </slice_3D_position>
+      <show_displacement_mapped_surface value="false">
+        
+      </show_displacement_mapped_surface>
+      <color_displacement_mapped_surface value="true">
+        
+      </color_displacement_mapped_surface>
+      <use_image_interpolation value="true">
+        
+      </use_image_interpolation>
+      <timesteps_per_render value="333">
+        
+      </timesteps_per_render>
+      <show_phase_plot value="false">
+        
+      </show_phase_plot>
+      <phase_plot_x_axis value="a">
+        
+      </phase_plot_x_axis>
+      <phase_plot_y_axis value="b">
+        
+      </phase_plot_y_axis>
+      <phase_plot_z_axis value="c">
+        
+      </phase_plot_z_axis>
+      
+    </render_settings>
+    
+  </RD>
+  <ImageData WholeExtent="0 511 0 511 0 0" Origin="0 0 0" Spacing="1 1 1">
+  </ImageData>
+</VTKFile>

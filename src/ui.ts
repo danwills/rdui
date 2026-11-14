@@ -483,20 +483,44 @@ function buildFKPad(s: Settings, background: () => Record<string, number>, set: 
   onMapLoaded(draw);
 
   // Press: pick the value under the finger and show the magnifier; drag: move it
-  // at the magnifier's scale (fine control); lift: the magnifier goes.
+  // at the magnifier's scale (fine control); lift: the magnifier goes. A touch
+  // has to be held still for HOLD_MS first, so swiping over the pad still
+  // scrolls the panel; a mouse press engages at once.
+  const HOLD_MS = 300;
+  const SLOP = 8;
   let drag: { x: number; y: number; F: number; k: number; loupe: ReturnType<typeof openLoupe> } | null = null;
+  let pending: { id: number; x: number; y: number; timer: number } | null = null;
+  const cancelPending = () => {
+    if (pending) clearTimeout(pending.timer);
+    pending = null;
+  };
   const end = () => {
+    cancelPending();
     drag?.loupe.close();
     drag = null;
   };
-  canvas.addEventListener('pointerdown', (e) => {
-    canvas.setPointerCapture(e.pointerId);
+  const engage = (id: number, x: number, y: number) => {
+    pending = null;
+    canvas.setPointerCapture(id);
     const r = canvas.getBoundingClientRect();
-    const [F, k] = pickFK((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
+    const [F, k] = pickFK((x - r.left) / r.width, (y - r.top) / r.height);
     set(F, k);
-    drag = { x: e.clientX, y: e.clientY, F, k, loupe: openLoupe(s, background) };
+    drag = { x, y, F, k, loupe: openLoupe(s, background) };
+  };
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') return engage(e.pointerId, e.clientX, e.clientY);
+    cancelPending();
+    const { pointerId: id, clientX: x, clientY: y } = e;
+    pending = { id, x, y, timer: window.setTimeout(() => {
+      navigator.vibrate?.(15);
+      engage(id, x, y);
+    }, HOLD_MS) };
   });
+  // once engaged, the drag belongs to the map, not the panel's scroll
+  canvas.addEventListener('touchmove', (e) => drag && e.cancelable && e.preventDefault(), { passive: false });
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener('pointermove', (e) => {
+    if (pending && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) > SLOP) cancelPending();
     if (!drag) return;
     const r = canvas.getBoundingClientRect();
     const dk = ((e.clientX - drag.x) / r.width) * (K_RANGE[1] - K_RANGE[0]) / LOUPE_ZOOM;

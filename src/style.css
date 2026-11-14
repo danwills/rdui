@@ -114,7 +114,7 @@ button.active { border-color: var(--accent); color: var(--accent); }
 .fk-target { align-items: center; }
 .fk-target .hint { margin: 0 4px 0 0; }
 
-.fkpad { display: block; border: 1px solid var(--line); border-radius: 4px; cursor: crosshair; touch-action: none; }
+.fkpad { display: block; border: 1px solid var(--line); border-radius: 4px; cursor: crosshair; touch-action: pan-y; -webkit-touch-callout: none; user-select: none; }
 
 .hint { color: var(--muted); font-size: 11px; margin: 6px 0; }
 .hint.error { color: #ff7a7a; }
