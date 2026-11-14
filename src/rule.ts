@@ -1081,6 +1081,8 @@ delta_b = (D_b + dDb)*laplacian_b + a*b*b - (Fx + k + dk)*b;`,
 };
 
 const WEATHER_FIELDS = ['F', 'k', 'Da', 'Db'];
+/** Defaults: the weather search's #53 (the F field turns turbulent by itself; b makes spots and short worms). */
+const WEATHER_DEFAULTS: Record<string, number> = {"F": 0.05539, "k": 0.06528, "F_gain": 0.1487, "F_mem": 51940.0, "F_reach": 2.288, "F_diff": 0.2683, "F_to_F": 0.0, "k_to_F": -0.4404, "Da_to_F": 1.478, "Db_to_F": 0.2748, "k_gain": 0.009507, "k_mem": 82850.0, "k_reach": 1.404, "k_diff": 0.04701, "F_to_k": 2.742, "k_to_k": -2.046, "Da_to_k": 1.105, "Db_to_k": 0.0, "Da_gain": 1.003, "Da_mem": 5138.0, "Da_reach": 0.7529, "Da_diff": 1.414, "F_to_Da": 0.0, "k_to_Da": 0.7135, "Da_to_Da": -2.776, "Db_to_Da": 1.068, "Db_gain": 0.2967, "Db_mem": 2071.0, "Db_reach": 1.343, "Db_diff": 0.507, "F_to_Db": 1.398, "k_to_Db": -2.28, "Da_to_Db": 0.0, "Db_to_Db": -0.5631};
 
 /**
  * Gray-Scott Weather: Meta Gray-Scott's four fields given dynamics of their own.
@@ -1101,15 +1103,15 @@ export const WEATHER_GS: RuleDef = {
     { name: 'timestep', value: 0.2, min: 0, max: 0.4 },
     { name: 'D_a', value: 0.8, min: 0, max: 1.2 },
     { name: 'D_b', value: 0.4, min: 0, max: 0.8 },
-    { name: 'F', value: 0.059, min: 0, max: 0.1 },
-    { name: 'k', value: 0.065, min: 0.03, max: 0.075 },
+    { name: 'F', value: WEATHER_DEFAULTS.F, min: 0, max: 0.1 },
+    { name: 'k', value: WEATHER_DEFAULTS.k, min: 0.03, max: 0.075 },
     ...WEATHER_FIELDS.flatMap((X) => [
-      { name: `${X}_gain`, value: 0, min: X === 'k' ? -0.3 : -3, max: X === 'k' ? 0.3 : 3 },
-      { name: `${X}_mem`, value: 20000, min: 1000, max: 300000 },
-      { name: `${X}_reach`, value: 5, min: 0.3, max: 60 },
-      { name: `${X}_diff`, value: 0, min: -2, max: 2 },
+      { name: `${X}_gain`, value: WEATHER_DEFAULTS[`${X}_gain`] ?? 0, min: X === 'k' ? -0.3 : -3, max: X === 'k' ? 0.3 : 3 },
+      { name: `${X}_mem`, value: WEATHER_DEFAULTS[`${X}_mem`] ?? 20000, min: 1000, max: 300000 },
+      { name: `${X}_reach`, value: WEATHER_DEFAULTS[`${X}_reach`] ?? 5, min: 0.3, max: 60 },
+      { name: `${X}_diff`, value: WEATHER_DEFAULTS[`${X}_diff`] ?? 0, min: -2, max: 2 },
     ]),
-    ...WEATHER_FIELDS.flatMap((X) => WEATHER_FIELDS.map((Y) => ({ name: `${Y}_to_${X}`, value: 0, min: -4, max: 4 }))),
+    ...WEATHER_FIELDS.flatMap((X) => WEATHER_FIELDS.map((Y) => ({ name: `${Y}_to_${X}`, value: WEATHER_DEFAULTS[`${Y}_to_${X}`] ?? 0, min: -4, max: 4 }))),
   ],
   paintable: ['F', 'k'],
   explore: WEATHER_FIELDS.flatMap((X) => WEATHER_FIELDS.map((Y) => `${Y}_to_${X}`)),
@@ -1124,7 +1126,7 @@ delta_b = (D_b + Db_gain*uDb)*laplacian_b + a*b*b - (Fx + k + k_gain*uk)*b;`,
   seed: [0.5, 0.25, null, null, null, null],
   seedNoise: [0, 0.25, 0, 0, 0, 0],
   initial: META_GS.initial,
-  view: { reagent: 'b', low: 0, high: 0.8, tint: 'uDa', stepsPerFrame: 333 },
+  view: { reagent: 'b', low: 0, high: 0.8, tint: 'uF', stepsPerFrame: 333 },
   size: { width: 256, height: 256 },
 };
 
