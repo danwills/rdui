@@ -1,4 +1,5 @@
 import { PRESETS } from './presets';
+import { drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, pickFK } from './fkmap';
 import type { RuleDef } from './rule';
 
 export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'capture' | 'stamp' | 'probe';
@@ -386,85 +387,50 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   return { sync, rebuildRule };
 }
 
-const F_RANGE = [0, 0.1] as const;
-const K_RANGE = [0.03, 0.075] as const;
-
 /**
- * A clickable (kill → x, feed → y) map with presets marked. Shows the brush (ring)
- * and background (filled dot) values; picking calls `set` with the chosen pair.
+ * The small (kill → x, feed ↑ y) map in the panel: the simulated map dimmed
+ * behind presets and the brush/background markers. A drag picks values; a tap
+ * opens the full map (fkmap.ts).
  */
 function buildFKPad(s: Settings, background: () => Record<string, number>, set: (F: number, k: number) => void) {
   const W = 260;
   const H = 170;
   const dpr = window.devicePixelRatio || 1;
-  const canvas = el('canvas', { class: 'fkpad', title: 'click/drag to pick feed (y) and kill (x)' });
+  const canvas = el('canvas', { class: 'fkpad', title: 'tap to open the full map · drag to pick feed (y) and kill (x)' });
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   canvas.style.width = `${W}px`;
   canvas.style.height = `${H}px`;
   const ctx = canvas.getContext('2d')!;
-
-  const toX = (k: number) => ((k - K_RANGE[0]) / (K_RANGE[1] - K_RANGE[0])) * W;
-  const toY = (f: number) => H - ((f - F_RANGE[0]) / (F_RANGE[1] - F_RANGE[0])) * H;
+  const frame = mapFrame(W, H);
 
   function draw() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#0d0f14';
-    ctx.fillRect(0, 0, W, H);
-    // Saddle-node bifurcation curve K = sqrt(F)/2 - F; most interesting patterns live just right of it.
-    ctx.strokeStyle = '#2a3140';
-    ctx.beginPath();
-    for (let i = 0; i <= 100; i++) {
-      const f = (i / 100) * 0.25;
-      const k = Math.sqrt(f) / 2 - f;
-      const x = toX(k), y = toY(f);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    ctx.font = '10px ui-monospace, monospace';
-    for (const p of PRESETS) {
-      const x = toX(p.kill), y = toY(p.feed);
-      ctx.fillStyle = '#5b6b85';
-      ctx.beginPath();
-      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#7f8ba0';
-      ctx.fillText(p.name, x + 4, y - 3);
-    }
-    const bg = background();
-    ctx.globalAlpha = s.fkTarget === 'background' ? 1 : 0.5;
-    ctx.fillStyle = '#66d9ff';
-    ctx.beginPath();
-    ctx.arc(toX(bg.k), toY(bg.F), 3.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = s.fkTarget === 'brush' ? 1 : 0.5;
-    ctx.strokeStyle = '#ffcc66';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(toX(s.paint.k), toY(s.paint.F), 5, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = 1;
-    ctx.fillStyle = '#5b6b85';
-    ctx.fillText('kill →', W - 38, H - 4);
-    ctx.fillText('feed ↑', 3, 11);
+    drawMap(ctx, frame, { dim: 0.55, big: false, guides: true });
+    drawMarkers(ctx, frame, s, background());
   }
+  onMapLoaded(draw);
 
-  function pick(e: PointerEvent) {
+  const pick = (e: PointerEvent) => {
     const r = canvas.getBoundingClientRect();
-    const fx = Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1);
-    const fy = Math.min(Math.max((e.clientY - r.top) / r.height, 0), 1);
-    set(F_RANGE[0] + (1 - fy) * (F_RANGE[1] - F_RANGE[0]), K_RANGE[0] + fx * (K_RANGE[1] - K_RANGE[0]));
-  }
+    set(...pickFK((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height));
+  };
+  // a press that moves more than a few px is a drag (picks live); one that doesn't is a tap (opens the map)
+  let down: { x: number; y: number; drag: boolean } | null = null;
   canvas.addEventListener('pointerdown', (e) => {
     canvas.setPointerCapture(e.pointerId);
-    pick(e);
+    down = { x: e.clientX, y: e.clientY, drag: false };
   });
   canvas.addEventListener('pointermove', (e) => {
-    if (e.buttons & 1) pick(e);
+    if (!down) return;
+    if (!down.drag && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4) down.drag = true;
+    if (down.drag) pick(e);
   });
+  canvas.addEventListener('pointerup', () => {
+    if (down && !down.drag) openFKMap(s, background, set, draw);
+    down = null;
+  });
+  canvas.addEventListener('pointercancel', () => (down = null));
 
   return { canvas, draw };
 }

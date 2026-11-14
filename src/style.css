@@ -182,3 +182,13 @@ footer { border-top: 1px solid var(--line); padding-top: 8px; }
   #app { flex-direction: column; }
   #panel { width: 100%; height: 45vh; border-left: 0; border-top: 1px solid var(--line); }
 }
+
+/* full-screen F/k map (fkmap.ts) */
+.fkmap { position: fixed; inset: 0; z-index: 50; background: rgba(4, 5, 8, 0.82); display: flex; align-items: center; justify-content: center; }
+.fkmap-box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; max-width: calc(100vw - 8px); }
+.fkmap-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 6px; }
+.fkmap-bar button.active { border-color: var(--accent); }
+.fkmap-bar button:last-child { margin-left: auto; }
+.fkmap-readout { font: 11px ui-monospace, monospace; color: var(--muted); margin: 0 6px; }
+.fkmap-canvas { display: block; cursor: crosshair; touch-action: none; border-radius: 3px; }
+.fkmap .hint { margin: 6px 0 0; max-width: 1100px; }
