@@ -144,7 +144,7 @@ function scoreRun(r: Run) {
   for (let i = h + 1; i < n; i++) turnover += Math.abs(r.count[i] - r.count[i - 1]);
   const fill = frac > 0.45 ? 0.1 : frac > 0.3 ? 0.5 : 1;
   // damage spreading: healed (≈0) is fine for gliders; most of the field = chaotic
-  const chaos = dmg > 0.5 ? 0.2 : dmg > 0.25 ? 0.6 : 1;
+  const chaos = dmg > 0.5 ? 0.02 : dmg > 0.25 ? 0.3 : 1;
   const mv = Math.min(movers, 15);
   r.score = (0.2 + mv) * (1 + Math.min(turnover, 10) / 10) * fill * chaos * (blobsN >= 1 ? 1 : 0.3);
   r.why = `movers ${movers.toFixed(1)}/${blobsN.toFixed(1)} blobs, turnover ${turnover}, excited ${(100 * frac).toFixed(1)}%, damage ${(100 * dmg).toFixed(1)}%`;
