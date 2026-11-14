@@ -24,12 +24,14 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   // pages: the network first (so a reachable server brings updates), else the cache;
-  // everything else has hashed names, so the cache first
+  // everything else has hashed names, so the cache first. ignoreVary: servers send
+  // 'Vary: Origin', and module scripts carry an Origin header the precache didn't.
+  const opts = { ignoreVary: true, ignoreSearch: true };
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).catch(() => caches.match('./')));
+    e.respondWith(fetch(req).catch(() => caches.match('./', opts)));
     return;
   }
-  e.respondWith(caches.match(req).then((hit) => hit || fetch(req)));
+  e.respondWith(caches.match(req, opts).then((hit) => hit || fetch(req)));
 });
 `;
       this.emitFile({ type: 'asset', fileName: 'sw.js', source });
