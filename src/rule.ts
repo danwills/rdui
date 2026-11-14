@@ -1128,7 +1128,52 @@ delta_b = (D_b + Db_gain*uDb)*laplacian_b + a*b*b - (Fx + k + k_gain*uk)*b;`,
   size: { width: 256, height: 256 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS];
+/**
+ * Gray-Scott Lineages: each b molecule carries its own feed and kill (traits
+ * P_F, P_k), inherited by the b it makes (a + 2b → 3b) and lost when it decays.
+ * For the mean trait P = q/b of the trait mass q = b·P, Gray-Scott's own terms
+ * give ∂P/∂t = D_b (∇²P + 2 ∇ln b · ∇P): the reaction terms cancel exactly and
+ * what remains is diffusion plus transport along b's own gradients. Where
+ * there is no b the trait is undefined; it settles there to the painted
+ * background F, k (so painting F/k chooses where each lineage is born).
+ */
+export const GS_LINEAGES: RuleDef = {
+  name: 'Gray-Scott Lineages',
+  description: 'Gray-Scott where the feed and kill belong to the spots: every b molecule carries a trait (P_F, P_k) that the b it makes '
+    + 'inherits, so spots keep their own F and k as they move, and pass them on when they split. The traits move exactly as tagged b '
+    + 'molecules would: diffusing with b, and drifting along b\'s own gradients (2·D_b·∇ln b). Where there is no b they settle to the painted '
+    + 'F and k (rate settle), so painting F/k chooses where each lineage is born; spots then carry it out into other regions. '
+    + 'Paint two areas with different F/k and watch the lineages compete (tint by P_F).',
+  reagents: ['a', 'b', 'P_F', 'P_k'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.5 },
+    { name: 'D_a', value: 0.3, min: 0, max: 0.37 },
+    { name: 'D_b', value: 0.15, min: 0, max: 0.37 },
+    { name: 'F', value: GS_PRESET_F, min: 0, max: 0.1 },
+    { name: 'k', value: GS_PRESET_K, min: 0.03, max: 0.075 },
+    { name: 'settle', value: 0.002, min: 0, max: 0.05 },
+    { name: 'trait_eps', value: 0.001, min: 0.0001, max: 0.05 },
+  ],
+  paintable: ['F', 'k'],
+  formula: `float ib = 1.0/(b + trait_eps);
+float empty = trait_eps*ib;
+float gx = x_gradient_b*ib; float gy = y_gradient_b*ib;
+delta_P_F = D_b*(laplacian_P_F + 2.0*(gx*x_gradient_P_F + gy*y_gradient_P_F)) + settle*empty*(F - P_F);
+delta_P_k = D_b*(laplacian_P_k + 2.0*(gx*x_gradient_P_k + gy*y_gradient_P_k)) + settle*empty*(k - P_k);
+delta_a = D_a*laplacian_a - a*b*b + P_F*(1.0 - a);
+delta_b = D_b*laplacian_b + a*b*b - (P_F + P_k)*b;`,
+  rest: [1, 0, GS_PRESET_F, GS_PRESET_K],
+  seed: [0.5, 0.25, null, null],
+  seedNoise: [0, 0.25, 0, 0],
+  initial: [
+    ...GRAY_SCOTT.initial,
+    { chem: 'P_F', op: 'overwrite', fill: { type: 'constant', value: GS_PRESET_F }, shape: { type: 'everywhere' } },
+    { chem: 'P_k', op: 'overwrite', fill: { type: 'constant', value: GS_PRESET_K }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'b', low: 0, high: 0.4, tint: 'P_F' },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));

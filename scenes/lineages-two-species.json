@@ -1,0 +1,126 @@
+{
+  "name": "Gray-Scott Lineages: two species",
+  "description": "Spots carry their own feed and kill (traits P_F, P_k, shown as tint) and pass them on when they split. Left half painted species A (F 0.0367, k 0.0649), right half species B (F 0.030, k 0.062): spots born on each side keep their side's traits wherever they spread. B replicates faster and colonises A's side; where lineages meet, touching spots slowly blend into a hybrid zone. Try: paint a patch with new F/k (Background target off, brush on) to found a new lineage there; seed into the other species' territory.",
+  "rule": "builtin:13",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 20,
+  "paint": [
+    {
+      "rect": [
+        128,
+        0,
+        128,
+        256
+      ],
+      "values": {
+        "F": 0.03,
+        "k": 0.062
+      }
+    }
+  ],
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.4,
+    "tint": "P_F",
+    "tintLow": 0.029,
+    "tintHigh": 0.038
+  },
+  "initial": [
+    {
+      "chem": "a",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "spots",
+        "count": 12,
+        "minSize": 3,
+        "maxSize": 8,
+        "seed": 1
+      }
+    },
+    {
+      "chem": "b",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.25,
+        "high": 0.35
+      },
+      "shape": {
+        "type": "spots",
+        "count": 12,
+        "minSize": 3,
+        "maxSize": 8,
+        "seed": 1
+      }
+    },
+    {
+      "chem": "P_F",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.0367
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "P_k",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.0649
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "P_F",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.03
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.5,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "P_k",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.062
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.5,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    }
+  ]
+}
