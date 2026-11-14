@@ -3,6 +3,9 @@ import renderWGSL from './shaders/render.wgsl?raw';
 import type { CompiledRule, Layout } from './rule';
 import { Spectral } from './spectral';
 
+/** Global params that shape the spectral kernel (see `kernel_` in rule.ts). */
+const KERNEL_PARAMS = [['kernel_sigma', 'sigma1'], ['kernel_b', 'b'], ['kernel_sigma2', 'sigma2']] as const;
+
 export const BrushMode = {
   Seed: 0,
   Erase: 1,
@@ -137,11 +140,15 @@ export class Simulation {
     });
 
     if (compiled.spectral) {
-      this.spectral = new Spectral(device, width, height, S, compiled.spectral.bilap, this.state, !compiled.spectral.exact);
+      this.spectral = new Spectral(device, width, height, S, compiled.spectral.second, this.state, !compiled.spectral.exact);
       const dx = compiled.globalIndex.get('dx');
       if (dx !== undefined) this.spectral.setDx(this.globals[dx]);
+      for (const [name, key] of KERNEL_PARAMS) {
+        const i = compiled.globalIndex.get(name);
+        if (i !== undefined) this.spectral.setKernel({ [key]: this.globals[i] });
+      }
     }
-    const usesLap = compiled.stepWGSL.includes('lapK'), usesBilap = compiled.stepWGSL.includes('bilapK');
+    const usesLap = /\blapK\b/.test(compiled.stepWGSL), usesBilap = /\bbilapK\b/.test(compiled.stepWGSL);
     const stepGroup = (from: number) =>
       device.createBindGroup({
         layout: this.stepPipeline.getBindGroupLayout(0),
@@ -187,6 +194,8 @@ export class Simulation {
     this.globals[i] = value;
     this.device.queue.writeBuffer(this.globalsUniform, 0, this.globals);
     if (name === 'dx') this.spectral?.setDx(value);
+    const kp = KERNEL_PARAMS.find(([n]) => n === name);
+    if (kp) this.spectral?.setKernel({ [kp[1]]: value });
   }
 
   getGlobals(): Record<string, number> {

@@ -7,7 +7,7 @@ export default async function (cfg: { sizes?: number[]; S?: number[]; reps?: num
   const d = await gpu(), reps = cfg.reps ?? 300;
   for (const N of cfg.sizes ?? [256, 512]) for (const S of cfg.S ?? [1, 2]) {
     const st = [0, 1].map(() => d.createBuffer({ size: N * N * S * 16, usage: GPUBufferUsage.STORAGE }));
-    const sp = new Spectral(d, N, N, S, false, st) as unknown as { encode: (p: GPUComputePassEncoder, f: number) => void; lines: (p: GPUComputePassEncoder, a: number, i: number, q: number) => void; destroy: () => void };
+    const sp = new Spectral(d, N, N, S, 'none', st) as unknown as { encode: (p: GPUComputePassEncoder, f: number) => void; lines: (p: GPUComputePassEncoder, a: number, i: number, q: number) => void; destroy: () => void };
     const time = async (f: (p: GPUComputePassEncoder) => void) => {
       const run = async (n: number) => { const e = d.createCommandEncoder(); const p = e.beginComputePass(); for (let i = 0; i < n; i++) f(p); p.end(); d.queue.submit([e.finish()]); await d.queue.onSubmittedWorkDone(); };
       await run(10);

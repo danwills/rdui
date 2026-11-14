@@ -13,6 +13,7 @@
  *           paintable parameters in order (up to 7)
  *   globals: uniform array of vec4 holding every parameter's global value
  */
+import type { Second } from './spectral';
 
 export const MAX_REAGENTS = 8;
 export const MAX_PAINTABLE = 7;
@@ -73,6 +74,12 @@ export interface RuleDef {
    * the stencil, so tuned media carry over), 'spectral-exact' uses −|k|²
    * (needs small timesteps). FFT modes need power-of-two grids ≤ 512 and
    * ignore walls and membranes.
+   *
+   * Spectral modes also offer `kernel_<reagent>`: the reagent convolved with
+   * a difference of unit-mass Gaussians, exp(−r²/2σ1²)/2πσ1² − b·(same with σ2),
+   * set by the params kernel_sigma, kernel_b (default 0) and kernel_sigma2, in
+   * dx units. A σ wider than the field gives the field's mean. A rule can use
+   * bilaplacian_ or kernel_, not both.
    */
   laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
   /** Grid size the rule was authored for (imports). */
@@ -194,7 +201,7 @@ export interface CompiledRule {
   globalIndex: Map<string, number>;
   globalVec4s: number;
   /** Set when the step shader reads FFT-computed operators (bindings 5, 6). */
-  spectral?: { bilap: boolean; exact: boolean };
+  spectral?: { second: Second; exact: boolean };
 }
 
 export function compileRule(rule: RuleDef): CompiledRule {
@@ -209,7 +216,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (mem && !rule.params.some((p) => p.name === mem.param)) throw new RuleError(`membrane param '${mem.param}' isn't a parameter`);
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
-    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => STENCIL_OPS.map((op) => `${op}_${r}`)),
+    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel'].map((op) => `${op}_${r}`)),
     ...rule.params.map((p) => p.name), 'timestep',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
@@ -234,7 +241,11 @@ export function compileRule(rule: RuleDef): CompiledRule {
 
   const spectral = rule.laplacian === 'spectral' || rule.laplacian === 'spectral-exact';
   if (spectral && mem) throw new RuleError('membranes need the stencil Laplacian');
-  const spectralBilap = spectral && needs('bilaplacian').size > 0;
+  const kernelSlots = needs('kernel');
+  if (kernelSlots.size && !spectral) throw new RuleError(`kernel_ needs laplacian: 'spectral'`);
+  if (kernelSlots.size && needs('bilaplacian').size) throw new RuleError(`a rule can use bilaplacian_ or kernel_, not both`);
+  if (kernelSlots.size && !rule.params.some((p) => p.name === 'kernel_sigma')) throw new RuleError(`kernel_ needs a 'kernel_sigma' parameter`);
+  const spectralBilap = spectral && (needs('bilaplacian').size > 0 || kernelSlots.size > 0);
   const L: string[] = [];
   const add = (s: string) => L.push(s);
   add(`struct Info { width: u32, height: u32, _p0: u32, _p1: u32 };`);
@@ -322,8 +333,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (const k of slots) add(`  ${st.v}${k} = ${st.v}${k} / (${st.div.toFixed(1)} * pow(rd_dx, ${st.dxPower.toFixed(1)}));`);
   }
 
+  for (const k of kernelSlots) add(`  let KR${k} = bilapK[sb + ${k}u];`);
   R.forEach((r, i) => {
     add(`  var v_${r} = s${i >> 2}.${COMP[i & 3]};`);
+    if (used.has(`kernel_${r}`)) add(`  let v_kernel_${r} = KR${i >> 2}.${COMP[i & 3]};`);
     add(`  var v_delta_${r} = 0.0;`);
     if (used.has(`laplacian_${r}`)) add(`  let v_laplacian_${r} = L${i >> 2}.${COMP[i & 3]};`);
     const c = `${i >> 2}.${COMP[i & 3]}`;
@@ -348,7 +361,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     add(`  dst[sb + ${k}u] = vec4<f32>(${comps.join(', ')});`);
   }
   add(`}`);
-  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { bilap: spectralBilap, exact: rule.laplacian === 'spectral-exact' } : undefined };
+  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
 }
 
 // --- initial state
@@ -640,7 +653,8 @@ export const OREGONATOR: RuleDef = {
   description:
     'Two-variable Oregonator with illumination phi: delta_u = (u − u² − (f v + phi_e)(u − q)/(u + q))/eps + D_u ∇²u, delta_v = u − v. ' +
     'Near phi ≈ 0.084 the medium is sub-excitable and broken waves travel as compact wave fragments. ' +
-    'Optional size control: a slow long-range inhibitor h (driven by u) adds K_h·h to the light, phi_e = phi + K_h h.',
+    'Size control (Sakurai, Mihaliuk & Showalter 2002): the light follows the excitation, phi_e = phi + K_h·h, where h tracks the ' +
+    'field mean of u (or, with a smaller kernel_sigma, a local average) with lag tau_h, so a fragment that grows dims itself back.',
   reagents: ['u', 'v', 'h'],
   params: [
     { name: 'timestep', value: 0.001, min: 0, max: 0.004 },
@@ -650,9 +664,9 @@ export const OREGONATOR: RuleDef = {
     { name: 'q', value: 0.002, min: 0.0005, max: 0.01 },
     { name: 'phi', value: 0.079, min: 0, max: 0.15 },
     { name: 'D_u', value: 1, min: 0, max: 2 },
-    { name: 'K_h', value: 0, min: 0, max: 0.5 },
+    { name: 'K_h', value: 0, min: 0, max: 5 },
     { name: 'tau_h', value: 1, min: 0.05, max: 20 },
-    { name: 'D_h', value: 8, min: 0, max: 20 },
+    { name: 'kernel_sigma', value: 10000, min: 1, max: 10000 },
   ],
   paintable: ['phi'],
   // the light term is very stiff near u ≈ 0 (rate ~ (f v + phi) 2q/(u+q)²/eps, up to ~10⁴):
@@ -660,7 +674,9 @@ export const OREGONATOR: RuleDef = {
   // explicit delta by 1 + timestep·A/(u + q)
   formula: `delta_u = ((u - u*u)/eps + D_u*laplacian_u - ((f*v + phi + K_h*h)/eps)*(u - q)/(u + q)) / (1.0 + timestep*((f*v + phi + K_h*h)/eps)/(u + q));
 delta_v = u - v;
-delta_h = (u - h)/tau_h + D_h*laplacian_h;`,
+delta_h = (kernel_u - h)/tau_h;`,
+  laplacian: 'spectral',
+  size: { width: 256, height: 256 },
   rest: [0.0019, 0.0019, 0.0019],
   seed: [0.9, null, null],
   seedNoise: [0, 0, 0],

@@ -4,13 +4,15 @@
 // two results come back apart in the real and imaginary parts, and `unpack`
 // writes them to the Laplacian (and bilaplacian) buffers in the state layout.
 // `kmul` turns spectra into Laplacian (×λ) and, into the second pair,
-// bilaplacian (×λ²) spectra. λ = −|k|² (exact), or with `matched` the 9-point
+// bilaplacian (×λ²) spectra, or (second = 2) a kernel convolution: a
+// difference of unit-mass Gaussians, K̂ = exp(−σ1²|k|²/2) − b·exp(−σ2²|k|²/2)
+// (a σ wider than the field keeps only k = 0: the field mean). λ = −|k|² (exact), or with `matched` the 9-point
 // stencil's own axis response −4 sin²(|k|·dx/2)/dx² applied in every direction:
 // isotropic, explicit-stable like the stencil, and close to it for tuned media.
 override S: u32 = 1u;
 override P: u32 = 1u;
 
-struct Info { width: u32, height: u32, bilap: u32, matched: u32, dx: f32, _q: f32, _r: f32, _s: f32 };
+struct Info { width: u32, height: u32, second: u32, matched: u32, dx: f32, sigma1: f32, b: f32, sigma2: f32 };
 @group(0) @binding(0) var<uniform> info: Info;
 @group(0) @binding(1) var<storage, read> src: array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read_write> re: array<vec4<f32>>;
@@ -37,7 +39,7 @@ fn unpack(@builtin(global_invocation_id) gid: vec3<u32>) {
   for (var p = 0u; p < P; p++) {
     lap[cell * S + 2u * p] = re[cell * P + p];
     if (2u * p + 1u < S) { lap[cell * S + 2u * p + 1u] = im[cell * P + p]; }
-    if (info.bilap == 1u) {
+    if (info.second != 0u) {
       bilap[cell * S + 2u * p] = bre[cell * P + p];
       if (2u * p + 1u < S) { bilap[cell * S + 2u * p + 1u] = bim[cell * P + p]; }
     }
@@ -57,6 +59,7 @@ fn kmul(@builtin(global_invocation_id) gid: vec3<u32>) {
   let kx = wave(gid.x, info.width);
   let ky = wave(gid.y, info.height);
   var k2 = kx * kx + ky * ky;
+  let kernel = exp(-0.5 * info.sigma1 * info.sigma1 * k2) - info.b * exp(-0.5 * info.sigma2 * info.sigma2 * k2);
   if (info.matched == 1u) {
     let q = min(sqrt(k2) * info.dx, 3.141592653589793);
     let sn = sin(0.5 * q);
@@ -65,9 +68,12 @@ fn kmul(@builtin(global_invocation_id) gid: vec3<u32>) {
   for (var k = 0u; k < P; k++) {
     let r = re[c + k];
     let i = im[c + k];
-    if (info.bilap == 1u) {
+    if (info.second == 1u) {
       bre[c + k] = r * (k2 * k2);
       bim[c + k] = i * (k2 * k2);
+    } else if (info.second == 2u) {
+      bre[c + k] = r * kernel;
+      bim[c + k] = i * kernel;
     }
     re[c + k] = -k2 * r;
     im[c + k] = -k2 * i;

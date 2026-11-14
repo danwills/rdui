@@ -3,11 +3,15 @@ import spectralWGSL from './shaders/spectral.wgsl?raw';
 
 const WG = 8;
 
+/** What the second spectral channel computes. */
+export type Second = 'none' | 'bilap' | 'kernel';
+
 /**
- * Spectral Laplacian (and optionally bilaplacian) of a W×H field with S vec4
+ * Spectral Laplacian (and optionally a second operator: the bilaplacian, or
+ * a difference-of-Gaussians kernel convolution) of a W×H field with S vec4
  * slots per cell, by FFT: pack slot pairs into complex signals → FFT rows,
  * columns → multiply by λ(|k|) (and λ²) → inverse → unpack. After `encode`,
- * `lap` (and `bilap`) hold the results in the same layout as the state.
+ * `lap` (and `bilap`, holding the second operator) hold the results in the same layout as the state.
  * Perfectly isotropic; ignores walls. λ is exact (−|k|²) or, `matched`, the
  * 9-point stencil's axis response in all directions. W and H must be powers
  * of two, at most 512.
@@ -20,8 +24,10 @@ export class Spectral {
   private W: number;
   private H: number;
   private P: number;
-  private withBilap: boolean;
+  private second: Second;
   private matched: boolean;
+  private kernel = { sigma1: 1, b: 0, sigma2: 1 };
+  private dx = 1;
   /** Complex work buffers, P = ceil(S/2) slot pairs per cell. */
   private re: GPUBuffer;
   private im: GPUBuffer;
@@ -41,9 +47,10 @@ export class Spectral {
   private fftGroups: GPUBindGroup[][][] = [];
   private trivial: boolean;
 
-  constructor(device: GPUDevice, W: number, H: number, S: number, withBilap: boolean, states: GPUBuffer[], matched = true) {
+  constructor(device: GPUDevice, W: number, H: number, S: number, second: Second, states: GPUBuffer[], matched = true) {
     this.device = device;
-    this.W = W; this.H = H; this.withBilap = withBilap; this.matched = matched;
+    this.W = W; this.H = H; this.second = second; this.matched = matched;
+    const withBilap = second !== 'none';
     const P = (this.P = Math.ceil(S / 2));
     const pow2 = (n: number) => n > 0 && (n & (n - 1)) === 0;
     if (!pow2(W) || !pow2(H) || W > 512 || H > 512) throw new Error(`spectral Laplacian needs power-of-two sizes ≤ 512 (got ${W}×${H})`);
@@ -100,9 +107,20 @@ export class Spectral {
 
   /** Grid spacing used for the wavenumbers. */
   setDx(dx: number) {
+    this.dx = dx;
+    this.writeInfo();
+  }
+
+  /** Kernel widths (in the same units as dx) and the second Gaussian's weight. */
+  setKernel(k: Partial<{ sigma1: number; b: number; sigma2: number }>) {
+    Object.assign(this.kernel, k);
+    this.writeInfo();
+  }
+
+  private writeInfo() {
     const buf = new ArrayBuffer(32);
-    new Uint32Array(buf).set([this.W, this.H, this.withBilap ? 1 : 0, this.matched ? 1 : 0]);
-    new Float32Array(buf).set([dx], 4);
+    new Uint32Array(buf).set([this.W, this.H, ['none', 'bilap', 'kernel'].indexOf(this.second), this.matched ? 1 : 0]);
+    new Float32Array(buf).set([this.dx, this.kernel.sigma1, this.kernel.b, this.kernel.sigma2], 4);
     this.device.queue.writeBuffer(this.info, 0, buf);
   }
 
@@ -118,7 +136,7 @@ export class Spectral {
     pass.setPipeline(this.kmulPipeline);
     pass.setBindGroup(0, this.kmulGroup);
     pass.dispatchWorkgroups(gx, gy);
-    for (const pair of this.withBilap ? [0, 1] : [0]) {
+    for (const pair of this.second !== 'none' ? [0, 1] : [0]) {
       this.lines(pass, 1, 1, pair);
       this.lines(pass, 0, 1, pair);
     }
