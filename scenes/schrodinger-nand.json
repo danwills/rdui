@@ -1,14 +1,10 @@
 {
   "name": "Schrödinger NAND gates",
-  "description": "Four NAND gates made only of colliding solitons, no walls: one per input pair, so the truth table plays out at once (top left A=0 B=0, top right 0 1, bottom left 1 0, bottom right 1 1). A bit is a soliton present (1) or absent (0). Inputs A (from lower left) and B (upper left) are sent in phase on paths 30° apart: alone, each carries on; together they attract and merge into one heavy soliton heading east (that is A AND B). The slow clock soliton (lower right, always sent) crosses that path: if the merged soliton is there it swallows the clock, otherwise the clock goes on into the output box (NOT). So the box gets a soliton unless both inputs are 1: NAND, which can build any logic. The clocks reach the boxes after about 11742 steps (16 s at 12 steps per frame and 60 fps; the boxes are probes, so their readout shows the power arriving). In the lab a single gate gave the same answers with the clock up to 600 steps early or late, and at any clock phase. Built on Fredkin and Toffoli's billiard-ball computer (1982), with solitons for balls. Try: pause at the start and erase an input (or the clock) to see that gate change its answer.",
+  "description": "Four NAND gates made only of colliding solitons, no walls: one per input pair, so the truth table plays out at once (top left A=0 B=0, top right 0 1, bottom left 1 0, bottom right 1 1). A bit is a soliton present (1) or absent (0). Inputs A (from lower left) and B (upper left) are sent in phase on paths 30° apart: alone, each carries on; together they attract and merge into one heavy soliton heading east (that is A AND B). The slow clock soliton (lower right, always sent) crosses that path: if the merged soliton is there it swallows the clock, otherwise the clock goes on into the output box (NOT). So the box gets a soliton unless both inputs are 1: NAND, which can build any logic. The clocks reach the boxes after about 11742 steps (16 s at 12 steps per frame and 60 fps; the boxes are probes, so their readout shows the power arriving). In the lab a single gate gave the same answers with the clock up to 600 steps early or late, and at any clock phase. Built on Fredkin and Toffoli's billiard-ball computer (1982), with solitons for balls. The red discs are eaters (absorbing walls) that take each spare soliton once the outputs are read, so nothing wraps round into the other gates. Try: pause at the start and erase an input (or the clock) to see that gate change its answer.",
   "rule": "builtin:8",
   "size": 512,
   "start": "rest",
   "stepsPerFrame": 12,
-  "paintable": [
-    "V",
-    "gamma"
-  ],
   "stamps": [
     {
       "stamp": "nls-soliton-0-still",
@@ -89,6 +85,64 @@
         "ky": -0.03464,
         "phase": 0.0
       }
+    }
+  ],
+  "sdf": [
+    {
+      "field": "absorb_d",
+      "x": 160.0,
+      "y": 50.7,
+      "r": 8
+    },
+    {
+      "field": "absorb_d",
+      "x": 416.0,
+      "y": 50.7,
+      "r": 8
+    },
+    {
+      "field": "absorb_d",
+      "x": 36.2,
+      "y": 179.5,
+      "r": 8
+    },
+    {
+      "field": "absorb_d",
+      "x": 160.0,
+      "y": 306.7,
+      "r": 8
+    },
+    {
+      "field": "absorb_d",
+      "x": 292.2,
+      "y": 316.5,
+      "r": 8
+    },
+    {
+      "field": "absorb_d",
+      "x": 416.0,
+      "y": 306.7,
+      "r": 8
+    },
+    {
+      "field": "absorb_d",
+      "x": 496,
+      "y": 372,
+      "r": 8,
+      "x2": 502,
+      "y2": 338
+    },
+    {
+      "field": "absorb_d",
+      "x": 470,
+      "y": 352,
+      "r": 12
+    },
+    {
+      "field": "absorb_d",
+      "x": 446,
+      "y": 412,
+      "r": 14
     }
   ],
   "probes": [

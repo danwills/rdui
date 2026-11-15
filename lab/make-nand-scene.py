@@ -45,14 +45,31 @@ def gate(qx, qy, a, b):
     ox = p2[0] + vc * (EARLY + TAIL) * math.cos(CHEAD)
     oy = p2[1] - vc * (EARLY + TAIL) * math.sin(CHEAD)
     probe = {'name': f'A={a} B={b} → {0 if a and b else 1}', 'x': round(ox - 14), 'y': round(oy - 14), 'w': 28, 'h': 28}
-    return st, probe
+    # eaters (absorbing discs) on the spare solitons' paths, reached only after the outputs are read:
+    # the clock once past its box, a lone input well past P1, the merged soliton just past P2
+    w = lambda x, y: {'field': 'absorb_d', 'x': round(x % N, 1), 'y': round(y % N, 1), 'r': 8}
+    eat = [w(ox + 42 * math.cos(CHEAD), oy - 42 * math.sin(CHEAD))]
+    if a and not b: eat.append(w(p1[0] + 230 * math.cos(H), p1[1] - 230 * math.sin(H)))
+    if b and not a: eat.append(w(p1[0] + 230 * math.cos(H), p1[1] + 230 * math.sin(H)))
+    if a and b:
+        # the merged soliton drifts east, the fragment from the swallow slowly up and right: a short bar for both
+        e = w(p2[0] + 40, p2[1] - 4)
+        e.update(x2=round((p2[0] + 46) % N, 1), y2=round((p2[1] - 38) % N, 1))
+        eat.append(e)
+        # and a disc on the slow fragment's path (its edge 16 cells from P2: clear of the swallow itself;
+        # off its path, it deflects the fragment instead of eating it)
+        eat.append(dict(w(p2[0] + 14, p2[1] - 24), r=12))
+        # what's left of the fragment then creeps south: a last disc below P2 (its edge 23 cells away)
+        eat.append(dict(w(p2[0] - 10, p2[1] + 36), r=14))
+    return st, probe, eat
 
 
-stamps, probes = [], []
+stamps, probes, eaters = [], [], []
 for (a, b), (qx, qy) in zip(((0, 0), (0, 1), (1, 0), (1, 1)), ((0, 0), (256, 0), (0, 256), (256, 256))):
-    s, p = gate(qx, qy, a, b)
+    s, p, e = gate(qx, qy, a, b)
     stamps += s
     probes.append(p)
+    eaters += e
 
 desc = (f'Four NAND gates made only of colliding solitons, no walls: one per input pair, so the truth table plays out at once '
         f'(top left A=0 B=0, top right 0 1, bottom left 1 0, bottom right 1 1). A bit is a soliton present (1) or absent (0). '
@@ -63,10 +80,11 @@ desc = (f'Four NAND gates made only of colliding solitons, no walls: one per inp
         f'after about {T_END} steps ({T_END / 12 / 60:.0f} s at 12 steps per frame and 60 fps; the boxes are probes, so their readout '
         f'shows the power arriving). In the lab a single gate gave the same answers with the '
         f'clock up to 600 steps early or late, and at any clock phase. Built on Fredkin and Toffoli\'s billiard-ball computer (1982), with solitons '
-        f'for balls. Try: pause at the start and erase an input (or the clock) to see that gate change its answer.')
+        f'for balls. The red discs are eaters (absorbing walls) that take each spare soliton once the outputs are read, so nothing '
+        f'wraps round into the other gates. Try: pause at the start and erase an input (or the clock) to see that gate change its answer.')
 
 scene = {'name': 'Schrödinger NAND gates', 'description': desc, 'rule': 'builtin:8', 'size': N, 'start': 'rest',
-         'stepsPerFrame': 12, 'paintable': ['V', 'gamma'], 'stamps': stamps, 'probes': probes,
+         'stepsPerFrame': 12, 'stamps': stamps, 'sdf': eaters, 'probes': probes,
          'view': {'reagent': 'n', 'low': 0, 'high': 6, 'tint': 'p', 'tintLow': -3, 'tintHigh': 3}}
 out = os.path.join(os.path.dirname(__file__), '..', 'scenes', 'schrodinger-nand.json')
 with open(out, 'w') as f:
