@@ -216,7 +216,18 @@ header button.narrow span { display: inline-block; transform: scaleX(0.5); margi
 .fkmap .hint { margin: 6px 0 0; max-width: 1100px; }
 
 /* explorer (explorer.ts) */
-.explore { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; overflow-y: auto; }
+.coll { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+.coll-main { flex: 1; min-height: 0; display: flex; gap: 8px; }
+.coll-canvas { flex: 1; min-width: 0; height: 100%; display: block; touch-action: none; border: 1px solid var(--line); border-radius: 4px; cursor: grab; }
+.coll-side { display: flex; flex-direction: column; gap: 6px; max-width: 42vw; }
+.coll-preview { display: block; border: 1px solid var(--line); }
+.coll-readout { font: 11px ui-monospace, monospace; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; max-width: 260px; }
+@media (max-width: 700px) {
+  .coll-main { flex-direction: column-reverse; }
+  .coll-side { flex-direction: row; max-width: none; }
+  .coll-readout { flex: 1; }
+}
+.explore { inset: 0; z-index: 50; background: var(--bg); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; overflow-y: auto; }
 .explore-bar, .explore-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; max-width: 900px; }
 .explore-bar button.active, .explore-chips button.active { border-color: var(--accent); color: var(--accent); }
 .explore-chips button { padding: 1px 6px; font-size: 11px; }

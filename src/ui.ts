@@ -76,6 +76,8 @@ export interface Actions {
   deleteRule(): void;
   exportRule(): void;
   explore(): void;
+  /** Dan's Ready collection: a tree of presets to browse and blend. */
+  collection(): void;
   setGlobal(name: string, value: number): void;
   togglePaintable(name: string): void;
   /** Set the rule's base values for paintable params and retune every cell still holding the old ones. */
@@ -372,6 +374,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     }
     nodes.push(el('div', { class: 'buttons' },
       button('Explore…', actions.explore, 'a grid of variants of this rule, and a live map over any two parameters'),
+      button('Collection…', actions.collection, 'Dan\'s Ready patterns: rules and their presets as a tree; drag between entries to blend them'),
       button('Save as rule…', actions.saveRule, 'keep this rule with its current parameter values and view under "My rules"'),
       ...(rc.isUserRule() ? [button('Export', actions.exportRule, 'download this rule as a .json file'), button('Delete', actions.deleteRule, 'remove it from My rules')] : []),
     ));

@@ -1,0 +1,3728 @@
+{
+ "source": "vtipack (~/dev/shaderEditor/vtipack)",
+ "families": [
+  {
+   "id": "f000",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWave",
+   "chemicals": 5,
+   "count": 194,
+   "thumb": "cbf5ba92fed1483ab39984639e410d15"
+  },
+  {
+   "id": "f001",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWave",
+   "chemicals": 5,
+   "count": 107,
+   "thumb": "82ed660e3e1c77b377fbbe43b908ceaa"
+  },
+  {
+   "id": "f002",
+   "name": "Ginzburg-Landau",
+   "label": "cellSpiral_ramp-256x256_crossSection_multiTent_outer_salesman_detective_djw",
+   "chemicals": 4,
+   "count": 89,
+   "thumb": "4e756036278e1a69cf70b0ff61bdca54"
+  },
+  {
+   "id": "f003",
+   "name": "Orbit",
+   "label": "orbits",
+   "chemicals": 4,
+   "count": 86,
+   "thumb": "5d65077f6ee1cb8a7cfb987e7b744854"
+  },
+  {
+   "id": "f004",
+   "name": "Gray-Scott",
+   "label": "grayscott",
+   "chemicals": 5,
+   "count": 83,
+   "thumb": "568b8fed9084f82cc546cfaebfa5187a"
+  },
+  {
+   "id": "f005",
+   "name": "Gray-Scott",
+   "label": "grayscott",
+   "chemicals": 5,
+   "count": 53,
+   "thumb": "6710240b4e77ad24017ed400641c346c"
+  },
+  {
+   "id": "f006",
+   "name": "Orbit",
+   "label": "orbitTest_8_boundaryPulses_spiralsDecay_djw",
+   "chemicals": 4,
+   "count": 46,
+   "thumb": "cbf14964c8248da529e1603117e3ab15"
+  },
+  {
+   "id": "f007",
+   "name": "Orbit",
+   "label": "orbitTest",
+   "chemicals": 4,
+   "count": 45,
+   "thumb": "a1e98387c4ef5b3f848589a5c0b0d060"
+  },
+  {
+   "id": "f008",
+   "name": "Heat Equation with History And Wave",
+   "label": "heat-equation-boiling-history-wave_rippleGliders_duneMesh",
+   "chemicals": 4,
+   "count": 41,
+   "thumb": "636b56357b29ee153d7bced56ff1e186"
+  },
+  {
+   "id": "f009",
+   "name": "Gray-Scott",
+   "label": "grayscott",
+   "chemicals": 3,
+   "count": 39,
+   "thumb": "6cd60e9c17c7afe1756239dcb414d61a"
+  },
+  {
+   "id": "f010",
+   "name": "Orbit",
+   "label": "orbits",
+   "chemicals": 4,
+   "count": 38,
+   "thumb": "0cac751413fd11f05b1b1345097802f2"
+  },
+  {
+   "id": "f011",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude_cellSpiralPropagation_djw",
+   "chemicals": 3,
+   "count": 36,
+   "thumb": "42e7ad5cb79a1c24a8d7d4c5f091b585"
+  },
+  {
+   "id": "f012",
+   "name": "Gray-Scott",
+   "label": "Hutton-and-helix-gliders",
+   "chemicals": 2,
+   "count": 31,
+   "thumb": "1e2c4d5797f0c65609ce8cb996d0735f"
+  },
+  {
+   "id": "f013",
+   "name": "Schenk",
+   "label": "purwins_glider_fronts_mildlyDuneish-spiral",
+   "chemicals": 3,
+   "count": 30,
+   "thumb": "21185397b38acc88cfa2dfcd20ab7f28"
+  },
+  {
+   "id": "f014",
+   "name": "Gray-Scott",
+   "label": "grayscott-evolvingMask",
+   "chemicals": 3,
+   "count": 28,
+   "thumb": "cbd1e73f6d116426c53c0f352c38d699"
+  },
+  {
+   "id": "f015",
+   "name": "Gray-Scott",
+   "label": "grayscott",
+   "chemicals": 5,
+   "count": 26,
+   "thumb": "eaa29ca9e12a59f4992a74adde7d2dd2"
+  },
+  {
+   "id": "f016",
+   "name": "Orbit",
+   "label": "orbits",
+   "chemicals": 4,
+   "count": 26,
+   "thumb": "d98302cbe9e2309ad43935a52ef19927"
+  },
+  {
+   "id": "f017",
+   "name": "Ginzburg-Landau",
+   "label": "complex",
+   "chemicals": 2,
+   "count": 25,
+   "thumb": "b83c58b5a76b279bcd82d9f8b90a2c8e"
+  },
+  {
+   "id": "f018",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyAndWaveCoupling",
+   "chemicals": 5,
+   "count": 25,
+   "thumb": "4f965473ee65ffa6536c5dc6963d3046"
+  },
+  {
+   "id": "f019",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude",
+   "chemicals": 6,
+   "count": 22,
+   "thumb": "3d32c7533c6c19c4e32d9dfbd6b28d2d"
+  },
+  {
+   "id": "f020",
+   "name": "Gray-Scott",
+   "label": "grayscott-sharpenTweak_cellTrailDetail",
+   "chemicals": 3,
+   "count": 16,
+   "thumb": "94e20f0048a8d82475cd6a1e1d85fb27"
+  },
+  {
+   "id": "f021",
+   "name": "Gray-Scott",
+   "label": "metaGrayScott",
+   "chemicals": 6,
+   "count": 15,
+   "thumb": "84990e1e60ea88bd2be094791c9f3bdb"
+  },
+  {
+   "id": "f022",
+   "name": "Gray-Scott",
+   "label": "grayscott",
+   "chemicals": 5,
+   "count": 15,
+   "thumb": "1fd96105c5b93a02fa228db3c419f9b2"
+  },
+  {
+   "id": "f023",
+   "name": "Gray-Scott",
+   "label": "metaGrayScott",
+   "chemicals": 6,
+   "count": 14,
+   "thumb": "0cac65c6ca558e61e611bd264cae07f3"
+  },
+  {
+   "id": "f024",
+   "name": "Gray-Scott",
+   "label": "grayscott-withWaveCoupling",
+   "chemicals": 5,
+   "count": 14,
+   "thumb": "09bd269a9892153a4eb9b646f678a641"
+  },
+  {
+   "id": "f025",
+   "name": "KSE",
+   "label": "Kuramoto-Sivashinsky_pow_withwave",
+   "chemicals": 3,
+   "count": 13,
+   "thumb": "efd21b7427166b30f516660596430754"
+  },
+  {
+   "id": "f026",
+   "name": "Orbit",
+   "label": "orbits",
+   "chemicals": 4,
+   "count": 11,
+   "thumb": "1a6bb017613305ba4b1897a84c1f7241"
+  },
+  {
+   "id": "f027",
+   "name": "Fitzhugh-Nagumo",
+   "label": "pulsate",
+   "chemicals": 2,
+   "count": 11,
+   "thumb": "411523c87abc96f5c820f8462c0dd426"
+  },
+  {
+   "id": "f028",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-cAccum",
+   "chemicals": 3,
+   "count": 11,
+   "thumb": "f7be1cc7b4196054344c2dcdba617f42"
+  },
+  {
+   "id": "f029",
+   "name": "Heat Equation with History And Wave",
+   "label": "heat-equation-boiling-history-wave_dev",
+   "chemicals": 4,
+   "count": 11,
+   "thumb": "b074d60e945bdc636cfd042cce84878b"
+  },
+  {
+   "id": "f030",
+   "name": "Orbit",
+   "label": "orbitTest_4_phase_tweak_untweak_idge_deconstructySpirals_2_djw",
+   "chemicals": 2,
+   "count": 11,
+   "thumb": "a5db3372916a434e9efe3e884d3cd785"
+  },
+  {
+   "id": "f031",
+   "name": "Orbit",
+   "label": "orbitTest_4_phase_tweak_untweak_idge_deconstructySpirals_2_djw",
+   "chemicals": 2,
+   "count": 11,
+   "thumb": "05434a3784b9a84b0c44942d8fb91a46"
+  },
+  {
+   "id": "f032",
+   "name": "Gray-Scott",
+   "label": "grayscott-evolvingMask-moreWaveInputs",
+   "chemicals": 5,
+   "count": 10,
+   "thumb": "8768bb23cd0589490b23f79849e6631b"
+  },
+  {
+   "id": "f033",
+   "name": "Orbit",
+   "label": "orbits-nova",
+   "chemicals": 4,
+   "count": 10,
+   "thumb": "3ee601040fed77713a5c7ef7f6ae7abc"
+  },
+  {
+   "id": "f034",
+   "name": "Orbit",
+   "label": "orbits-nova",
+   "chemicals": 4,
+   "count": 10,
+   "thumb": "bee5a6e9b25b861caf45d8ac453329fb"
+  },
+  {
+   "id": "f035",
+   "name": "Yang",
+   "label": "Yang_1",
+   "chemicals": 4,
+   "count": 9,
+   "thumb": "4dde2e358df40d0cd027fb96aca5b5cf"
+  },
+  {
+   "id": "f036",
+   "name": "Gray-Scott",
+   "label": "grayscott-evolvingMask-dotdotdot_overloadable_unoverloadable",
+   "chemicals": 5,
+   "count": 9,
+   "thumb": "deb05063a76c7edb0b5034c02e2b6b89"
+  },
+  {
+   "id": "f037",
+   "name": "Gray-Scott",
+   "label": "grayscott",
+   "chemicals": 5,
+   "count": 9,
+   "thumb": "48ce6462bdea763f9eb4dd25b5a2fb81"
+  },
+  {
+   "id": "f038",
+   "name": "Heat equation",
+   "label": "heat_equation_boiling_history",
+   "chemicals": 2,
+   "count": 8,
+   "thumb": "bfeac9868ed7d80b23f36f66b60cee0c"
+  },
+  {
+   "id": "f039",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude",
+   "chemicals": 3,
+   "count": 7,
+   "thumb": "2034f6aedf6556b6627f4e462ff262a3"
+  },
+  {
+   "id": "f040",
+   "name": "Yang",
+   "label": "Fig5.8e",
+   "chemicals": 4,
+   "count": 7,
+   "thumb": "9aac6a2f0aa4bdfbfa98f170b0b9614a"
+  },
+  {
+   "id": "f041",
+   "name": "Gray-Scott",
+   "label": "metaGrayScott",
+   "chemicals": 6,
+   "count": 7,
+   "thumb": "35040548090a06e83286d3819d8377ed"
+  },
+  {
+   "id": "f042",
+   "name": "Gray-Scott",
+   "label": "metaGrayScott",
+   "chemicals": 6,
+   "count": 7,
+   "thumb": "a713bbaa62b63d13088e158a30b2935a"
+  },
+  {
+   "id": "f043",
+   "name": "Gray-Scott",
+   "label": "metaGrayScott",
+   "chemicals": 6,
+   "count": 7,
+   "thumb": "18547854fc2700352beaa39083e0d886"
+  },
+  {
+   "id": "f044",
+   "name": "KSE",
+   "label": "Kuramoto-Sivashinsky",
+   "chemicals": 1,
+   "count": 6,
+   "thumb": "5f74c5db523aa83e2803649596b21599"
+  },
+  {
+   "id": "f046",
+   "name": "Heat equation",
+   "label": "heat_equation_boiling_history_windscreenRain",
+   "chemicals": 2,
+   "count": 6,
+   "thumb": "d9ff4067e1f677847aad30ae142dae8b"
+  },
+  {
+   "id": "f047",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude_slipSpirals_magRemap",
+   "chemicals": 3,
+   "count": 5,
+   "thumb": "21128d44e73bfb51b2c525e3abfe9ca0"
+  },
+  {
+   "id": "f048",
+   "name": "Orbit",
+   "label": "orbitTest",
+   "chemicals": 4,
+   "count": 5,
+   "thumb": "06a2c0c3dbbd2fa681aec9b0e7fda76d"
+  },
+  {
+   "id": "f049",
+   "name": "Orbit",
+   "label": "orbitTest_4_phase_djw",
+   "chemicals": 4,
+   "count": 5,
+   "thumb": "d9fb12166c58bcae752f02e8889a4c44"
+  },
+  {
+   "id": "f050",
+   "name": "Orbit",
+   "label": "orbitTest",
+   "chemicals": 4,
+   "count": 5,
+   "thumb": "e2c536b1ef26c67cf14e46adabc2fd73"
+  },
+  {
+   "id": "f051",
+   "name": "Orbit",
+   "label": "orbitTest_4_phase_djw",
+   "chemicals": 4,
+   "count": 5,
+   "thumb": "8f19aa48d99bc082376c90be4722bffb"
+  },
+  {
+   "id": "f052",
+   "name": "Ginzburg-Landau",
+   "label": "cellSpiral_dotdotdot_webFences-stabilized_ramped_continuousMitosis_activeSponge3_turingColumn-highResStabilized_lowResNonSquare_large_power_djw",
+   "chemicals": 4,
+   "count": 4,
+   "thumb": "9bd9a80495fd36dc3042997c9fb8f9dd"
+  },
+  {
+   "id": "f053",
+   "name": "Gray-Scott",
+   "label": "grayscott_demo_worms_hiGray_meta",
+   "chemicals": 6,
+   "count": 4,
+   "thumb": "1eccd183ebb6f184dde29dab8092fc93"
+  },
+  {
+   "id": "f054",
+   "name": "Gray-Scott",
+   "label": "grayscott_demo_worms_hiGray_meta_step_spoike_err_popDots_bMix_hr_rh",
+   "chemicals": 6,
+   "count": 4,
+   "thumb": "8b434c9f225ea552d778e7198a70b66e"
+  },
+  {
+   "id": "f055",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWaveDC_fibrousHistoryFill",
+   "chemicals": 5,
+   "count": 4,
+   "thumb": "469d5ef0a8a24c76349b895196c60626"
+  },
+  {
+   "id": "f056",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWave",
+   "chemicals": 5,
+   "count": 4,
+   "thumb": "2cf76d0d0f681105d378a53c6677c011"
+  },
+  {
+   "id": "f057",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWave",
+   "chemicals": 5,
+   "count": 4,
+   "thumb": "fb3f2793aa9427d6d3c9a078a34e3b78"
+  },
+  {
+   "id": "f058",
+   "name": "Orbit",
+   "label": "orbits_julia_2",
+   "chemicals": 4,
+   "count": 4,
+   "thumb": "dd76b8af4b314f817a6baa9d0b23b1a7"
+  },
+  {
+   "id": "f059",
+   "name": "Orbit",
+   "label": "orbits_julia_noTimestep",
+   "chemicals": 4,
+   "count": 4,
+   "thumb": "1b43d5bcf1ac6ac9fbb4a07b99db8203"
+  },
+  {
+   "id": "f060",
+   "name": "Orbit",
+   "label": "orbits_julia_2",
+   "chemicals": 4,
+   "count": 4,
+   "thumb": "b47fb880a98877df814151b268b4abc5"
+  },
+  {
+   "id": "f061",
+   "name": "Orbit",
+   "label": "orbits_julia_noTimestep",
+   "chemicals": 4,
+   "count": 4,
+   "thumb": "4e9e28ec5a4a507372be647091551bd2"
+  },
+  {
+   "id": "f063",
+   "name": "KSE",
+   "label": "Kuramoto-Sivashinsky_pow",
+   "chemicals": 1,
+   "count": 3,
+   "thumb": "108351620d403eacedfa48c0e1fbd8cf"
+  },
+  {
+   "id": "f064",
+   "name": "KSE",
+   "label": "Kuramoto-Sivashinsky_pow",
+   "chemicals": 1,
+   "count": 3,
+   "thumb": "27ebe0c87135ef56ab2110a91610d63d"
+  },
+  {
+   "id": "f065",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude_advectSpirals3x",
+   "chemicals": 3,
+   "count": 3,
+   "thumb": "a60b9d93720423706d2e58d16dfed099"
+  },
+  {
+   "id": "f066",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-waveAndhistoryCoupling_setup2_vigorous_srs",
+   "chemicals": 6,
+   "count": 3,
+   "thumb": "b52431f9555c3d87680655c90ad24d1c"
+  },
+  {
+   "id": "f067",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude_slipSpirals",
+   "chemicals": 3,
+   "count": 3,
+   "thumb": "e9709211a1eb43e052b917f1276b66fc"
+  },
+  {
+   "id": "f068",
+   "name": "Schrodinger equation",
+   "label": "quantum_tunnelling",
+   "chemicals": 4,
+   "count": 3,
+   "thumb": null
+  },
+  {
+   "id": "f070",
+   "name": "Yang2003",
+   "label": "Fig3a",
+   "chemicals": 5,
+   "count": 3,
+   "thumb": "02188a4a5e43fd0cc497f2e4d4adf292"
+  },
+  {
+   "id": "f071",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-waveCoupling_2",
+   "chemicals": 5,
+   "count": 3,
+   "thumb": "c00f25bbb04b7d91a3df9bdb46fa3cb8"
+  },
+  {
+   "id": "f072",
+   "name": "Heat Equation with History And Wave",
+   "label": "heat-equation-boiling-history",
+   "chemicals": 4,
+   "count": 3,
+   "thumb": "1b6150dbc69c0f1de09efb74a81495ef"
+  },
+  {
+   "id": "f073",
+   "name": "Heat equation",
+   "label": "heat_equation",
+   "chemicals": 1,
+   "count": 3,
+   "thumb": "7a48a08a511a60183c97870ca3ba1bf5"
+  },
+  {
+   "id": "f074",
+   "name": "Orbit",
+   "label": "orbits_julia",
+   "chemicals": 4,
+   "count": 3,
+   "thumb": "f0680b3e4c15eaf583400b62fe12ea1f"
+  },
+  {
+   "id": "f075",
+   "name": "Orbit",
+   "label": "orbits_julia",
+   "chemicals": 4,
+   "count": 3,
+   "thumb": "eaf1a7dba611c023be83e024a1e26c84"
+  },
+  {
+   "id": "f082",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-cAccum",
+   "chemicals": 3,
+   "count": 2,
+   "thumb": "071a7a3edf83e6fe28a947e9f624787e"
+  },
+  {
+   "id": "f083",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-cAccum_smoky3-adj",
+   "chemicals": 3,
+   "count": 2,
+   "thumb": "02f571fe222daa209636594f25fce448"
+  },
+  {
+   "id": "f084",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-cAccum",
+   "chemicals": 3,
+   "count": 2,
+   "thumb": "e4344dd3d8a42bc38bfda0c0a2d0cd6f"
+  },
+  {
+   "id": "f085",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude_advectSpirals3x",
+   "chemicals": 3,
+   "count": 2,
+   "thumb": "4d35d8c7a031700f5cb378b28c7ac6ca"
+  },
+  {
+   "id": "f086",
+   "name": "Ginzburg-Landau",
+   "label": "cellSpiral",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "d0b34acdc1148f64f4cfe449fc4b1ef9"
+  },
+  {
+   "id": "f087",
+   "name": "Gray-Scott",
+   "label": "Lesmes_noisy",
+   "chemicals": 3,
+   "count": 2,
+   "thumb": "f5407b2ac405f4e84f208bc38ab785b8"
+  },
+  {
+   "id": "f088",
+   "name": "Gray-Scott",
+   "label": "Pearson",
+   "chemicals": 2,
+   "count": 2,
+   "thumb": "687bcf3341ae40a7df75a90bbe07c915"
+  },
+  {
+   "id": "f090",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-waveCoupling",
+   "chemicals": 5,
+   "count": 2,
+   "thumb": "0b415bb80d2e9f5ed99a9b83d63c3956"
+  },
+  {
+   "id": "f092",
+   "name": "Gray-Scott",
+   "label": "grayscott-evolvingMask-extra_flowyDots_sparse_niceWaveWake_cloudTank",
+   "chemicals": 5,
+   "count": 2,
+   "thumb": "5dd072042a918bc9c7d616e424de969e"
+  },
+  {
+   "id": "f093",
+   "name": "Gray-Scott",
+   "label": "grayscott-sharpenTweak",
+   "chemicals": 3,
+   "count": 2,
+   "thumb": "2ad7c93869889a907e69a5cd266b85f8"
+  },
+  {
+   "id": "f094",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWaveDC-abPowers",
+   "chemicals": 5,
+   "count": 2,
+   "thumb": "3379bcc1fc0012f31d158364268b11b4"
+  },
+  {
+   "id": "f095",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWave",
+   "chemicals": 5,
+   "count": 2,
+   "thumb": "d9948278e02560b4ab258111e46ae83a"
+  },
+  {
+   "id": "f096",
+   "name": "Gray-Scott",
+   "label": "grayscott-withWaveCoupling",
+   "chemicals": 5,
+   "count": 2,
+   "thumb": "b8c646fa30971235cbb0763a1543e31f"
+  },
+  {
+   "id": "f097",
+   "name": "Gray-Scott",
+   "label": "grayscott",
+   "chemicals": 3,
+   "count": 2,
+   "thumb": "60de27784886bd0c2bd310d5e1446b17"
+  },
+  {
+   "id": "f098",
+   "name": "Gray-Scott",
+   "label": "grayscott_parameter",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "1c78f31d41b51deadba92c1b80349304"
+  },
+  {
+   "id": "f099",
+   "name": "Heat Equation with History And Wave",
+   "label": "heat-equation-boiling-history-wave",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "13594983bbd6a790ce64793936e46838"
+  },
+  {
+   "id": "f100",
+   "name": "Heat Equation with History And Wave",
+   "label": "heat_equation_boiling_history_windscreenRain_diffuse_between",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "d557840f815cd5b7fa03b6aa1b017c7e"
+  },
+  {
+   "id": "f101",
+   "name": "coupled Gray-Scott",
+   "label": "mutually-catalytic",
+   "chemicals": 5,
+   "count": 2,
+   "thumb": "821bf6d411c0f99f99dbfb72fe513a36"
+  },
+  {
+   "id": "f102",
+   "name": "Orbit",
+   "label": "orbits_evolvesTo",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "336bf78e036fe2c8c80cd82b446bb37f"
+  },
+  {
+   "id": "f103",
+   "name": "Orbit",
+   "label": "orbits_evolvesTo_manuallyFix_ix",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "d2abf6ebc90f9e162667da0d9122c9d2"
+  },
+  {
+   "id": "f104",
+   "name": "Orbit",
+   "label": "orbits_julia",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "0570d45d5b41ff19ae40930374adff97"
+  },
+  {
+   "id": "f105",
+   "name": "Orbit",
+   "label": "orbits_evolvesTo",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "913138fea66d47fd73b1bc5960651811"
+  },
+  {
+   "id": "f106",
+   "name": "Orbit",
+   "label": "orbits_evolvesTo_manuallyFix_ix",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "4a0e5d6279551d0036ec5257b3ee4d9b"
+  },
+  {
+   "id": "f107",
+   "name": "Orbit",
+   "label": "orbits_julia",
+   "chemicals": 4,
+   "count": 2,
+   "thumb": "5893fe028d93a5f2a6d01382db114154"
+  },
+  {
+   "id": "f108",
+   "name": "Wave equation",
+   "label": "wave_equation2-djw",
+   "chemicals": 2,
+   "count": 2,
+   "thumb": "40edc051e66ccd911ccebcbf6215c094"
+  },
+  {
+   "id": "f110",
+   "name": "Brusselator",
+   "label": "Brusselator",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": "333fbfc657bfdf13b7fd1b86b5d48cab"
+  },
+  {
+   "id": "f111",
+   "name": "KSE",
+   "label": "KSE-Formula-stabilize-d3",
+   "chemicals": 1,
+   "count": 1,
+   "thumb": "390a4a2ccee341d157c4e1d54ead2bbb"
+  },
+  {
+   "id": "f112",
+   "name": "KSE",
+   "label": "KSE-Formula-stabilize-d3b",
+   "chemicals": 1,
+   "count": 1,
+   "thumb": "45c1c583d4cc75b15618fdac8b49cad3"
+  },
+  {
+   "id": "f129",
+   "name": "KSE",
+   "label": "Kuramoto-Sivashinsky_pow",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "aeb23cf197e81f00ab572f851b3e89f0"
+  },
+  {
+   "id": "f130",
+   "name": "KSE",
+   "label": "Kuramoto-Sivashinsky_pow_withwave",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "c8ee13ae37792f783267ab4703cc447c"
+  },
+  {
+   "id": "f131",
+   "name": "Ginzburg-Landau",
+   "label": "cglrd_ramps_example",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": "a7cc6b74316e293f47d6f0c734813770"
+  },
+  {
+   "id": "f133",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-switchboard",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "c8418bc51f38e9d65e5ae0c406f372bd"
+  },
+  {
+   "id": "f134",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude_cellOrdering_dynamic_ramp",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": "dfc6fb48a31c21b146bb6f66806a8c82"
+  },
+  {
+   "id": "f135",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude_slipSpirals_magRemap_magInfluence",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "875e90ae4907e255867cd182f12e5855"
+  },
+  {
+   "id": "f136",
+   "name": "Gray-Scott",
+   "label": "parameter",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": "d8a8b1d6c93dba8391fde1abc98e3d46"
+  },
+  {
+   "id": "f145",
+   "name": "Meinhardt",
+   "label": "stripes",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "700d5c8971b4d87716afbc9c61bbc6fb"
+  },
+  {
+   "id": "f146",
+   "name": "Meinhardt",
+   "label": "Meinhardt",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": "22f49453795d5a66aeedeb48dc7c5ed8"
+  },
+  {
+   "id": "f147",
+   "name": "Schlogl",
+   "label": "Schlogl",
+   "chemicals": 1,
+   "count": 1,
+   "thumb": "834b041d0b1489feee52654f66e2e25f"
+  },
+  {
+   "id": "f148",
+   "name": "Schrodinger equation",
+   "label": "packet",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f149",
+   "name": "Schrodinger equation",
+   "label": "packet",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": "f0a259f172d213e771b4eb6d058de7c4"
+  },
+  {
+   "id": "f159",
+   "name": "Turing",
+   "label": "Turing",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": "c4a8739c69e581d88b85940a1a3741af"
+  },
+  {
+   "id": "f160",
+   "name": "Turing",
+   "label": "Turing",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "42f0f352e921f3b8c96871b4b57cf74a"
+  },
+  {
+   "id": "f161",
+   "name": "Yang2003",
+   "label": "Fig2",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "cd8d20b20e9fc9387a7f43e1f1ba7b2a"
+  },
+  {
+   "id": "f162",
+   "name": "Yang2006",
+   "label": "jumping",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f163",
+   "name": "Ginzburg-Landau",
+   "label": "jumping",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f164",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-waveCoupling_2",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "18ba7e8d17224554234854ae61188a89"
+  },
+  {
+   "id": "f165",
+   "name": "Ginzburg-Landau",
+   "label": "GL-magnitude-waveCoupling",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f168",
+   "name": "Fitzhugh-Nagumo",
+   "label": "FitzHugh-Nagumo_tip-splitting_pulsingMaze2",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": "81f414dcf6222e66717a12ed3c83dc0e"
+  },
+  {
+   "id": "f169",
+   "name": "Fitzhugh-Nagumo",
+   "label": "FitzHugh-Nagumo_tip-splitting_pulsingMaze2_diffusionCoeffs",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f170",
+   "name": "Brusselator",
+   "label": "Brusselator",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f171",
+   "name": "Gray-Scott",
+   "label": "Munafo_glider-normalized",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": "2bb6f9bc0cf89379d1f2bc7a63ade49d"
+  },
+  {
+   "id": "f172",
+   "name": "Brusselator",
+   "label": "cgol2",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f174",
+   "name": "Schenk",
+   "label": "glider",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f176",
+   "name": "Schenk",
+   "label": "lorenz3",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "d41ce325085b7c59f265dfe036e53f66"
+  },
+  {
+   "id": "f177",
+   "name": "Oregonator",
+   "label": "oregonator",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f180",
+   "name": "Worms",
+   "label": "sufing",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f181",
+   "name": "Orbit",
+   "label": "swift-hohenberg4",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f183",
+   "name": "Gray-Scott",
+   "label": "metaGrayScott",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": "6b36a28a265523e169e2bc9693aed8bb"
+  },
+  {
+   "id": "f184",
+   "name": "Gray-Scott",
+   "label": "grayscott_demo_worms_hiGray",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": "8c77b751c37368bc2306d45f8b423f66"
+  },
+  {
+   "id": "f185",
+   "name": "Gray-Scott",
+   "label": "grayscott_demo_worms_hiGray_meta_step_spoike_err_popDots",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f186",
+   "name": "Gray-Scott",
+   "label": "metaGrayScott",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": "5e17bb207fd7231bba8707ced55cfce3"
+  },
+  {
+   "id": "f187",
+   "name": "Gray-Scott",
+   "label": "grayscott-evolvingMask-dotdotdot_magicDance_sparseEdge_gasLike",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": "567a4857ab3637a6d378d0054fdf1919"
+  },
+  {
+   "id": "f188",
+   "name": "Gray-Scott",
+   "label": "grayscott-evolvingMask-extra_flowyDots_sparse_staticEvo",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "7c6e97eeaafe0aee02b4e6704ac550b6"
+  },
+  {
+   "id": "f189",
+   "name": "Gray-Scott",
+   "label": "grayscott",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "0a1ccd4bd196e211c4ca92c3a36430cf"
+  },
+  {
+   "id": "f190",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyAndWaveCoupling_wakes-d_pow",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "184d64230b2e32ffa7e37c081250728c"
+  },
+  {
+   "id": "f191",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWaveDC_fibrousHistoryFill",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "b36e0b73d05f9514ccc90aa013fff3d1"
+  },
+  {
+   "id": "f192",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWaveDC_fibrousHistoryFill_wavePartition",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "1edc9ff74dd6077da8f697e05afe76c0"
+  },
+  {
+   "id": "f193",
+   "name": "Gray-Scott",
+   "label": "grayscott-historyWave_historyReverse",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "964ed96e2c1a5d180d61bf5fe48d78a1"
+  },
+  {
+   "id": "f195",
+   "name": "Gray-Scott",
+   "label": "grayscott",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "9fc0cca4cbd90b801a4b0d71608efbf2"
+  },
+  {
+   "id": "f196",
+   "name": "Gray-Scott",
+   "label": "grayscott-withWaveCoupling_ddd_cauli",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "6f8fbf8073ccb8d075f26f9fbc2e6489"
+  },
+  {
+   "id": "f197",
+   "name": "Gray-Scott",
+   "label": "grayscottAltWave-dotdotdot",
+   "chemicals": 5,
+   "count": 1,
+   "thumb": "164483bc1c1b13bfae2b427b44fe5d98"
+  },
+  {
+   "id": "f200",
+   "name": "Heat equation",
+   "label": "heat_equation",
+   "chemicals": 1,
+   "count": 1,
+   "thumb": "b2973ccac36a37c1419c09af2e5f60c0"
+  },
+  {
+   "id": "f201",
+   "name": "Heat Equation with History And Wave",
+   "label": "heat_equation_boiling_history",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": "2f01cb7bbe75d0e9749e22977347677e"
+  },
+  {
+   "id": "f202",
+   "name": "Heat equation",
+   "label": "heat_equation_boiling_history",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": "05842c917890dfd543c5c0cccec4c614"
+  },
+  {
+   "id": "f203",
+   "name": "Heat equation",
+   "label": "heat_equation",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": "091f8a4a4882ecf4827546ad877246e3"
+  },
+  {
+   "id": "f208",
+   "name": "Meinhardt",
+   "label": "meinhardt",
+   "chemicals": 6,
+   "count": 1,
+   "thumb": "8388ad3fa33a9bd8de1fbd9c0709bf2c"
+  },
+  {
+   "id": "f209",
+   "name": "Orbit",
+   "label": "orbits_nova-secondAttemp2t",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f210",
+   "name": "Orbit",
+   "label": "orbitTest",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f211",
+   "name": "Orbit",
+   "label": "orbits",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": "212016ded864b668cd105e31256c6eb4"
+  },
+  {
+   "id": "f212",
+   "name": "Orbit",
+   "label": "orbitTest",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f213",
+   "name": "Orbit",
+   "label": "orbits_evolvesTo_manuallyFix_ix",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": "d99824c6374e89cdcafbf77650096714"
+  },
+  {
+   "id": "f214",
+   "name": "Orbit",
+   "label": "orbits",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": "33c6de02a6fba068f00a1ed04fb93508"
+  },
+  {
+   "id": "f215",
+   "name": "Orbit",
+   "label": "orbits_nova-secondAttemp2t",
+   "chemicals": 4,
+   "count": 1,
+   "thumb": null
+  },
+  {
+   "id": "f216",
+   "name": "Oregonator",
+   "label": "oregonator",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": "0a8ddf12b182367571d5e58ebddc258e"
+  },
+  {
+   "id": "f217",
+   "name": "Gray-Scott",
+   "label": "parameter_modulation",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "fcdb499cdbce7357019bf21016b64330"
+  },
+  {
+   "id": "f218",
+   "name": "Gray-Scott",
+   "label": "parameter_modulation",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "f6041157eb5b7f8aa6282ce50691a178"
+  },
+  {
+   "id": "f220",
+   "name": "Ripple",
+   "label": "ripple",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "a4253705eb00a76bed9d019e56ff2ef4"
+  },
+  {
+   "id": "f221",
+   "name": "Ripple",
+   "label": "ripple2",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "9f50a930d1147dd3e5e7e6a7c2dc307b"
+  },
+  {
+   "id": "f228",
+   "name": "Turing",
+   "label": "turing",
+   "chemicals": 3,
+   "count": 1,
+   "thumb": "b2f159ce71f40b20dd37028651e225df"
+  },
+  {
+   "id": "f229",
+   "name": "Wave equation",
+   "label": "wave_equation",
+   "chemicals": 2,
+   "count": 1,
+   "thumb": "ffdfb821f2ac7559af092b92c007a521"
+  }
+ ],
+ "packs": [
+  {
+   "id": "fuse-worms",
+   "title": "Fuse Worms",
+   "description": "Worms that meet, fuse and split again, riding a slow wave that remembers where they've been: Gray-Scott with a history chemical and a travelling wave feeding back into it.",
+   "members": [
+    [
+     "f001",
+     "ce0b10c2eaa53912ce1758bc71fd4986"
+    ],
+    [
+     "f000",
+     "e4906e496e64dedd2336f9f1da866b5c"
+    ],
+    [
+     "f015",
+     "78303b7cd516e2935ef952a04e03de77"
+    ],
+    [
+     "f000",
+     "22dbeed900b24fd2d1fa44c8ee57546a"
+    ],
+    [
+     "f001",
+     "ddabfa95a5eb778d908c2c258b4b1988"
+    ],
+    [
+     "f001",
+     "eeafef1e23ff12b0b1a8735dea563b0a"
+    ],
+    [
+     "f001",
+     "b31bd8a2ade26fda2e13a034033a0a2a"
+    ],
+    [
+     "f000",
+     "432c8be8a5b786cb3ffe78729b95f549"
+    ],
+    [
+     "f001",
+     "c8e66081716dca571cabda51de7d21c6"
+    ],
+    [
+     "f000",
+     "b266445dbcc35e7695ca85e03d07b83c"
+    ],
+    [
+     "f000",
+     "09cc0d6513c82eb04a7ada572109a265"
+    ],
+    [
+     "f001",
+     "5d8b5f7c8f98c7bd6179287ab23ec0bf"
+    ],
+    [
+     "f001",
+     "213b8ea43450e49402c0e75eeb9fb978"
+    ],
+    [
+     "f001",
+     "e12cb53e8b80c076263fbb5248080ec2"
+    ],
+    [
+     "f001",
+     "ffcd7f73d674f53f8855dd7454464060"
+    ],
+    [
+     "f001",
+     "5a9ceaada588037efede5f4ef85e63fb"
+    ],
+    [
+     "f015",
+     "615215a7044f62f62667b8f49ac9ece7"
+    ],
+    [
+     "f001",
+     "7e9555f87831e87ae0632afd7024818d"
+    ],
+    [
+     "f000",
+     "e3a7f867ba3a670012335522f077c05a"
+    ],
+    [
+     "f001",
+     "408ab2ac3e63237efaa69296384c66cf"
+    ]
+   ]
+  },
+  {
+   "id": "magic-dance",
+   "title": "Magic Dance",
+   "description": "",
+   "members": [
+    [
+     "f004",
+     "816f7987036ee60e4438df63d3a2b59d"
+    ],
+    [
+     "f004",
+     "ac4c55a7f25ee69e1c4a0e747f1640b0"
+    ],
+    [
+     "f004",
+     "769f24f8d57175d1112fe946d376640b"
+    ],
+    [
+     "f187",
+     "567a4857ab3637a6d378d0054fdf1919"
+    ],
+    [
+     "f004",
+     "7cb93009439956dd66d414c13c5d9108"
+    ],
+    [
+     "f004",
+     "9ac3939b475c05eb781cf9eecb2d7952"
+    ],
+    [
+     "f004",
+     "dff5b32c4088b81d633129fbea4157b2"
+    ],
+    [
+     "f004",
+     "59c860ed1fdc799bfac3395991df05ec"
+    ],
+    [
+     "f004",
+     "6f90e76cef9288a5335c1bf9c9a08efe"
+    ],
+    [
+     "f004",
+     "86fc2d4b9b7ada4e42b45cdf728e0f2e"
+    ],
+    [
+     "f004",
+     "0f7c9667721fef22dc774400ec4c3864"
+    ],
+    [
+     "f004",
+     "cde3e60dca0d51cb7feb41d54753d99c"
+    ],
+    [
+     "f004",
+     "5eae602ece5a2a87dbaad498405f1e1a"
+    ],
+    [
+     "f004",
+     "6d6f081070b998d20d3ec7b46d3db6aa"
+    ],
+    [
+     "f004",
+     "3875bf34c6329914d308634198712e2b"
+    ],
+    [
+     "f004",
+     "d79bbc50fa764493b328b2a0443c9bbf"
+    ],
+    [
+     "f004",
+     "265444414de243cff7712842dc252d0a"
+    ],
+    [
+     "f004",
+     "7e3bb61ad7e67873719b5f611ec27b1a"
+    ],
+    [
+     "f004",
+     "2f265969de5a21cfc3136f6b9b5a89b9"
+    ],
+    [
+     "f004",
+     "4a3ddcd838f1475ea3765856a5025cd6"
+    ]
+   ]
+  },
+  {
+   "id": "chasms-and-swirls",
+   "title": "Chasms and Swirls",
+   "description": "Spots carve canyons into the wave history and swirl along their walls: deep trails, fractured floors and slow spirals.",
+   "members": [
+    [
+     "f000",
+     "cf3950c0e1cfa91a5d311a072b0f5099"
+    ],
+    [
+     "f009",
+     "487b5227a8576ae0977a0e12167cbad1"
+    ],
+    [
+     "f000",
+     "86f818ba32086aa68f4445d727ab4d9e"
+    ],
+    [
+     "f000",
+     "a54d76aa5fd917fdfda917e458d8a982"
+    ],
+    [
+     "f000",
+     "13e3f4f82edc9db6bcba70bfd0c0923a"
+    ],
+    [
+     "f000",
+     "8b4c384246ebf23f8915970345eee248"
+    ],
+    [
+     "f000",
+     "8c7cf36e88cf89702d10b7be214789ee"
+    ],
+    [
+     "f000",
+     "6d6834786601b23f80fe16697d3b1d8d"
+    ],
+    [
+     "f000",
+     "c8c146202850f132166b148cfeae7ce3"
+    ],
+    [
+     "f000",
+     "c1e7b88f4b220bd3868d6c5ab6282b76"
+    ],
+    [
+     "f000",
+     "8e5b0a57432d48ba92a7766df42c0070"
+    ],
+    [
+     "f000",
+     "cbb89d1c779d04e2da5788d71cf38ea3"
+    ],
+    [
+     "f000",
+     "fdd3989bc75213a792382bcccf300d97"
+    ],
+    [
+     "f000",
+     "7e28774baeaae58ddca6de86baa46cd1"
+    ],
+    [
+     "f000",
+     "973dc1e3e97d5ae64c3ea8a26925a3b8"
+    ],
+    [
+     "f000",
+     "6d3b9494974841417fbfdc6bacbf5a98"
+    ],
+    [
+     "f009",
+     "5bd9175eac664583138b8c4645e009d6"
+    ],
+    [
+     "f000",
+     "dec095a2df2c37a59537c3292906cce2"
+    ],
+    [
+     "f000",
+     "c2e3c189ecde05559356e214c47dae4e"
+    ],
+    [
+     "f000",
+     "fa59dd1ab53590c26155c17206d22b56"
+    ]
+   ]
+  },
+  {
+   "id": "puffy-gliders",
+   "title": "Puffy Gliders",
+   "description": "Soft gliders that puff, bud and leave a temporal web of their paths behind them.",
+   "members": [
+    [
+     "f000",
+     "af668b0b6c412fc846e1a3101aff186f"
+    ],
+    [
+     "f000",
+     "9aeb24d92251c75b0c077397690ec020"
+    ],
+    [
+     "f000",
+     "a4869a4b816696ec2de86fb0e4b617c0"
+    ],
+    [
+     "f000",
+     "1b71248502fca3094d8fd405ad485ee3"
+    ],
+    [
+     "f000",
+     "bc8f02227aa5f9e93606d6d12476a73c"
+    ],
+    [
+     "f000",
+     "cfe7f433d388e60df47b2430836f5e01"
+    ],
+    [
+     "f000",
+     "9f384d8be6895e006f4f4d19e09c15fe"
+    ],
+    [
+     "f000",
+     "eab3039f9f126b5ee798bba2753b3adb"
+    ],
+    [
+     "f000",
+     "e3b06f51f3d3a9ced172ea62b1f67d0d"
+    ],
+    [
+     "f000",
+     "660e65c3345923e95060bf8c20a7b245"
+    ],
+    [
+     "f000",
+     "b79865263157707a85f412d64b323c9f"
+    ],
+    [
+     "f000",
+     "447af98ddab277a5e79bc74614e4b12f"
+    ],
+    [
+     "f000",
+     "20a191f9d25c85b04b6411e45d2195de"
+    ],
+    [
+     "f000",
+     "02680b647b743044af80b0b7c1b29606"
+    ],
+    [
+     "f000",
+     "86198313f905a0063ec88a56d67c16ab"
+    ],
+    [
+     "f000",
+     "683f2cc0baa268e15548a7fbeef34fec"
+    ],
+    [
+     "f000",
+     "b0c6e1ff43b5e10a19ecb35b3ce5c149"
+    ],
+    [
+     "f000",
+     "70e0ff5ea06a350f7d668d3a8cf98ffc"
+    ],
+    [
+     "f000",
+     "264679563e520058d997bf816d2b6ded"
+    ],
+    [
+     "f000",
+     "864679474baeb8c65273a4241f3f9ce3"
+    ]
+   ]
+  },
+  {
+   "id": "active-mesh",
+   "title": "Active Mesh",
+   "description": "A living net: cells that hold their places in a mesh, pulse and rearrange when the wave passes through. Some get psychedelic.",
+   "members": [
+    [
+     "f000",
+     "35af43a1f4f9199a3117c49d1174dc5d"
+    ],
+    [
+     "f015",
+     "b451d8c43f5a1b12a48a3da667685df8"
+    ],
+    [
+     "f000",
+     "15e1c29f6e62b5d3d12c29ba0f26f327"
+    ],
+    [
+     "f000",
+     "7e2e4b4f51dc85b3ad65167e7cf61f41"
+    ],
+    [
+     "f000",
+     "fd661d62cbb20dc3a8f53d9cf3e1b3f0"
+    ],
+    [
+     "f000",
+     "3b111dc4cff71c586c31b58482a8c60a"
+    ],
+    [
+     "f015",
+     "5c29c1a6e843d5e565b10c0a63504f87"
+    ],
+    [
+     "f000",
+     "cc4a64b75d42f70aa00d38e88ec5e25e"
+    ],
+    [
+     "f000",
+     "e7c36d7041073cb588106e7ec92d62da"
+    ],
+    [
+     "f000",
+     "082c019e95448859d93ec4248ac5836d"
+    ],
+    [
+     "f000",
+     "0e82b68ce07e172666aa313843e4e5cb"
+    ],
+    [
+     "f000",
+     "3e0280b4e5982d71db77bc0d67896703"
+    ],
+    [
+     "f000",
+     "cdec91ad227a2baefdaed51b5e6a2fc0"
+    ],
+    [
+     "f000",
+     "93164cf6142609d83ef017f71149a52a"
+    ],
+    [
+     "f000",
+     "5e0b2c52b80010f6bf6aa74a0843418e"
+    ],
+    [
+     "f000",
+     "f279f85729f37d6c980bc434fdbe531e"
+    ],
+    [
+     "f000",
+     "41dd952e85ed5bc902417915996eee23"
+    ],
+    [
+     "f000",
+     "48b71513ce3631f97936f9da5726e817"
+    ],
+    [
+     "f000",
+     "bd175f739ea187c1b12eac99af99c624"
+    ],
+    [
+     "f000",
+     "6082ec413965a0141c7c93264249710f"
+    ]
+   ]
+  },
+  {
+   "id": "flowy-dots",
+   "title": "Flowy Dots",
+   "description": "Sparse dots drifting through a cloud tank, each with a long, smooth wave wake trailing behind.",
+   "members": [
+    [
+     "f014",
+     "4fce317f40c164b64d5f10a2dfa3bbd8"
+    ],
+    [
+     "f015",
+     "935343f9b1055ac64d84f6bf2e688c30"
+    ],
+    [
+     "f004",
+     "ac7911b6b470fb3242e623173eafd293"
+    ],
+    [
+     "f022",
+     "ef26190a4694531f3c6cb281478e7c85"
+    ],
+    [
+     "f092",
+     "5dd072042a918bc9c7d616e424de969e"
+    ],
+    [
+     "f015",
+     "2604e28731a8c9c8ba98b51a9659f676"
+    ],
+    [
+     "f092",
+     "7ce70a7776abc0bc9d1f30367f71a17a"
+    ],
+    [
+     "f004",
+     "c0566bb4d776b6b27462b42e0232dcdf"
+    ],
+    [
+     "f004",
+     "4833ea1e77a86460c136d8d34a73eca9"
+    ],
+    [
+     "f188",
+     "7c6e97eeaafe0aee02b4e6704ac550b6"
+    ],
+    [
+     "f014",
+     "6aa27dbc71ebeec2823c03101859e7d5"
+    ],
+    [
+     "f014",
+     "0542d81aa1303b8e56a4eabf934aa97e"
+    ],
+    [
+     "f014",
+     "cbd1e73f6d116426c53c0f352c38d699"
+    ],
+    [
+     "f004",
+     "e9ada9bca727ac77d6543bc0e9a95ec8"
+    ],
+    [
+     "f015",
+     "733ba549974401cdb78d7c8810df9158"
+    ],
+    [
+     "f014",
+     "a3a0cc67c937ad55259cc725fd6327e0"
+    ],
+    [
+     "f014",
+     "1b4c3771adbe2c2d34779da50f578e11"
+    ],
+    [
+     "f015",
+     "eaa29ca9e12a59f4992a74adde7d2dd2"
+    ],
+    [
+     "f004",
+     "06d575751ccec52832f27d2d9f93def6"
+    ],
+    [
+     "f014",
+     "53d15f633b34aa92535f1ee5c511ef70"
+    ]
+   ]
+  },
+  {
+   "id": "history-wave-dc",
+   "title": "Deep Currents",
+   "description": "Gray-Scott whose history runs on a DC wave: fibrous fills, powered-up a and b, and patterns that keep reorganising long after they've settled.",
+   "members": [
+    [
+     "f095",
+     "0ab6978d7140f47e4257de856a6f31a6"
+    ],
+    [
+     "f005",
+     "d3671400860efdec135796fb6adf6ae5"
+    ],
+    [
+     "f055",
+     "469d5ef0a8a24c76349b895196c60626"
+    ],
+    [
+     "f037",
+     "ea71a5a784c7219d03a8a380389ae320"
+    ],
+    [
+     "f094",
+     "3379bcc1fc0012f31d158364268b11b4"
+    ],
+    [
+     "f037",
+     "befa45865ead738c06fc898613d23eaa"
+    ],
+    [
+     "f005",
+     "3132c1b708a7143e169352cf48160e57"
+    ],
+    [
+     "f055",
+     "a618cac1e9ffdf11dd2806450195745f"
+    ],
+    [
+     "f095",
+     "d9948278e02560b4ab258111e46ae83a"
+    ],
+    [
+     "f005",
+     "cb8390060af2232b5898042f922f0051"
+    ],
+    [
+     "f037",
+     "5f538557f0d341115bbc76b02b979f99"
+    ],
+    [
+     "f005",
+     "a7118f52bbda73eceecc3477041b30bb"
+    ],
+    [
+     "f005",
+     "ae80922b7cef02b41a13dc0993cf1d45"
+    ],
+    [
+     "f037",
+     "1e55ca3ec118d3184a31b26f7e691305"
+    ],
+    [
+     "f192",
+     "1edc9ff74dd6077da8f697e05afe76c0"
+    ],
+    [
+     "f191",
+     "b36e0b73d05f9514ccc90aa013fff3d1"
+    ],
+    [
+     "f005",
+     "29c418218f4ba0beccfa4a7dca786f99"
+    ],
+    [
+     "f037",
+     "e8f8f28a1aa4879cdb049a6ce388f0ef"
+    ],
+    [
+     "f055",
+     "7f3d5d2313c009536994f51619ad8b38"
+    ],
+    [
+     "f005",
+     "6b08971104e44d4ed1388b2d91fd0b13"
+    ]
+   ]
+  },
+  {
+   "id": "wiggly",
+   "title": "Wigglers",
+   "description": "Restless worms that wiggle and never quite settle, on wave settings tuned for nervous energy.",
+   "members": [
+    [
+     "f017",
+     "ed3282a7d9abae38922b799eaf696c30"
+    ],
+    [
+     "f021",
+     "bf0f81bddf4cd97a74d7b9b294f79417"
+    ],
+    [
+     "f021",
+     "554a2fc39de8551308d27b0630ced931"
+    ],
+    [
+     "f021",
+     "47f63b338e4f2bd94c495c4274aa80eb"
+    ],
+    [
+     "f021",
+     "e00ef5d1d2ba846a9421b8be3f6e2e82"
+    ],
+    [
+     "f021",
+     "fb79de21dcc30c22c02f136b0cfae513"
+    ],
+    [
+     "f021",
+     "dd6b09e3337a0b29ee369554e35a20aa"
+    ],
+    [
+     "f007",
+     "e861657da4188ce985e1361bff9524e8"
+    ],
+    [
+     "f007",
+     "b3ca90ec11e1b7afd135e75ee783b3c9"
+    ],
+    [
+     "f007",
+     "3ad08d2d081db6f82e0adc50dc88e919"
+    ],
+    [
+     "f021",
+     "953367185e6d7c009b60aff0ec8096d8"
+    ]
+   ]
+  },
+  {
+   "id": "dot-fights",
+   "title": "Dot Fights",
+   "description": "Oscillating worms, single solitons and super-long trails competing for space.",
+   "members": [
+    [
+     "f001",
+     "3a9f2f3c9744f7f11449f141be7c8843"
+    ],
+    [
+     "f056",
+     "7a9fdc7487e305bb9af9f4a006bebb80"
+    ],
+    [
+     "f001",
+     "9525a36fbf624c90c77fc55684cb417c"
+    ],
+    [
+     "f001",
+     "747420d80282c83f3f6d076aa706d1b8"
+    ],
+    [
+     "f001",
+     "591d84b2c641cac17d0be5dde8b8ea75"
+    ],
+    [
+     "f001",
+     "5115fe2a0bb61363582852433708071c"
+    ],
+    [
+     "f001",
+     "245167a7c779dbe3ac6cdfcadd922bcf"
+    ],
+    [
+     "f001",
+     "6195f46fbae6b1ed9b31e79ba189a9b4"
+    ],
+    [
+     "f001",
+     "4fc5f0d77b33c593183a9f60cabfe114"
+    ],
+    [
+     "f001",
+     "14a5f43f0fb6a1dc6a660190b21e1a33"
+    ],
+    [
+     "f001",
+     "5cf022abfb541f5457889cabcb39cab4"
+    ],
+    [
+     "f001",
+     "11ecfce9dac5ff2c63fb2a0195b4ce66"
+    ],
+    [
+     "f001",
+     "66208fb156a4025499060ba2b1532340"
+    ],
+    [
+     "f001",
+     "71a96ac1a266203ae6e56a120b67ffbe"
+    ],
+    [
+     "f001",
+     "f60404584deec985f96da851200597ce"
+    ],
+    [
+     "f001",
+     "13b4e5ddc56a39c25ced9efb2c3e55ea"
+    ],
+    [
+     "f001",
+     "b42b280775516cd2f42f1fb0d61cd864"
+    ],
+    [
+     "f001",
+     "e78f7d47cb3862665849185243d0de9f"
+    ],
+    [
+     "f001",
+     "5c0a661c0549f8c784df94037fbd04dd"
+    ],
+    [
+     "f001",
+     "d5d2292872edc28611caab8b02836ba5"
+    ]
+   ]
+  },
+  {
+   "id": "evolving-mask",
+   "title": "Evolving Mask",
+   "description": "Gray-Scott with a slowly evolving mask chemical that redraws the map of where spots may live: separations, branching fronts and froth.",
+   "members": [
+    [
+     "f004",
+     "41f3084aeb2e3b5686eac77825c5859f"
+    ],
+    [
+     "f009",
+     "726dbf4894f7d961333eb8deed6d1d29"
+    ],
+    [
+     "f032",
+     "8768bb23cd0589490b23f79849e6631b"
+    ],
+    [
+     "f036",
+     "81c2ec1ee21c9b626aef4bd49e8f132a"
+    ],
+    [
+     "f004",
+     "ad3cb80a63ad1aefadd5323918d57031"
+    ],
+    [
+     "f032",
+     "e32d8d5c79674f8d67b5e7d6a213b35a"
+    ],
+    [
+     "f036",
+     "03be181f80e8bdd3090b54eed64c1313"
+    ],
+    [
+     "f036",
+     "65415fab394ca25c15f78dc6c9f45b31"
+    ],
+    [
+     "f004",
+     "42d3097e71aed4ede010832747b4f2b1"
+    ],
+    [
+     "f036",
+     "385ac0ab6685a8bea37c165f0679931c"
+    ],
+    [
+     "f004",
+     "330996ffb1fc38ae97d08d3067c28ab1"
+    ],
+    [
+     "f004",
+     "4c1ffe0b4c89a74f83fde69fc2d53063"
+    ],
+    [
+     "f036",
+     "33f752a64ec4b04f8fd404b644e57dda"
+    ],
+    [
+     "f032",
+     "0d10f9c3c77feed84bcbddcfc1ecbc8f"
+    ],
+    [
+     "f004",
+     "6db661bf1ec0c20fac5964b200e81a2e"
+    ],
+    [
+     "f004",
+     "f0d21e8cf071d72577b8f622af4ee852"
+    ],
+    [
+     "f032",
+     "1a9c472117a4551a94a4a87b53fc6eab"
+    ],
+    [
+     "f032",
+     "6a8fc60b07d4e110cecc1646506bc98a"
+    ],
+    [
+     "f004",
+     "018f96be6f8aab9a993c9e3d1a6369ae"
+    ],
+    [
+     "f032",
+     "309bd6a15c0dac36d00c73e38b962a01"
+    ]
+   ]
+  },
+  {
+   "id": "wave-coupled-gray-scott",
+   "title": "Wave-Coupled Gray-Scott",
+   "description": "The first experiments coupling Gray-Scott to a wave and a history chemical: bouncy space-fillers, echoes and wakes.",
+   "members": [
+    [
+     "f024",
+     "f11ebec5aa4fb3fe4e9e8fa2d1070d15"
+    ],
+    [
+     "f018",
+     "15c1b1f5b3302d601d5f0423b38b0c32"
+    ],
+    [
+     "f000",
+     "c6c4376142d46b451d36a83c96f53c8e"
+    ],
+    [
+     "f022",
+     "d46ad5a3c57d6fb72d338a7fcf4d07f6"
+    ],
+    [
+     "f096",
+     "e16fbdcb0648c37112771184e1ae6d04"
+    ],
+    [
+     "f018",
+     "67ed3d0ebf19e5e87a4f0b1f3b4dfe4b"
+    ],
+    [
+     "f022",
+     "62d4fa82091e669424f16596e4e0fceb"
+    ],
+    [
+     "f024",
+     "4cc1e8c142e312022ceb586d6c93ee77"
+    ],
+    [
+     "f000",
+     "08dc0051cd53890c276f339516ce0ccc"
+    ],
+    [
+     "f018",
+     "869d827d1d4438993332d27b22024af4"
+    ],
+    [
+     "f096",
+     "b8c646fa30971235cbb0763a1543e31f"
+    ],
+    [
+     "f190",
+     "184d64230b2e32ffa7e37c081250728c"
+    ],
+    [
+     "f022",
+     "a4734e9ae4cabb0f9c678aa8c6c61eaf"
+    ],
+    [
+     "f196",
+     "6f8fbf8073ccb8d075f26f9fbc2e6489"
+    ],
+    [
+     "f000",
+     "4b8195faea2499501cb388e21bfe165f"
+    ],
+    [
+     "f189",
+     "0a1ccd4bd196e211c4ca92c3a36430cf"
+    ],
+    [
+     "f018",
+     "cc5fcaa18f3a2732c737dea7dda7fecf"
+    ],
+    [
+     "f195",
+     "9fc0cca4cbd90b801a4b0d71608efbf2"
+    ],
+    [
+     "f018",
+     "f7952a90168f3c6ba8a3826e16172723"
+    ],
+    [
+     "f024",
+     "9abcf46c347cf57f38bea154ff85129d"
+    ]
+   ]
+  },
+  {
+   "id": "history-wave",
+   "title": "History Wave",
+   "description": "Gray-Scott spots writing their history into a wave they then ride - lifey, unstable, sometimes dollar-shaped.",
+   "members": [
+    [
+     "f005",
+     "7b6c3ff82ac3a9dfa518f0d80279d039"
+    ],
+    [
+     "f019",
+     "a82322e37734d20a899741bb6773d78d"
+    ],
+    [
+     "f001",
+     "7472b31db1956dac8324875f816a41c5"
+    ],
+    [
+     "f000",
+     "85d67949ee04a66ca659e37185b62ac1"
+    ],
+    [
+     "f056",
+     "2cf76d0d0f681105d378a53c6677c011"
+    ],
+    [
+     "f057",
+     "fb3f2793aa9427d6d3c9a078a34e3b78"
+    ],
+    [
+     "f015",
+     "1946dd7ec71d38861c99865bdb04340f"
+    ],
+    [
+     "f005",
+     "da8e58cb7049d0c1fa5e41d977b62903"
+    ],
+    [
+     "f001",
+     "5492c8709b22092a551de68294609f0d"
+    ],
+    [
+     "f005",
+     "62ff63608f099f29c1ac31851f7ab7dd"
+    ],
+    [
+     "f000",
+     "61a41c62e17346f180531ae82a1489be"
+    ],
+    [
+     "f001",
+     "b2576cf2de9c977aec85aee46f1384d0"
+    ],
+    [
+     "f000",
+     "217969df10ae9bc87079c1787912c27f"
+    ],
+    [
+     "f197",
+     "164483bc1c1b13bfae2b427b44fe5d98"
+    ],
+    [
+     "f000",
+     "cab7bd897122c597923744efac0c5f6f"
+    ],
+    [
+     "f000",
+     "f8b82c1ce30b252e45af9891b861fb00"
+    ],
+    [
+     "f015",
+     "d45cd52f95d486af8d1e80d485bcab71"
+    ],
+    [
+     "f001",
+     "fd7aca9a453f6efabeb4ff08dc14f610"
+    ],
+    [
+     "f001",
+     "74526a59f6ce8bf449f442e19692d2eb"
+    ]
+   ]
+  },
+  {
+   "id": "sharpened-gray-scott",
+   "title": "Sharpened Gray-Scott",
+   "description": "Gray-Scott with a sharpening tweak: crisp cell trails, gelatinous blobs, ropes and Voronoi-ish cells.",
+   "members": [
+    [
+     "f009",
+     "4d178b492592440f6cb2af72062fa9d0"
+    ],
+    [
+     "f022",
+     "1fd96105c5b93a02fa228db3c419f9b2"
+    ],
+    [
+     "f020",
+     "1d1e915acad66ff1dfc5aeb026eae192"
+    ],
+    [
+     "f093",
+     "2ad7c93869889a907e69a5cd266b85f8"
+    ],
+    [
+     "f014",
+     "f1719b1cb6bbe1c786e8893ef2ffc386"
+    ],
+    [
+     "f093",
+     "98d289f725243497018288035793b169"
+    ],
+    [
+     "f020",
+     "8574e42ee0737f37edf297f637af995e"
+    ],
+    [
+     "f020",
+     "7cfc6422cb8110b1e961f5f492694735"
+    ],
+    [
+     "f009",
+     "df673d4a2f0857248e6f1bfa73eee334"
+    ],
+    [
+     "f009",
+     "10cb127944456ba99642f84cfebd6fe5"
+    ],
+    [
+     "f009",
+     "42a5bf04df343e3b9bc3edd2c5e8da2e"
+    ],
+    [
+     "f009",
+     "7aeae30e815bce962898878e852508ed"
+    ],
+    [
+     "f020",
+     "876dc8f5450ba6d9d051be7cb6310828"
+    ],
+    [
+     "f020",
+     "c0263376d01f2d5c225d4bfb61ef891d"
+    ],
+    [
+     "f009",
+     "6d352d3e9e39ebfa22eb4a7afc702aec"
+    ],
+    [
+     "f009",
+     "32c51293a24b614e1e21f1b056465e58"
+    ],
+    [
+     "f020",
+     "1d663c44fce7e8696cebecc4d58da34f"
+    ],
+    [
+     "f009",
+     "835c8c404f92c74914795fa9780d3d09"
+    ],
+    [
+     "f009",
+     "585e3838bf7e077bc842ca0a4814c0bc"
+    ],
+    [
+     "f020",
+     "70d2428d91983d9f3114e8ca7ca49f17"
+    ]
+   ]
+  },
+  {
+   "id": "meta-gray-scott",
+   "title": "Meta Gray-Scott",
+   "description": "Gray-Scott running on top of another Gray-Scott - worms, solitons and fiestas from two coupled layers.",
+   "members": [
+    [
+     "f021",
+     "84990e1e60ea88bd2be094791c9f3bdb"
+    ],
+    [
+     "f021",
+     "a0212ad53256fb7eb9da1bd8800e17ce"
+    ],
+    [
+     "f021",
+     "9f446f1bd86b37a1047232e3cd65ae0b"
+    ],
+    [
+     "f054",
+     "879292ed826a5e0e066ec5efa9f3b6b8"
+    ],
+    [
+     "f021",
+     "3037f23f5eb0ad1e9cd37d885a000186"
+    ],
+    [
+     "f021",
+     "0ec55f03578b1bb43ebfd0544338acbb"
+    ],
+    [
+     "f021",
+     "e939a4fac8b2c510916e7717c4f14c7d"
+    ],
+    [
+     "f021",
+     "4d956c8d0d1049cad19a4a4855c222fe"
+    ],
+    [
+     "f042",
+     "9c2c0004a7b70c4294bea26ab2c08834"
+    ],
+    [
+     "f042",
+     "9d22e0afae078c3ae6baa2285dd04fd7"
+    ],
+    [
+     "f042",
+     "a713bbaa62b63d13088e158a30b2935a"
+    ],
+    [
+     "f042",
+     "1fa0a6dd9f3d0db651da42163e7cdbde"
+    ],
+    [
+     "f042",
+     "c174978df587e54822d72fd5acae534e"
+    ],
+    [
+     "f042",
+     "920745c4cc501abb9e2376448feb3e7a"
+    ],
+    [
+     "f042",
+     "4bdecac7479fda5697ed7b546122f1cc"
+    ]
+   ]
+  },
+  {
+   "id": "u-skate-world",
+   "title": "U-Skate World",
+   "description": "Robert Munafo's U-Skate world of Gray-Scott: skaters, spin gliders, block worlds and travelling smiles.",
+   "members": [
+    [
+     "f012",
+     "1fbc1373b4a93dfec45ffbaa4c5725c7"
+    ],
+    [
+     "f012",
+     "e0dce4df478dde37e27b5fd6fb8d2200"
+    ],
+    [
+     "f012",
+     "af2f46f309b0dfc78b8d7cb939e7a004"
+    ],
+    [
+     "f012",
+     "1c48518aa88ef16f8da0014ae11712e5"
+    ],
+    [
+     "f012",
+     "b3d18967bef721c78e4a751f7220c307"
+    ],
+    [
+     "f012",
+     "734bb072731efe459b54a0e59a7c56c1"
+    ],
+    [
+     "f012",
+     "299aae41a185d34bf7af82c662c428b2"
+    ],
+    [
+     "f012",
+     "405821d144c148818baf884eed4c8dee"
+    ],
+    [
+     "f012",
+     "74b64cfbc888fe808a0ce36261912237"
+    ],
+    [
+     "f012",
+     "e2eb532510c6b17dde1dec6be9826cbf"
+    ],
+    [
+     "f012",
+     "b1cf134f804316baf98a468d28173a4c"
+    ],
+    [
+     "f012",
+     "2d448e983267bb644e956f021e67e8ef"
+    ],
+    [
+     "f012",
+     "98f5c850f799ea5b7488b1ce193b968d"
+    ],
+    [
+     "f012",
+     "7dd866a187f405e5ddd792d1b188ee35"
+    ],
+    [
+     "f012",
+     "d165014ce9eeec8b8bbc5cc645ba0e48"
+    ],
+    [
+     "f012",
+     "cb9e1f3c8309111177104923749f7cc8"
+    ]
+   ]
+  },
+  {
+   "id": "gray-scott-demos",
+   "title": "Gray-Scott Demos",
+   "description": "Gray-Scott in its many moods: photo-solitons, worms, popping dots and organising mish-mashes.",
+   "members": [
+    [
+     "f012",
+     "edae7a573a3dea0d422532a75013066e"
+    ],
+    [
+     "f012",
+     "1906b160afe11ea094a7b5f2976f4b0a"
+    ],
+    [
+     "f012",
+     "e00c4cfd71fca913c7bd2484a694b4fb"
+    ],
+    [
+     "f012",
+     "88fb63b00c2af97cd77c071a9fd087c5"
+    ],
+    [
+     "f012",
+     "04caaadf3b2e7f68b6b0db790b3b9225"
+    ],
+    [
+     "f012",
+     "b497c86119e8b17cae80a888ff9ed554"
+    ],
+    [
+     "f184",
+     "8c77b751c37368bc2306d45f8b423f66"
+    ],
+    [
+     "f053",
+     "1eccd183ebb6f184dde29dab8092fc93"
+    ],
+    [
+     "f053",
+     "026fcfbdd727a47b205efe0aec656410"
+    ],
+    [
+     "f185",
+     "d040832dbf19188d5aa03758d3f8b95c"
+    ],
+    [
+     "f054",
+     "1d959c50ed7dceaf9bf89e4276a78d05"
+    ],
+    [
+     "f054",
+     "b7ddcb605978b3008bc76af3b6767fc4"
+    ],
+    [
+     "f054",
+     "8b434c9f225ea552d778e7198a70b66e"
+    ],
+    [
+     "f012",
+     "f94b7121d78f27d86b29ffcaf1f5bb75"
+    ],
+    [
+     "f012",
+     "44bc847378e35b664bd03c9b1d66b24d"
+    ],
+    [
+     "f098",
+     "c1115f03ce805e33a84b2cb38150b899"
+    ],
+    [
+     "f014",
+     "898883c54a2177062b70b9d36780b284"
+    ]
+   ]
+  },
+  {
+   "id": "orbits-boundary-pulses",
+   "title": "Orbits: Boundary Pulses",
+   "description": "Dan's Orbit rule with pulses sent in from the edges: life waves and spaceships.",
+   "members": [
+    [
+     "f007",
+     "4565e2cd2d195417ec81d1c612cbe434"
+    ],
+    [
+     "f006",
+     "4033d2c03f8c8eed1dbb63c23ae38b73"
+    ],
+    [
+     "f007",
+     "26b7ba146d9faa99c6ca3daca7e0aa56"
+    ],
+    [
+     "f211",
+     "212016ded864b668cd105e31256c6eb4"
+    ],
+    [
+     "f007",
+     "9c54fcff757cc0a201fbe7f2ce03082b"
+    ],
+    [
+     "f007",
+     "50788ea7dceb35187cca355e3d90bc9f"
+    ],
+    [
+     "f007",
+     "efebdfb6d4feaab2d3a529817732338d"
+    ],
+    [
+     "f007",
+     "9fec058bea7dae4b1eb9625eb0032768"
+    ],
+    [
+     "f007",
+     "dd8d7b28b523a80c7f415eb4a4be5b7b"
+    ],
+    [
+     "f006",
+     "c88bd3140c28174b78d25b2b8ed7a4b0"
+    ],
+    [
+     "f007",
+     "9246eb478c7f6f0f1dbfdbe7aedf057d"
+    ],
+    [
+     "f007",
+     "7dc22d0f46b8603864c8f667b2fbf530"
+    ],
+    [
+     "f007",
+     "e937add1101d9042e8be426314daae66"
+    ],
+    [
+     "f007",
+     "a6ca78ad2d207f0d56b84122e030bd05"
+    ],
+    [
+     "f007",
+     "70bdaaf2a20262134254164406af301f"
+    ],
+    [
+     "f007",
+     "e81c30a9a599b3b8bc2ac8dfefd92e24"
+    ],
+    [
+     "f007",
+     "a1e98387c4ef5b3f848589a5c0b0d060"
+    ],
+    [
+     "f007",
+     "20d25d74f19cb5db48a3fb46ca1e062b"
+    ],
+    [
+     "f007",
+     "b71a69720e884c3166ae5e010f2f0a5d"
+    ],
+    [
+     "f007",
+     "a43d9743ea49a9448e669e527b1060ea"
+    ]
+   ]
+  },
+  {
+   "id": "orbits-julia",
+   "title": "Orbits: Julia",
+   "description": "Orbit rule tests - Julia-set dynamics in a reaction-diffusion, phases, slow spins and odd squiggles.",
+   "members": [
+    [
+     "f048",
+     "06a2c0c3dbbd2fa681aec9b0e7fda76d"
+    ],
+    [
+     "f104",
+     "0570d45d5b41ff19ae40930374adff97"
+    ],
+    [
+     "f030",
+     "3e4d2a8497bd935bc0669a2ffc89003d"
+    ],
+    [
+     "f058",
+     "c6891d1686c4115e7ccd9c89bde00fa4"
+    ],
+    [
+     "f074",
+     "8cdb1fa1ac04cf50cbf2cb07ce2c1fc3"
+    ],
+    [
+     "f007",
+     "179b7ea0f2d02c4c074c4dcf2e1fcbfe"
+    ],
+    [
+     "f049",
+     "03255f5a1f5534df23eb596688c70919"
+    ],
+    [
+     "f059",
+     "f5ecdaee49e0362db8f6333cb29f0514"
+    ],
+    [
+     "f104",
+     "9d7fb7775571b3e8405a75f05bd2c654"
+    ],
+    [
+     "f058",
+     "320c583fb75b70c33d8993fdebd477d5"
+    ],
+    [
+     "f030",
+     "014f1033d6cc31324babbfae98a6d843"
+    ],
+    [
+     "f007",
+     "90e0b2e3a84706c63529ed78ee68c504"
+    ],
+    [
+     "f059",
+     "a696d1462395ba8f60b929aa9a40902d"
+    ],
+    [
+     "f007",
+     "f4f079679e78499bc6f04bff5e48e770"
+    ],
+    [
+     "f030",
+     "04eee028b5b384a646fc51f5759f2ae8"
+    ],
+    [
+     "f048",
+     "bb57b59d0fa00d3d3d54f3c3901008fe"
+    ],
+    [
+     "f049",
+     "d9fb12166c58bcae752f02e8889a4c44"
+    ],
+    [
+     "f210",
+     "d8a6bbcb900e2efa3366c44cdcb49051"
+    ],
+    [
+     "f058",
+     "dd76b8af4b314f817a6baa9d0b23b1a7"
+    ],
+    [
+     "f007",
+     "e3d2725e416cd78ecf468324b04180e6"
+    ]
+   ]
+  },
+  {
+   "id": "orbits-nova",
+   "title": "Orbits: Nova",
+   "description": "The Nova variant of the Orbit rule: communities, beans, sausages, fractal tiles and chaos holes.",
+   "members": [
+    [
+     "f034",
+     "07803534bf1c436dcec1a2306e813c6f"
+    ],
+    [
+     "f010",
+     "f6baf667a77950185a666fc51b395481"
+    ],
+    [
+     "f034",
+     "d65addac982a02e5118bca1485c36233"
+    ],
+    [
+     "f010",
+     "d45888cad16563cf03104149209d7dc8"
+    ],
+    [
+     "f010",
+     "1a5c8533f3ed328a85d81b4336d20574"
+    ],
+    [
+     "f010",
+     "fda9a8faa93d41d6eecfcb7d426e9d4e"
+    ],
+    [
+     "f034",
+     "615dafa80396514152b8fcfff3bc0289"
+    ],
+    [
+     "f010",
+     "2b7309b4144c321970d146f0796c5394"
+    ],
+    [
+     "f010",
+     "25f41a1b12d9461d567e68bb34450a80"
+    ],
+    [
+     "f215",
+     "68ad3ef7874c461376e3986ac9de377d"
+    ],
+    [
+     "f034",
+     "9bb95b79aeb22d85ff799e91b2d19046"
+    ],
+    [
+     "f010",
+     "86401a708ceb85bfeaec525cba93b156"
+    ],
+    [
+     "f010",
+     "f047921c7b6645c81baab4bc54136dff"
+    ],
+    [
+     "f010",
+     "6ef25f3369c7f07a0e30edaab7993fae"
+    ],
+    [
+     "f010",
+     "5ad4d70ac4b7a655a07d0df7e3518a29"
+    ],
+    [
+     "f010",
+     "cc43f9b6c9c7b0a4388acf02ddb8430e"
+    ],
+    [
+     "f010",
+     "4561aa7f2e03e46f91dbaff16d154846"
+    ],
+    [
+     "f010",
+     "ea0c7b4c180ed0388ac6af92f9b8c5c5"
+    ],
+    [
+     "f034",
+     "57b63b4a41a75be960b4a06ef92cdd1e"
+    ],
+    [
+     "f010",
+     "93f18149bde557e16de957fe59f84115"
+    ]
+   ]
+  },
+  {
+   "id": "orbits-chaos-spirals",
+   "title": "Orbits: Chaos Spirals",
+   "description": "Orbit patterns evolved by hand towards chaos spirals, travelling crystals and mungey waves.",
+   "members": [
+    [
+     "f102",
+     "336bf78e036fe2c8c80cd82b446bb37f"
+    ],
+    [
+     "f003",
+     "0cd6a26c9c129d7bbfa0cbca6ad5217e"
+    ],
+    [
+     "f026",
+     "5062f97350eb797ab1819314eaaf8b03"
+    ],
+    [
+     "f103",
+     "d2abf6ebc90f9e162667da0d9122c9d2"
+    ],
+    [
+     "f103",
+     "e8640842a5c2c9685051cdc9b0c781e6"
+    ],
+    [
+     "f026",
+     "d0ad91949b1524b48a04fd79ca4093d4"
+    ],
+    [
+     "f003",
+     "6d7d02b72e8296d3af299b4a099b67c8"
+    ],
+    [
+     "f213",
+     "d99824c6374e89cdcafbf77650096714"
+    ],
+    [
+     "f026",
+     "02c9a2d0dc6801eb1306bbadfa9ddbea"
+    ],
+    [
+     "f003",
+     "8bb4e0f95fc25143f33ea640f8fae8ad"
+    ],
+    [
+     "f003",
+     "a4db6e7a73a892eeca12c39415315c6f"
+    ],
+    [
+     "f003",
+     "f33e1c8231c5cdadac81314ea1c78dc8"
+    ],
+    [
+     "f003",
+     "9d5146db2c84dbd10aa94b85b69463b7"
+    ],
+    [
+     "f003",
+     "e74e445a4d5374453fb4836a10960ef3"
+    ],
+    [
+     "f003",
+     "c671ba4414e06fd75e78ff285c62cafd"
+    ],
+    [
+     "f026",
+     "58e667b0f87b86e2fa4a4fae351cc85b"
+    ],
+    [
+     "f026",
+     "83f0c535655c678db55eb4f749320a9b"
+    ],
+    [
+     "f026",
+     "2308ec296218252812503cac6b7cdd51"
+    ],
+    [
+     "f003",
+     "92c50c5b75af873d8cce0a9475ed81b3"
+    ],
+    [
+     "f003",
+     "e0779191ef915ffd066c6e619b48658d"
+    ]
+   ]
+  },
+  {
+   "id": "orbits",
+   "title": "Orbits",
+   "description": "Dan's own Orbit rule (pow, atan2 and direct assignments): soft spots, epochs and explodey buddhas.",
+   "members": [
+    [
+     "f003",
+     "8e7888b0489bb18f30c3675dcffc5a97"
+    ],
+    [
+     "f026",
+     "1a6bb017613305ba4b1897a84c1f7241"
+    ],
+    [
+     "f049",
+     "e40f3f3d8a96531e3d77653393542763"
+    ],
+    [
+     "f003",
+     "04579e474c0cbd99bbea3c0b1814d112"
+    ],
+    [
+     "f003",
+     "d72e6fa7dbc9b8841fa4bfbabcf54a74"
+    ],
+    [
+     "f003",
+     "da0eb2587938384b847d7f4506f62b15"
+    ],
+    [
+     "f003",
+     "dfcc7ba1c794344d57c49fae54c62b67"
+    ],
+    [
+     "f003",
+     "de73027d6caff7eb7ac0bd3c504a318d"
+    ],
+    [
+     "f003",
+     "dc711cc4efa61f2a1d9f478695b23207"
+    ],
+    [
+     "f003",
+     "9386ca890c92a5720ceec8cd2c7ccc27"
+    ],
+    [
+     "f003",
+     "96f46a13e22aaf904521050ab763770d"
+    ],
+    [
+     "f003",
+     "82e45ef05d4cb8400750e450291d9b8d"
+    ],
+    [
+     "f003",
+     "ae32a7caec643e220fdeaa50bb680d23"
+    ],
+    [
+     "f003",
+     "371b0c419ed14ec4c56f5f042c23fed7"
+    ],
+    [
+     "f003",
+     "4e4d3d27eddc93d4065fde6154439ba7"
+    ],
+    [
+     "f003",
+     "5d65077f6ee1cb8a7cfb987e7b744854"
+    ],
+    [
+     "f003",
+     "f938bed880f5565a8c1a653ad9c7e91c"
+    ],
+    [
+     "f003",
+     "e7165c9ed777847d475ea65420f08fc9"
+    ],
+    [
+     "f003",
+     "7d898dad0156ebad8414d88d60792487"
+    ],
+    [
+     "f003",
+     "16a76548a3ea1beef40e359ed6654b3f"
+    ]
+   ]
+  },
+  {
+   "id": "cell-spirals",
+   "title": "Cell Spirals",
+   "description": "Ginzburg-Landau ramped across the grid so spirals become cells: honeycombs, mazes, web fences, turing columns and continuous mitosis.",
+   "members": [
+    [
+     "f086",
+     "d0b34acdc1148f64f4cfe449fc4b1ef9"
+    ],
+    [
+     "f011",
+     "2782789873efd4f568b82113845d2d9d"
+    ],
+    [
+     "f002",
+     "860c12dbff4a2d8d1e96ff1e863b1bbd"
+    ],
+    [
+     "f052",
+     "359150bd24e62aa6a86ad2ce034381a1"
+    ],
+    [
+     "f052",
+     "15bb3058d1345fcbf2306d2f0f6b5937"
+    ],
+    [
+     "f011",
+     "0648c2abc6e28235ee84acc74848e40e"
+    ],
+    [
+     "f002",
+     "0322945917aec448a84392eac8e8fedc"
+    ],
+    [
+     "f002",
+     "d38986d9a76d72d1f1956a0fee4cfb85"
+    ],
+    [
+     "f011",
+     "149847f31facf652bf132a1af0a29d9c"
+    ],
+    [
+     "f052",
+     "1e5ebbff971df5e0c6600bbdf0d98c65"
+    ],
+    [
+     "f002",
+     "14ceace889ce5dfd5c1c28da0cb0d5e3"
+    ],
+    [
+     "f002",
+     "e02f9d8683b5e5060203c404e67a31b5"
+    ],
+    [
+     "f011",
+     "3f71455cb333a4aa65a424a0a384f23e"
+    ],
+    [
+     "f002",
+     "c528e1e655b7372bf1241c4561dcc16d"
+    ],
+    [
+     "f002",
+     "78e4e7236726202aac2cd2400c0555ed"
+    ],
+    [
+     "f002",
+     "f19e88bcc6f5aa58c6d038c8d3222146"
+    ],
+    [
+     "f002",
+     "3c89cb81a4f0a55b2f20ca305abf2d65"
+    ],
+    [
+     "f011",
+     "a9ff457fdf333bc987d102fa8d7ed33f"
+    ],
+    [
+     "f011",
+     "42e7ad5cb79a1c24a8d7d4c5f091b585"
+    ],
+    [
+     "f002",
+     "09b64cb4b2eff2d6ad455879d987c010"
+    ]
+   ]
+  },
+  {
+   "id": "complex-ginzburg-landau",
+   "title": "Complex Ginzburg-Landau",
+   "description": "The complex Ginzburg-Landau equation: spirals and anti-spirals, chaos mush, soft soliton webs.",
+   "members": [
+    [
+     "f002",
+     "a2c4fe909ee1780a73a8dc4b81bc840e"
+    ],
+    [
+     "f017",
+     "f41364875dd7850afe6f90aec3dc42d6"
+    ],
+    [
+     "f011",
+     "2c79972ebb37c80eaff5046e0135a4d2"
+    ],
+    [
+     "f002",
+     "2c14c57b0baa07d3195c3dcb1628aa0b"
+    ],
+    [
+     "f017",
+     "08412013b57556ef925d0501fa2de9f4"
+    ],
+    [
+     "f162",
+     "f0f727ba3de9e0863b387502204b0702"
+    ],
+    [
+     "f002",
+     "d63e42612a22c45d1149872c98ce3fcb"
+    ],
+    [
+     "f002",
+     "76bed5816bb7c5ee6f32b6372ce6ca84"
+    ],
+    [
+     "f163",
+     "e081cb9b78560be7edd67d24daedc2fb"
+    ],
+    [
+     "f017",
+     "ff1466ba6d89276a32f0e21599f23fb8"
+    ],
+    [
+     "f017",
+     "804f48f526dd86098922192395883a80"
+    ],
+    [
+     "f017",
+     "057d83e7a43de9a6ed70cda6e6ee693a"
+    ],
+    [
+     "f002",
+     "db04ea81a5bfa73bb928d19e858ceaf4"
+    ],
+    [
+     "f017",
+     "cbc55aed0238486bd6fedb313f249993"
+    ],
+    [
+     "f017",
+     "9a0e133c83adebb7a398710f5d7fb607"
+    ],
+    [
+     "f002",
+     "527b9ade310470e81c62a13d439e3827"
+    ],
+    [
+     "f017",
+     "a5197507fe4558f17bd5a2dbf1e1890c"
+    ],
+    [
+     "f017",
+     "287f1ed87855ae494b5d33d07f4cffd1"
+    ],
+    [
+     "f002",
+     "1309438cb9eadc5457ecaae93673f282"
+    ],
+    [
+     "f002",
+     "95cc8296e4653b4cc1ab8ad79dc7458c"
+    ]
+   ]
+  },
+  {
+   "id": "ginzburg-landau-waves",
+   "title": "Ginzburg-Landau Waves",
+   "description": "Ginzburg-Landau magnitude coupled to a wave and a history: long wakes, embryos and negotiations.",
+   "members": [
+    [
+     "f018",
+     "cdeecf9b94a853e6893ad90d208f1998"
+    ],
+    [
+     "f090",
+     "0b415bb80d2e9f5ed99a9b83d63c3956"
+    ],
+    [
+     "f066",
+     "c886e8581600a3e62b5252f290114b40"
+    ],
+    [
+     "f019",
+     "11d656d30a4f3571583295a4ab034179"
+    ],
+    [
+     "f071",
+     "3998a7b00a8957b8d943003397bec1b7"
+    ],
+    [
+     "f019",
+     "8cc8e104ae223ebd891471c46e1d1395"
+    ],
+    [
+     "f018",
+     "166bc26fb412f7cec2c977d6998107a4"
+    ],
+    [
+     "f071",
+     "8a4cc172dc99b052a2a9dcaffe0ab793"
+    ],
+    [
+     "f018",
+     "927a3b19b10b11e5d8d8bd391edc338b"
+    ],
+    [
+     "f090",
+     "a1659e8e09efd8b6b21c2cee11ce6821"
+    ],
+    [
+     "f066",
+     "b52431f9555c3d87680655c90ad24d1c"
+    ],
+    [
+     "f019",
+     "3d32c7533c6c19c4e32d9dfbd6b28d2d"
+    ],
+    [
+     "f019",
+     "581d98702024aeb393a6175f069f0b43"
+    ],
+    [
+     "f018",
+     "b141eae4a5274daa4d2afa0835b43fc4"
+    ],
+    [
+     "f165",
+     "66cd16532efee5081004a7d4d5c3545c"
+    ],
+    [
+     "f164",
+     "18ba7e8d17224554234854ae61188a89"
+    ],
+    [
+     "f019",
+     "b5b46a566a0d9e907652185488a4dd30"
+    ],
+    [
+     "f019",
+     "a021b238ca5d350d8d84034329add612"
+    ],
+    [
+     "f019",
+     "08235beb89c5787ac514911e8be09739"
+    ],
+    [
+     "f071",
+     "c00f25bbb04b7d91a3df9bdb46fa3cb8"
+    ]
+   ]
+  },
+  {
+   "id": "ginzburg-landau-magnitude",
+   "title": "Ginzburg-Landau Magnitude",
+   "description": "Ginzburg-Landau with its magnitude remapped: slipping spirals, cell ordering, disco and smoke.",
+   "members": [
+    [
+     "f017",
+     "b83c58b5a76b279bcd82d9f8b90a2c8e"
+    ],
+    [
+     "f011",
+     "59c79324a06c2080bfcd14fdeb29a59c"
+    ],
+    [
+     "f047",
+     "bca9b59e0e59ab591a3b3c92bc12f148"
+    ],
+    [
+     "f028",
+     "bc187ca5809482eb6a613ae10317d20e"
+    ],
+    [
+     "f065",
+     "a60b9d93720423706d2e58d16dfed099"
+    ],
+    [
+     "f039",
+     "71c8167cdb083884d665cf612018a905"
+    ],
+    [
+     "f067",
+     "3a87cd7dbd7876c648938e65666e7b16"
+    ],
+    [
+     "f082",
+     "071a7a3edf83e6fe28a947e9f624787e"
+    ],
+    [
+     "f083",
+     "61e840dc779f71bb8bae03de90753a4f"
+    ],
+    [
+     "f084",
+     "cd15366bace7163ca6ec2c0ac4be8ed0"
+    ],
+    [
+     "f085",
+     "4d35d8c7a031700f5cb378b28c7ac6ca"
+    ],
+    [
+     "f028",
+     "48d9379b33b01c173be3362635f35d80"
+    ],
+    [
+     "f039",
+     "bd156aae37ad6348a796b9dc1c89f399"
+    ],
+    [
+     "f084",
+     "e4344dd3d8a42bc38bfda0c0a2d0cd6f"
+    ],
+    [
+     "f047",
+     "daeb81f82bf06a8c6695bd5f21a41831"
+    ],
+    [
+     "f082",
+     "d1af52dd7037b9ffecb8344112055a7e"
+    ],
+    [
+     "f065",
+     "f6c0bda6e9797083e135fcab1ce8b018"
+    ],
+    [
+     "f011",
+     "1357896f5993d6701a8a5e9501006fa8"
+    ],
+    [
+     "f131",
+     "a7cc6b74316e293f47d6f0c734813770"
+    ],
+    [
+     "f085",
+     "6fc51705ce6b9062d22ea13115412408"
+    ]
+   ]
+  },
+  {
+   "id": "boiling-heat",
+   "title": "Boiling Heat",
+   "description": "A heat equation with history and a wave, boiling: ripple gliders, windscreen rain, ripple meshes and travellers.",
+   "members": [
+    [
+     "f073",
+     "62f304186bc6c21023e32ccb26b447ed"
+    ],
+    [
+     "f008",
+     "cf6bd32173a47cbebd43b4f29017e6fd"
+    ],
+    [
+     "f038",
+     "9fb7d5c286fed6494a2333174a6aaa01"
+    ],
+    [
+     "f029",
+     "b229b349b946364dd47d73bb8c60a617"
+    ],
+    [
+     "f100",
+     "d557840f815cd5b7fa03b6aa1b017c7e"
+    ],
+    [
+     "f072",
+     "e64dce70e232a3b3cb8508659cc270a8"
+    ],
+    [
+     "f046",
+     "97c829c07c40c5fddc6bb6932773175a"
+    ],
+    [
+     "f099",
+     "13594983bbd6a790ce64793936e46838"
+    ],
+    [
+     "f008",
+     "4613383133c272f0bc4627e25b0fbfcc"
+    ],
+    [
+     "f038",
+     "a0d69dbc5a282402e7abb39bdda0713b"
+    ],
+    [
+     "f072",
+     "a67c887934ae14543f2d1ade3cf4a7cb"
+    ],
+    [
+     "f099",
+     "04a9008b18d1dd1c439e9c8af7f02eae"
+    ],
+    [
+     "f046",
+     "155e0ababfdd125fc085620493dd1e12"
+    ],
+    [
+     "f100",
+     "4c912287a3c55a00043b4f62d6e1b6b0"
+    ],
+    [
+     "f073",
+     "7a48a08a511a60183c97870ca3ba1bf5"
+    ],
+    [
+     "f008",
+     "41034ddb999950b2b2c65f5fbfa7d107"
+    ],
+    [
+     "f038",
+     "c7cf609681cf17806b3e973bdb440fac"
+    ],
+    [
+     "f029",
+     "ce88379892c506c741b55c0000da69b2"
+    ],
+    [
+     "f008",
+     "841f7dcb5d284d6315835c7a454d73a1"
+    ],
+    [
+     "f008",
+     "a840553b8d17482469610eaa70061a32"
+    ]
+   ]
+  },
+  {
+   "id": "waves-and-heat",
+   "title": "Waves and Heat",
+   "description": "The wave and heat equations, ripples and kernels: the plainest physics, as patterns of their own.",
+   "members": [
+    [
+     "f200",
+     "b2973ccac36a37c1419c09af2e5f60c0"
+    ],
+    [
+     "f203",
+     "091f8a4a4882ecf4827546ad877246e3"
+    ],
+    [
+     "f220",
+     "a4253705eb00a76bed9d019e56ff2ef4"
+    ],
+    [
+     "f221",
+     "9f50a930d1147dd3e5e7e6a7c2dc307b"
+    ],
+    [
+     "f108",
+     "97504a16bbe852117199d9f3c4f698c2"
+    ],
+    [
+     "f229",
+     "ffdfb821f2ac7559af092b92c007a521"
+    ],
+    [
+     "f108",
+     "40edc051e66ccd911ccebcbf6215c094"
+    ]
+   ]
+  },
+  {
+   "id": "kuramoto-sivashinsky",
+   "title": "Kuramoto-Sivashinsky",
+   "description": "Flame fronts: the Kuramoto-Sivashinsky equation's flame puffs, hot clusters, pockets and hexagons.",
+   "members": [
+    [
+     "f044",
+     "5c328184d8d3616c23b9da0131a8c095"
+    ],
+    [
+     "f025",
+     "41b8687fb468c79ecfe4f88b40c9b674"
+    ],
+    [
+     "f063",
+     "b28653a7a3f9d1c5cf202877cfbb7138"
+    ],
+    [
+     "f064",
+     "376798d4dd4e255f86da4e46a63f2392"
+    ],
+    [
+     "f025",
+     "a63071dc5256c9c568044c9f8c97ee17"
+    ],
+    [
+     "f112",
+     "45c1c583d4cc75b15618fdac8b49cad3"
+    ],
+    [
+     "f044",
+     "630380092116c2b2247471433cb45c99"
+    ],
+    [
+     "f064",
+     "27ebe0c87135ef56ab2110a91610d63d"
+    ],
+    [
+     "f025",
+     "84cc9ef591fc10f8575ddcbfd98fd857"
+    ],
+    [
+     "f064",
+     "4261ea59fbf9e36d15366041b893e88b"
+    ]
+   ]
+  },
+  {
+   "id": "excitable-media",
+   "title": "Excitable Media",
+   "description": "FitzHugh-Nagumo: nerve-like pulses, splitting tips, spiral turbulence and pulsing mazes.",
+   "members": [
+    [
+     "f027",
+     "411523c87abc96f5c820f8462c0dd426"
+    ],
+    [
+     "f027",
+     "88ca79130a1d0783d53177e99ce03e4c"
+    ],
+    [
+     "f027",
+     "21e94fbc37bd632f3043023053462fca"
+    ],
+    [
+     "f027",
+     "d71872b252b86df5b249202e44302c7c"
+    ],
+    [
+     "f027",
+     "004001f2595ddea01ccaa4bf98691ddb"
+    ],
+    [
+     "f027",
+     "131f101d767beb2d9a227a99b5264107"
+    ],
+    [
+     "f027",
+     "dde0d93142e9583050a41723a527868f"
+    ],
+    [
+     "f027",
+     "d713f37d88f5d5a9ca2ea13b0bbb39ba"
+    ],
+    [
+     "f168",
+     "81f414dcf6222e66717a12ed3c83dc0e"
+    ],
+    [
+     "f169",
+     "bdac731824598fd0a233fffa5e5e23b1"
+    ],
+    [
+     "f027",
+     "6372252cd349c1516e09531f9ddcffd9"
+    ]
+   ]
+  },
+  {
+   "id": "ready-classics",
+   "title": "Ready Classics",
+   "description": "Patterns from Ready's own collection: Yang's jumping waves, McCabe, Meinhardt's stripes, Schrodinger packets, Purwins' gliders and more.",
+   "members": [
+    [
+     "f013",
+     "21185397b38acc88cfa2dfcd20ab7f28"
+    ],
+    [
+     "f070",
+     "02188a4a5e43fd0cc497f2e4d4adf292"
+    ],
+    [
+     "f012",
+     "1e2c4d5797f0c65609ce8cb996d0735f"
+    ],
+    [
+     "f035",
+     "4dde2e358df40d0cd027fb96aca5b5cf"
+    ],
+    [
+     "f040",
+     "852f9e23b4a25b951d2e330b6a00fade"
+    ],
+    [
+     "f088",
+     "78fa58ab521a4386f8b683db5cc95533"
+    ],
+    [
+     "f068",
+     "12077716a2a7c3d188620ff5137a7599"
+    ],
+    [
+     "f101",
+     "7f4bdcb945784b8a33ffbd2bac10a125"
+    ],
+    [
+     "f097",
+     "bbd17b2c5000754c68c3d6de47a3285a"
+    ],
+    [
+     "f098",
+     "1c78f31d41b51deadba92c1b80349304"
+    ],
+    [
+     "f087",
+     "f5407b2ac405f4e84f208bc38ab785b8"
+    ],
+    [
+     "f013",
+     "8f1357fe26fb5e50d4b12ba4ef8b40d6"
+    ],
+    [
+     "f097",
+     "60de27784886bd0c2bd310d5e1446b17"
+    ],
+    [
+     "f068",
+     "f4ec448a920199c5cc6134bd1cb6e1c5"
+    ],
+    [
+     "f087",
+     "ccbf0a5fb5f3320f564e82465b0e9f4d"
+    ],
+    [
+     "f070",
+     "7eba8c9a66876a14553be0eda7d97494"
+    ],
+    [
+     "f159",
+     "c4a8739c69e581d88b85940a1a3741af"
+    ],
+    [
+     "f147",
+     "834b041d0b1489feee52654f66e2e25f"
+    ],
+    [
+     "f216",
+     "0a8ddf12b182367571d5e58ebddc258e"
+    ]
+   ]
+  },
+  {
+   "id": "life-and-friends",
+   "title": "Life and Friends",
+   "description": "Cellular automata and their smooth cousins from Ready's collection: Conway's Life, Larger than Life, SmoothLife gliders, salt, erosion, smoke and the community's own experiments.",
+   "members": [
+    [
+     "f172",
+     "d17ed9e98329e2cfc903ded320dfeb16"
+    ],
+    [
+     "f171",
+     "2bb6f9bc0cf89379d1f2bc7a63ade49d"
+    ],
+    [
+     "f180",
+     "fbeef0db33ae7ab4345dff2b3eec3210"
+    ],
+    [
+     "f181",
+     "5fd8c30afd1cdb289fb941c05eece5f1"
+    ],
+    [
+     "f176",
+     "d41ce325085b7c59f265dfe036e53f66"
+    ]
+   ]
+  }
+ ]
+}

@@ -15,6 +15,7 @@ import { SCENES, type Scene } from './scenes';
 import { UserRules } from './userRules';
 import { SavedScenes } from './saved-scenes';
 import { openExplorerPanel } from './explorer';
+import { openCollection, presetImport } from './collection';
 import { STARTER_STAMPS, boostStamp, compositeOnto, stampBackground } from './stamps';
 
 const RECT_TOOLS = new Set(['capture', 'probe']);
@@ -111,6 +112,7 @@ async function init() {
   const familyOf = (ruleId: string) => {
     if (ruleId.startsWith('user:')) return 'My rules';
     if (ruleId.startsWith('pattern:')) return 'Ready patterns';
+    if (ruleId.startsWith('vti:')) return 'Ready collection';
     if (!ruleId.startsWith('builtin:')) return 'My rules';
     const r = BUILTIN_RULES[Number(ruleId.slice(8))];
     return RULE_FAMILIES.find(([, rs]) => rs.includes(r))?.[0] ?? 'Other media';
@@ -120,6 +122,8 @@ async function init() {
     ...userRules.rules.map((u) => ({ id: `user:${u.id}`, label: u.rule.name, group: 'My rules' })),
     ...RULE_FAMILIES.flatMap(([fam, rs]) => rs.map((r) => ({ id: `builtin:${BUILTIN_RULES.indexOf(r)}`, label: r.name, group: fam }))),
     ...BUNDLED_PATTERNS.map((p) => ({ id: `pattern:${p.name}`, label: p.name, group: 'Ready patterns' })),
+    // a preset from the collection (its browser opens with Collection…): only the one running
+    ...(ruleId.startsWith('vti:') ? [{ id: ruleId, label: rule.name, group: 'Ready collection' }] : []),
     ...SCENES.map((sc) => ({ id: `scene:${sc.id}`, label: sc.scene.name, group: familyOf(sc.scene.rule), rule: sc.scene.rule })),
     ...savedScenes.scenes.map((sc) => ({ id: `saved:${sc.id}`, label: `★ ${sc.name}`, group: familyOf(sc.base), rule: sc.base })),
   ];
@@ -201,6 +205,43 @@ async function init() {
     };
     delete r.restRelaxed;
     return r;
+  }
+
+  /** Dan's Ready collection (collection.ts); the main sim pauses while it's open. */
+  async function openCollectionPanel() {
+    const wasRunning = s.running;
+    s.running = false;
+    ui.sync();
+    let current;
+    if (ruleId.startsWith('vti:')) {
+      const w = Math.min(256, sim.width), h = Math.min(256, sim.height);
+      current = { famId: ruleId.split(':')[1], section: { w, h, state: (await sim.readRegion(Math.floor((sim.width - w) / 2), Math.floor((sim.height - h) / 2), w, h)).state } };
+    }
+    let reopened = false;
+    openCollection({
+      device, format, view: viewOptions, current,
+      use: (famId, md5, values) => {
+        reopened = true;
+        // the same family: just the values, on the running field; another: load it first
+        const live = ruleId.startsWith(`vti:${famId}:`);
+        void (live ? Promise.resolve() : selectRule(`vti:${famId}:${md5}`)).then(() => {
+          if (!ruleId.startsWith(`vti:${famId}:`)) return; // it didn't load (selectRule said why)
+          for (const [k, v] of Object.entries(values)) {
+            if (!(k in globals)) continue;
+            globals[k] = v;
+            sim.setGlobal(k, v);
+          }
+          s.running = true;
+          ui.rebuildRule();
+          ui.sync();
+        });
+      },
+      onClose: () => {
+        if (reopened) return;
+        s.running = wasRunning;
+        ui.sync();
+      },
+    });
   }
 
   /** The explorer (explorer.ts) on the current rule; the main sim pauses while it's open. */
@@ -458,6 +499,10 @@ async function init() {
         await applyRule(r, { field: 'initial', id, globals: defaultGlobals(r), size: r.size });
       } else if (id.startsWith('saved:')) {
         await loadSavedScene(id);
+      } else if (id.startsWith('vti:')) {
+        const [, fam, md5] = id.split(':');
+        const imp = await presetImport(fam, md5);
+        await applyRule(imp.rule, { field: 'initial', id, globals: defaultGlobals(imp.rule), size: imp.rule.size, warnings: imp.warnings });
       } else if (id.startsWith('pattern:')) {
         const imp = await loadBundled(id.slice(8));
         await applyRule(imp.rule, { field: 'initial', id, globals: defaultGlobals(imp.rule), size: imp.rule.size, image: imp.image, warnings: imp.warnings });
@@ -558,6 +603,7 @@ async function init() {
       if (u) download(new Blob([JSON.stringify(u.rule, null, 2)], { type: 'application/json' }), `${u.rule.name.replace(/[^\w-]+/g, '_')}.rdui-rule.json`);
     },
     explore: () => void openExplorer(),
+    collection: () => void openCollectionPanel(),
     setGlobal: (name, v) => {
       globals[name] = v;
       sim.setGlobal(name, v);
