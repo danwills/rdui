@@ -31,14 +31,14 @@ export interface NandCfg {
   N?: number; h?: number; k?: number; d?: number; L?: number;
   /** C: heading (degrees anticlockwise from east), wavenumber, phase */
   cHead?: number; cK?: number; cPhase?: number; cLate?: number;
-  tail?: number; cases?: string[]; frames?: boolean;
+  tail?: number; cases?: string[]; frames?: boolean; p1?: [number, number];
 }
 
 export default async function (cfg: NandCfg) {
   const N = cfg.N ?? 512, h = ((cfg.h ?? 15) * Math.PI) / 180, k = cfg.k ?? 0.08, d = cfg.d ?? 110, L = cfg.L ?? 120;
   const cHead = ((cfg.cHead ?? 120) * Math.PI) / 180, cK = cfg.cK ?? 0.04;
   const base = STARTER_STAMPS.find((s) => s.id === 'nls-soliton-0-still')!;
-  const P1 = { x: 150, y: N / 2 }, P2 = { x: 150 + L, y: N / 2 };
+  const P1 = { x: cfg.p1?.[0] ?? 150, y: cfg.p1?.[1] ?? N / 2 }, P2 = { x: P1.x + L, y: P1.y };
   for (const bits of cfg.cases ?? ['00', '01', '10', '11']) {
     const lab = await makeLab(R.SATURABLE_NLS, N);
     const S4 = lab.layout.S * 4, per = lab.globals.timestep / lab.globals.dx ** 2; // cells per step per unit k
@@ -60,8 +60,19 @@ export default async function (cfg: NandCfg) {
         await saveFrame(`nand-${bits}-${i}.png`, lab, { ri: 2, lo: 0, hi: 6, scale: 1, caption: `A=${bits[0]} B=${bits[1]} t=${t}` });
       }
     } else await lab.run(T);
-    const s = spots((await lab.read()).state, N, S4);
+    const { state } = await lab.read();
+    const s = spots(state, N, S4);
     const hit = s.filter((p) => Math.hypot(p.x - out.x, p.y - out.y) < 12);
-    log(`A=${bits[0]} B=${bits[1]}: output ${hit.length ? `1 (power ${hit[0].power.toFixed(0)}, ${Math.hypot(hit[0].x - out.x, hit[0].y - out.y).toFixed(1)} cells off)` : '0'}   [C start (${c0.x.toFixed(0)},${c0.y.toFixed(0)}), output spot (${out.x.toFixed(0)},${out.y.toFixed(0)}), t=${T}; solitons: ${s.map((p) => `(${p.x.toFixed(0)},${p.y.toFixed(0)}) ${p.power.toFixed(0)}`).join(' ')}]`);
+    // the output soliton's phase at its brightest cell
+    let ph = '';
+    if (hit.length) {
+      let best = -1, at = 0;
+      for (let y = Math.round(hit[0].y) - 6; y <= Math.round(hit[0].y) + 6; y++) for (let x = Math.round(hit[0].x) - 6; x <= Math.round(hit[0].x) + 6; x++) {
+        const j = (((y + N) % N) * N + ((x + N) % N)) * S4, I = state[j] ** 2 + state[j + 1] ** 2;
+        if (I > best) { best = I; at = j; }
+      }
+      ph = `, phase ${((Math.atan2(state[at + 1], state[at]) * 180) / Math.PI).toFixed(1)}°`;
+    }
+    log(`A=${bits[0]} B=${bits[1]}: output ${hit.length ? `1 (power ${hit[0].power.toFixed(1)}, at (${hit[0].x.toFixed(1)},${hit[0].y.toFixed(1)}), ${Math.hypot(hit[0].x - out.x, hit[0].y - out.y).toFixed(1)} cells off${ph})` : '0'}   [C start (${c0.x.toFixed(0)},${c0.y.toFixed(0)}), output spot (${out.x.toFixed(0)},${out.y.toFixed(0)}), t=${T}; solitons: ${s.map((p) => `(${p.x.toFixed(0)},${p.y.toFixed(0)}) ${p.power.toFixed(0)}`).join(' ')}]`);
   }
 }
