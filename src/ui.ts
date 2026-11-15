@@ -48,6 +48,9 @@ export interface Settings {
   /** Fleck palettes: hue contrast and shift. */
   hueShape: number;
   hueOffset: number;
+  /** Fleck palettes: the range a, b and c are mapped through before becoming colour. */
+  fleckLow: number;
+  fleckHigh: number;
   stampId: string | null;
   stampRot: number;
   stampFlip: boolean;
@@ -86,6 +89,8 @@ export interface Actions {
   toggleUI(mode?: 'whole' | 'fill' | 'split'): void;
   /** Apply s.featureSize to the running sim. */
   setFeatureSize(): void;
+  /** Fleck palettes: set the fleck range from the field's values. */
+  fitFleckRange(): void;
 }
 
 /** What the panel needs to know about the current rule. */
@@ -145,6 +150,8 @@ export function defaultSettings(): Settings {
     palette: 0,
     hueShape: HUE_DEFAULTS.shape,
     hueOffset: HUE_DEFAULTS.offset,
+    fleckLow: 0,
+    fleckHigh: 1,
     stampId: null,
     stampRot: 0,
     stampFlip: false,
@@ -335,7 +342,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return { row: el('label', { class: 'row' }, el('span', {}, label), sel), fill };
   }
 
-  function rangeRow(label: string, key: 'low' | 'high' | 'tintLow' | 'tintHigh', range: [number, number]) {
+  function rangeRow(label: string, key: 'low' | 'high' | 'tintLow' | 'tintHigh' | 'fleckLow' | 'fleckHigh', range: [number, number]) {
     const r = valueRow(label, () => s[key], (v) => (s[key] = v), range);
     syncers.push(r.refresh);
     return r.row;
@@ -525,6 +532,12 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   // --- view
   const reagentOptions = (): [number, string][] => rc.rule().reagents.map((r, i) => [i, r]);
   const viewReagent = select('show', 'reagent', reagentOptions);
+  // fleck palettes only: the range a, b and c are mapped through before becoming colour
+  const fleckRows = el('div', {},
+    rangeRow('fleck low', 'fleckLow', [-1, 1]),
+    rangeRow('fleck high', 'fleckHigh', [0, 2]),
+    el('div', { class: 'buttons' }, button('fit fleck range', actions.fitFleckRange, 'set the fleck range from the field: from the 2nd to the 98th percentile of a, b and c together')));
+  syncers.push(() => (fleckRows.style.display = s.palette === 5 || s.palette === 6 ? '' : 'none'));
   const viewTint = select('tint by', 'tint', () => [[-1, 'none'], ...reagentOptions()]);
 
   const importBtn = button('Import…', actions.importRule, 'load a Ready formula pattern (.vti) or a saved rdui rule (.json)');
@@ -575,6 +588,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       slider('tint mix', 'tintStrength', 0, 1, 0.01, 2),
       slider('hue shape', 'hueShape', 0.1, 4, 0.01, 2),
       slider('hue offset', 'hueOffset', 0, 1, 0.01, 2),
+      fleckRows,
       select('palette', 'palette', () => [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral'], [4, 'HSV: show → hue, tint → sat'], [5, 'HSV fleck: a b c → V S H'], [6, 'OKLCH fleck: a b c → L C h']], () => {
         // a fleck palette starts from its own hue offset
         if (s.palette === 5 || s.palette === 6) s.hueOffset = hueOffsetFor(s.palette);

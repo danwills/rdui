@@ -28,6 +28,7 @@ struct View {
   paramMax: vec4<f32>,
   paramBase: vec4<f32>,   // unpainted value of each (outlines mode); for a wall distance field, the wall growth
   paramKind: vec4<u32>,   // 1 = a wall distance field (signed distance in cells, negative inside)
+  fleck: vec4<f32>,       // fleck palettes: the range (low, high) a, b and c are mapped through first
 };
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -196,13 +197,27 @@ fn polarOf(palette: u32, c: vec3<f32>) -> vec3<f32> {
   }
 }
 
+// a, b, c through the fleck range (low → 0, high → 1), with smooth ends rather than a hard
+// clamp: linear between KNEE and 1 - KNEE, then easing exponentially towards 0 and 1 (value and
+// slope continuous), so values past either end (negatives too) still shade, compressed, not cut off
+const KNEE = 0.05;
+fn softUnit(t: f32) -> f32 {
+  if (t < KNEE) { return KNEE * exp((t - KNEE) / KNEE); }
+  if (t > 1.0 - KNEE) { return 1.0 - KNEE * exp((1.0 - KNEE - t) / KNEE); }
+  return t;
+}
+fn fleckRange(v: vec3<f32>) -> vec3<f32> {
+  let t = (v - view.fleck.x) / max(view.fleck.y - view.fleck.x, 1e-9);
+  return vec3<f32>(softUnit(t.x), softUnit(t.y), softUnit(t.z));
+}
+
 fn fleck(g: vec2<f32>) -> vec3<f32> {
   let a = sampleReagent(g, 0u);
   let b = sampleReagent(g, 1u);
   // With no third reagent, c is stood in by where the shader's c settles: it's made
   // by b and decays (b_to_c 0.05, c_damp 0.0055), so c → 9.1·b, clamped to 1.
   let c = select(clamp(9.1 * b, 0.0, 1.0), sampleReagent(g, 2u), view.reagents > 2.5);
-  let p = polarOf(view.palette, max(vec3<f32>(a, b, c), vec3<f32>(0.0)));
+  let p = polarOf(view.palette, fleckRange(vec3<f32>(a, b, c)));
   return clamp(vec3<f32>(p.x, p.y, hueChannel(p.z, p.y)), vec3<f32>(0.0), vec3<f32>(1.0));
 }
 

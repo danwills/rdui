@@ -137,7 +137,7 @@ async function init() {
   }
 
   // the view and painting settings a saved scene keeps
-  const SAVED_VIEW = ['reagent', 'low', 'high', 'tint', 'tintLow', 'tintHigh', 'tintStrength', 'palette', 'hueShape', 'hueOffset', 'viewMode', 'stepsPerFrame', 'paint'] as const;
+  const SAVED_VIEW = ['reagent', 'low', 'high', 'tint', 'tintLow', 'tintHigh', 'tintStrength', 'palette', 'hueShape', 'hueOffset', 'fleckLow', 'fleckHigh', 'viewMode', 'stepsPerFrame', 'paint'] as const;
 
   /** Save the whole field (rule, params, walls, chemistry, probes) and view as a scene in this browser. */
   async function saveScene() {
@@ -200,12 +200,29 @@ async function init() {
         ...rule.view,
         reagent: rule.reagents[s.reagent], low: s.low, high: s.high,
         tint: s.tint >= 0 ? rule.reagents[s.tint] : undefined,
-        stepsPerFrame: s.stepsPerFrame, palette: s.palette, hueShape: s.hueShape, hueOffset: s.hueOffset,
+        stepsPerFrame: s.stepsPerFrame, palette: s.palette, hueShape: s.hueShape, hueOffset: s.hueOffset, fleckLow: s.fleckLow, fleckHigh: s.fleckHigh,
       },
       size: { ...full },
     };
     delete r.restRelaxed;
     return r;
+  }
+
+  /** The fleck range from the field: the 2nd to 98th percentile of a, b and c together (a strided sample of the middle 512²). */
+  async function fitFleckRange() {
+    const w = Math.min(512, sim.width), h = Math.min(512, sim.height);
+    const { state } = await sim.readRegion((sim.width - w) >> 1, (sim.height - h) >> 1, w, h);
+    const S4 = sim.layout.S * 4, R = Math.min(3, rule.reagents.length), v: number[] = [];
+    for (let i = 0; i < w * h; i += 7) for (let r = 0; r < R; r++) {
+      const x = state[i * S4 + r];
+      if (Number.isFinite(x)) v.push(x);
+    }
+    if (!v.length) return;
+    v.sort((p, q) => p - q);
+    const lo = v[Math.floor(v.length * 0.02)], hi = v[Math.floor(v.length * 0.98)];
+    s.fleckLow = lo;
+    s.fleckHigh = hi > lo ? hi : lo + 1e-3;
+    ui.sync();
   }
 
   /** Dan's Ready collection (collection.ts); the main sim pauses while it's open. */
@@ -386,6 +403,10 @@ async function init() {
       else if (s.palette >= 5) s.palette = 0;
       s.hueShape = rule.view.hueShape ?? HUE_DEFAULTS.shape;
       s.hueOffset = rule.view.hueOffset ?? hueOffsetFor(s.palette);
+      // the fleck range: a rule's own, else 0 to 1 for rules made for the fleck palettes (their
+      // look as it was), else the rule's display range (Ready patterns' values go well past 0 to 1)
+      s.fleckLow = rule.view.fleckLow ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 0 : Math.min(rule.view.low, 0));
+      s.fleckHigh = rule.view.fleckHigh ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 1 : Math.max(rule.view.high, s.fleckLow + 1e-3));
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
@@ -607,6 +628,7 @@ async function init() {
     },
     explore: () => void openExplorer(),
     collection: () => void openCollectionPanel(),
+    fitFleckRange: () => void fitFleckRange(),
     setGlobal: (name, v) => {
       globals[name] = v;
       sim.setGlobal(name, v);
@@ -1035,6 +1057,8 @@ async function init() {
       tintStrength: s.tintStrength,
       hueShape: s.hueShape,
       hueOffset: s.hueOffset,
+      fleckLow: s.fleckLow,
+      fleckHigh: s.fleckHigh,
       // param map / outline colours go red, green, blue, orange in this order: absorbing walls red, reflecting
       // walls green, potential V blue, damping gamma (or traps, once drawn) orange, whatever order a scene lists them in
       paramSlots: [...rule.paintable].sort((a, b) => colourRank(a) - colourRank(b)).slice(0, 4).map((n) => {

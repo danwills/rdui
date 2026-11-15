@@ -65,6 +65,9 @@ export interface ViewOptions {
   /** Fleck palettes: hue contrast (smoothMap shape, 1 = linear) and cyclic hue shift. */
   hueShape: number;
   hueOffset: number;
+  /** Fleck palettes: the range a, b and c are mapped through (default 0 to 1). */
+  fleckLow?: number;
+  fleckHigh?: number;
   /** Up to three flat param slots (>0) with their display ranges. */
   /** Painted params to show: flat slot, range, and base (unpainted) value. */
   paramSlots: { slot: number; min: number; max: number; base: number; distance?: boolean }[];
@@ -136,7 +139,7 @@ export class Simulation {
     this.infoUniform = device.createBuffer({ size: 16, usage: uniform });
     this.globalsUniform = device.createBuffer({ size: compiled.globalVec4s * 16, usage: uniform });
     this.brushUniform = device.createBuffer({ size: 272, usage: uniform });
-    this.viewUniform = device.createBuffer({ size: 144, usage: uniform });
+    this.viewUniform = device.createBuffer({ size: 160, usage: uniform });
     this.writeInfo();
     this.globals = new Float32Array(compiled.globalVec4s * 4);
     compiled.rule.params.forEach((p, i) => (this.globals[i] = p.value));
@@ -355,7 +358,7 @@ export class Simulation {
   }
 
   render(enc: GPUCommandEncoder, target: GPUTextureView, canvasW: number, canvasH: number, v: ViewOptions) {
-    const buf = new ArrayBuffer(144);
+    const buf = new ArrayBuffer(160);
     const u = new Uint32Array(buf);
     const f = new Float32Array(buf);
     u[0] = this.width; u[1] = this.height;
@@ -374,6 +377,7 @@ export class Simulation {
       f[28 + k] = p.base;
       u[32 + k] = p.distance ? 1 : 0;
     });
+    f[36] = v.fleckLow ?? 0; f[37] = v.fleckHigh ?? 1;
     this.device.queue.writeBuffer(this.viewUniform, 0, buf);
 
     const pass = enc.beginRenderPass({
