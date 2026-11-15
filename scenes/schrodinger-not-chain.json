@@ -1,14 +1,10 @@
 {
   "name": "Schrödinger NOT chain",
-  "description": "Two soliton NOT gates in a row, no walls: the output of the first drives the second, so the signal is inverted twice and comes out as it went in. Top half: input A = 1; bottom half: A = 0. Gate 1: input A (heading east) and a clock soliton (from the lower left, 30° to it) start the same distance from where their paths cross, so they arrive in phase: if A is there they merge into one heavier soliton heading between them; if not, the clock carries on, through the \"NOT A\" box. Gate 2 does the same with that signal and a second clock (from the left): if NOT A arrives they merge, if not the second clock reaches the \"out\" box. So out = NOT(NOT A) = A: a soliton in the top out box, none in the bottom. The boxes are probes; the output arrives after about 16059 steps (33 s at 8 steps per frame and 60 fps). Merges need the two solitons in phase to within about 4°, so the clocks start exactly as far from their meeting points as the signals they meet. The merges also throw off a small fragment. This is the step a computer needs: one gate's output is a soliton like its inputs, good enough to drive the next gate.",
+  "description": "Two soliton NOT gates in a row, no walls: the output of the first drives the second, so the signal is inverted twice and comes out as it went in. Top half: input A = 1; bottom half: A = 0. Gate 1: input A (heading east) and a clock soliton (from the lower left, 30° to it) start the same distance from where their paths cross, so they arrive in phase: if A is there they merge into one heavier soliton heading between them; if not, the clock carries on, through the \"NOT A\" box. Gate 2 does the same with that signal and a second clock (from the left): if NOT A arrives they merge, if not the second clock reaches the \"out\" box. So out = NOT(NOT A) = A: a soliton in the top out box, none in the bottom. The boxes are probes; the output arrives after about 16059 steps (33 s at 8 steps per frame and 60 fps). Merges need the two solitons in phase to within about 4°, so the clocks start exactly as far from their meeting points as the signals they meet. The merges also throw off a small fragment. This is the step a computer needs: one gate's output is a soliton like its inputs, good enough to drive the next gate. The red bars on the right are eaters (absorbing walls) that take the spare solitons once they are done, so nothing wraps round to hit the gates again.",
   "rule": "builtin:8",
   "size": 512,
   "start": "rest",
   "stepsPerFrame": 8,
-  "paintable": [
-    "V",
-    "gamma"
-  ],
   "stamps": [
     {
       "stamp": "nls-soliton-0-still",
@@ -59,6 +55,24 @@
         "ky": -0.0,
         "phase": 0.0
       }
+    }
+  ],
+  "sdf": [
+    {
+      "field": "absorb_d",
+      "x": 478,
+      "y": 25,
+      "x2": 478,
+      "y2": 110,
+      "r": 8
+    },
+    {
+      "field": "absorb_d",
+      "x": 478,
+      "y": 281,
+      "x2": 478,
+      "y2": 366,
+      "r": 8
     }
   ],
   "probes": [

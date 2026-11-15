@@ -380,6 +380,14 @@ async function init() {
     for (const [x, y, w, h] of sc.walls ?? []) {
       sim.brush({ ax: x, ay: y + h / 2, bx: x + w, by: y + h / 2, radius: h / 2, mode: BrushMode.Wall, strength: 1, hardness: 1, paint: paintValues() });
     }
+    for (const w of sc.sdf ?? []) {
+      const slot = sim.layout.paramNames.indexOf(w.field);
+      if (slot < 0) {
+        warnings.push(`scene wall field "${w.field}" isn't in this rule`);
+        continue;
+      }
+      sim.brush({ ax: w.x, ay: w.y, bx: w.x2 ?? w.x, by: w.y2 ?? w.y, radius: w.r, mode: BrushMode.Sdf, strength: 1, hardness: 1, paint: paintValues(), slot, clear: false, base: 1 });
+    }
     for (const p of sc.stamps ?? []) {
       const base = stamps.get(p.stamp) ?? STARTER_STAMPS.find((st) => st.id === p.stamp);
       if (!base) {

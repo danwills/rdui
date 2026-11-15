@@ -37,7 +37,7 @@ def sol(p, deg):
     return {'stamp': 'nls-soliton-0-still', 'x': round(p[0], 2), 'y': round(p[1], 2), 'boost': boost(deg)}
 
 
-stamps, probes = [], []
+stamps, probes, eaters = [], [], []
 for a, oy in ((1, 0), (0, 256)):
     P = (115, oy + 190)
     Q = at(P, 30, S)
@@ -48,6 +48,8 @@ for a, oy in ((1, 0), (0, 256)):
     out = at(Q, 0, TAIL)
     probes.append({'name': f'NOT A = {1 - a}', 'x': round(mid[0] - 14), 'y': round(mid[1] - 14), 'w': 28, 'h': 28})
     probes.append({'name': f'out = {a}', 'x': round(out[0] - 14), 'y': round(out[1] - 14), 'w': 28, 'h': 28})
+    # eater: an absorbing bar across where the spare solitons go (the read output, both merged ones)
+    eaters.append({'field': 'absorb_d', 'x': 478, 'y': oy + 25, 'x2': 478, 'y2': oy + 110, 'r': 8})
 
 T_END = round((D + S + TAIL) / V)
 desc = (f'Two soliton NOT gates in a row, no walls: the output of the first drives the second, so the signal is inverted '
@@ -59,10 +61,11 @@ desc = (f'Two soliton NOT gates in a row, no walls: the output of the first driv
         f'the bottom. The boxes are probes; the output arrives after about {T_END} steps ({T_END / 8 / 60:.0f} s at 8 steps '
         f'per frame and 60 fps). Merges need the two solitons in phase to within about 4°, so the clocks start exactly as far '
         f'from their meeting points as the signals they meet. The merges also throw off a small fragment. This is the step a '
-        f'computer needs: one gate\'s output is a soliton like its inputs, good enough to drive the next gate.')
+        f'computer needs: one gate\'s output is a soliton like its inputs, good enough to drive the next gate. The red bars on the right '
+        f'are eaters (absorbing walls) that take the spare solitons once they are done, so nothing wraps round to hit the gates again.')
 
 scene = {'name': 'Schrödinger NOT chain', 'description': desc, 'rule': 'builtin:8', 'size': N, 'start': 'rest',
-         'stepsPerFrame': 8, 'paintable': ['V', 'gamma'], 'stamps': stamps, 'probes': probes,
+         'stepsPerFrame': 8, 'stamps': stamps, 'sdf': eaters, 'probes': probes,
          'view': {'reagent': 'n', 'low': 0, 'high': 6, 'tint': 'p', 'tintLow': -3, 'tintHigh': 3}}
 with open(os.path.join(os.path.dirname(__file__), '..', 'scenes', 'schrodinger-not-chain.json'), 'w') as f:
     json.dump(scene, f, indent=2, ensure_ascii=False)

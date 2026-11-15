@@ -22,6 +22,11 @@ export interface Scene {
   paint?: { rect: [number, number, number, number]; values: Record<string, number> }[];
   walls?: [number, number, number, number][];
   /**
+   * Distance-field walls (rules with reflect_d / absorb_d), drawn as the Wall tool draws them: a disc
+   * of radius r at (x, y), or a line of that half-width on to (x2, y2). Cells.
+   */
+  sdf?: { field: 'absorb_d' | 'reflect_d'; x: number; y: number; x2?: number; y2?: number; r: number }[];
+  /**
    * Stamps by id (bundled starter packs or the user's library), centred at x, y.
    * Only their chemistry is placed unless `params` is set (then their painted
    * params and walls come too). `boost` multiplies a wave stamp's ψ = p + iq by e^{i(phase + kx·x + ky·y)}
