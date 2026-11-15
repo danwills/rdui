@@ -2,7 +2,7 @@
 // renders a pattern's field and saves PNGs.
 //   node lab/run.mjs fleck-range '{"name":"orbits-constellations_epochs","steps":2000}'
 import { loadBundled } from '../src/ready';
-import { makeLab, log } from './lab';
+import { gpu, makeLab, log } from './lab';
 import type { ViewOptions } from '../src/sim';
 
 export default async function (cfg: { name: string; steps?: number; ranges?: [number, number][] }) {
@@ -23,7 +23,7 @@ export default async function (cfg: { name: string; steps?: number; ranges?: [nu
   v.sort((p, q) => p - q);
   const fit: [number, number] = [v[Math.floor(v.length * 0.02)], v[Math.floor(v.length * 0.98)]];
   log(`fitted range ${fit[0].toFixed(3)} .. ${fit[1].toFixed(3)}`);
-  const device = lab.sim.device;
+  const device = await gpu();
   const tex = device.createTexture({ size: [N, N], format: 'rgba8unorm', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
   const row = Math.ceil((N * 4) / 256) * 256;
   for (const [label, range] of [['0..1', [0, 1]], ['fitted', fit], ...(cfg.ranges ?? []).map((r) => [`${r[0]}..${r[1]}`, r])] as [string, [number, number]][]) {
