@@ -1,6 +1,6 @@
 import './style.css';
 import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type ViewOptions } from './sim';
-import { buildPanel, defaultSettings, fmt, REFLECT_V, TOOLS, type RuleChoice, type Settings } from './ui';
+import { ABSORB_GAMMA, buildPanel, defaultSettings, fmt, REFLECT_V, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
 import { StampLibrary, newStampId, stampThumbnail, transformStamp, type Stamp } from './stamps';
 import { Overlay, type Ghost } from './overlay';
@@ -265,6 +265,7 @@ async function init() {
       else if (s.palette >= 5) s.palette = 0;
       s.hueShape = rule.view.hueShape ?? 1;
       s.hueOffset = rule.view.hueOffset ?? 0;
+      s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
     if (s.tint >= rule.reagents.length) s.tint = -1;
@@ -757,13 +758,16 @@ async function init() {
       case 'unwall': mode = alt ? BrushMode.Wall : BrushMode.Unwall; break;
       default: mode = alt ? BrushMode.Erase : BrushMode.Seed; break;
     }
-    const vi = layoutOf(rule).paramNames.indexOf('V') - 1; // flat slot 1.. → paint index
-    if ((s.tool === 'wall' || s.tool === 'unwall') && s.wallsReflect && vi >= 0) {
-      // reflecting walls: a hard band of high V (clearing the wave there); unwalling puts V back to its global value
-      const up = (s.tool === 'wall') !== alt;
+    // wave media: the Wall tool paints reflecting walls (a hard band of high V, clearing the wave there) or
+    // absorbing ones (damping gamma, graded by the brush falloff so it doesn't reflect); unwalling restores the global value
+    const names = layoutOf(rule).paramNames;
+    const target = s.wallsReflect && names.includes('V') ? 'V' : s.wallsAbsorb && names.includes('gamma') ? 'gamma' : null;
+    if ((s.tool === 'wall' || s.tool === 'unwall') && target) {
+      const up = (s.tool === 'wall') !== alt, slot = names.indexOf(target);
       const paint = paintValues();
-      paint[vi] = up ? REFLECT_V : globals.V;
-      return { ax, ay, bx, by, mode: BrushMode.SetParam, radius: s.radius / cellScale, strength: 1, hardness: s.hardness, paint, slot: vi + 1, clear: up };
+      paint[slot - 1] = up ? (target === 'V' ? REFLECT_V : ABSORB_GAMMA) : globals[target];
+      const graded = up && target === 'gamma';
+      return { ax, ay, bx, by, mode: BrushMode.SetParam, radius: s.radius / cellScale, strength: 1, hardness: graded ? 0 : 1, paint, slot, clear: up && target === 'V' };
     }
     return {
       ax, ay, bx, by, mode,

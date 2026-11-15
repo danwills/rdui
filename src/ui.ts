@@ -19,6 +19,8 @@ export interface Settings {
   ruleSpeed: boolean;
   /** In rules with a paintable potential V, the Wall tool paints reflecting walls of high V instead. */
   wallsReflect: boolean;
+  /** In rules with a paintable damping gamma, the Wall tool paints absorbing walls instead (reflect wins if both). */
+  wallsAbsorb: boolean;
   gridSize: number;
   /** Fraction of full resolution the sim runs at (1, ½, ¼, ⅛). */
   resScale: number;
@@ -93,6 +95,8 @@ export interface RuleChoice { id: string; label: string; group: string; rule?: s
 
 /** The potential the Wall tool paints when 'walls reflect' is on. */
 export const REFLECT_V = 30;
+/** The damping the Wall tool paints (at the stroke's centre) when 'walls absorb' is on. */
+export const ABSORB_GAMMA = 0.3;
 
 export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'seed', label: 'Seed', key: '1', hint: 'inject the rule\'s seed chemistry · right-drag erases' },
@@ -117,6 +121,7 @@ export function defaultSettings(): Settings {
     stepsPerFrame: 10,
     ruleSpeed: true,
     wallsReflect: true,
+    wallsAbsorb: false,
     gridSize: 512,
     resScale: 1,
     featureSize: 1,
@@ -253,9 +258,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return el('label', { class: 'row log' }, el('span', {}, label), input, num);
   }
 
-  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect', title: string) {
+  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb', title: string, then?: () => void) {
     const input = el('input', { type: 'checkbox' });
-    input.addEventListener('change', () => (s[key] = input.checked));
+    input.addEventListener('change', () => { s[key] = input.checked; then?.(); });
     syncers.push(() => (input.checked = s[key]));
     return el('label', { class: 'check', title }, input, label);
   }
@@ -286,8 +291,16 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const toolRow = el('div', { class: 'tools' });
   const toolHint = el('p', { class: 'hint' });
   // only for rules with a paintable potential V (the Schrödinger rule, where real walls leak)
-  const reflectBox = checkbox('walls reflect', 'wallsReflect', `the Wall tool paints walls of high potential (V = ${REFLECT_V}) that waves bounce off; untick for ordinary walls`);
-  syncers.push(() => (reflectBox.style.display = rc.rule().paintable.includes('V') ? '' : 'none'));
+  // (one or the other: ticking one unticks the other)
+  const reflectBox = checkbox('walls reflect', 'wallsReflect', `the Wall tool paints walls of high potential (V = ${REFLECT_V}) that waves bounce off; untick both for ordinary walls`, () => { if (s.wallsReflect) s.wallsAbsorb = false; sync(); });
+  const absorbBox = checkbox('walls absorb', 'wallsAbsorb', `the Wall tool paints damping (gamma up to ${ABSORB_GAMMA}, fading out to the brush edge so it doesn't reflect) that soaks waves up`, () => { if (s.wallsAbsorb) s.wallsReflect = false; sync(); });
+  const wallBoxes = el('div', { class: 'checks' }, reflectBox, absorbBox);
+  syncers.push(() => {
+    const p = rc.rule().paintable;
+    reflectBox.style.display = p.includes('V') ? '' : 'none';
+    absorbBox.style.display = p.includes('gamma') ? '' : 'none';
+    wallBoxes.style.display = p.includes('V') || p.includes('gamma') ? '' : 'none';
+  });
   for (const t of TOOLS) {
     const b = button(t.label, () => {
       s.tool = t.id;
@@ -451,7 +464,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
 
   root.append(
     el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox'), el('span', { class: 'sub build' }, __BUILD__), button('⛶', actions.toggleUI, 'hide the panel: just the sim, fullscreen · H')),
-    section('Tool', toolRow, toolHint, reflectBox,
+    section('Tool', toolRow, toolHint, wallBoxes,
       slider('radius', 'radius', 1, 80, 1, 0),
       slider('strength', 'strength', 0.02, 1, 0.01, 2),
       slider('hardness', 'hardness', 0, 1, 0.01, 2),

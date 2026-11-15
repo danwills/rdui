@@ -82,7 +82,7 @@ export interface RuleDef {
   seedNoise: number[];
   initial: Overlay[];
   /** Suggested view: reagent shown, its range, and steps per frame. */
-  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number; palette?: number; hueShape?: number; hueOffset?: number };
+  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number; palette?: number; hueShape?: number; hueOffset?: number; mode?: 'reagent' | 'params' | 'outlines' };
   /**
    * Membranes: for the listed reagents, neighbours whose `param` value differs
    * (a painted compartment id) are treated as no-flux, like walls but only for
@@ -961,7 +961,8 @@ delta_n = (P2*P2 + Q2*Q2 - n)/timestep;`,
     { chem: 'p', op: 'add', fill: { type: 'packet', amp: 2, sigma: 6 }, shape: { type: 'circle', cx: 0.35, cy: 0.5, r: 0.12 } },
     { chem: 'p', op: 'add', fill: { type: 'packet', amp: 2, sigma: 6 }, shape: { type: 'circle', cx: 0.65, cy: 0.5, r: 0.12 } },
   ],
-  view: { reagent: 'n', low: 0, high: 4, tint: 'p', stepsPerFrame: 4 },
+  // outlines: painted walls and tracks (V, gamma) show over the wave
+  view: { reagent: 'n', low: 0, high: 4, tint: 'p', stepsPerFrame: 4, mode: 'outlines' },
 };
 
 /**

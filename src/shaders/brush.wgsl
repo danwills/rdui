@@ -108,11 +108,12 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
       }
     }
     case MODE_SET_PARAM: {
-      // e.g. a reflecting wall in a wave medium: a hard-edged band of high potential
-      if (falloff > 0.5 && !wall) {
+      // e.g. a wave medium's walls: a hard band of high potential (hardness 1), or
+      // damping graded by the falloff (hardness 0) so its edge doesn't reflect
+      if (!wall) {
         let k = u32(brush.slot);
-        params[pb + (k >> 2u)][k & 3u] = brush.paint[k >> 2u][k & 3u];
-        if (brush.clear > 0.5) {
+        params[pb + (k >> 2u)][k & 3u] = mix(params[pb + (k >> 2u)][k & 3u], brush.paint[k >> 2u][k & 3u], falloff);
+        if (brush.clear > 0.5 && falloff > 0.5) {
           for (var s = 0u; s < S; s++) {
             state[sb + s] = brush.rest[s];
           }
