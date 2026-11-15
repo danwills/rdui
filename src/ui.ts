@@ -15,6 +15,8 @@ export interface Settings {
   fkTarget: 'brush' | 'background';
   running: boolean;
   stepsPerFrame: number;
+  /** Whether loading a rule or scene sets steps/frame (untick to keep your own). */
+  ruleSpeed: boolean;
   gridSize: number;
   /** Fraction of full resolution the sim runs at (1, ½, ¼, ⅛). */
   resScale: number;
@@ -107,6 +109,7 @@ export function defaultSettings(): Settings {
     fkTarget: 'background',
     running: true,
     stepsPerFrame: 10,
+    ruleSpeed: true,
     gridSize: 512,
     resScale: 1,
     featureSize: 1,
@@ -241,6 +244,13 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       if (document.activeElement !== num) num.value = String(s[key]);
     });
     return el('label', { class: 'row log' }, el('span', {}, label), input, num);
+  }
+
+  function checkbox(label: string, key: 'ruleSpeed', title: string) {
+    const input = el('input', { type: 'checkbox' });
+    input.addEventListener('change', () => (s[key] = input.checked));
+    syncers.push(() => (input.checked = s[key]));
+    return el('label', { class: 'check', title }, input, label);
   }
 
   function select(label: string, key: keyof Settings, options: () => [number | string, string][], onChange?: () => void) {
@@ -439,6 +449,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     section('Simulation',
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Restart', actions.restart, 'start the rule or scene over from scratch: its own parameters, opening, paint and stamps (Reset keeps your parameters)'), button('Clear chem', actions.clearChemistry, 'C')),
       logSlider('steps/frame', 'stepsPerFrame', 64, 5000),
+      checkbox('rules set steps/frame', 'ruleSpeed', 'untick to keep your own steps/frame when you load a rule or scene (e.g. to watch a fast one start slowly)'),
       select('grid', 'gridSize', () => [[128, '128²'], [256, '256²'], [512, '512²'], [1024, '1024²'], [2048, '2048²']], () => actions.resize(s.gridSize)).row,
       select('resolution', 'resScale', () => [[1, 'full'], [0.5, '½'], [0.25, '¼'], [0.125, '⅛']], () => actions.resize(s.gridSize)).row,
       featureSel.row,

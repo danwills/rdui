@@ -258,7 +258,7 @@ async function init() {
       s.tint = rule.view.tint ? rule.reagents.indexOf(rule.view.tint) : -1;
       s.tintLow = 0;
       s.tintHigh = s.tint >= 0 ? 0.4 : 1;
-      if (rule.view.stepsPerFrame) s.stepsPerFrame = rule.view.stepsPerFrame;
+      if (rule.view.stepsPerFrame && s.ruleSpeed) s.stepsPerFrame = rule.view.stepsPerFrame;
       // a rule may ask for a palette; leaving one that only it suits goes back to the default
       if (rule.view.palette !== undefined) s.palette = rule.view.palette;
       else if (s.palette >= 5) s.palette = 0;
@@ -332,7 +332,7 @@ async function init() {
     if (v.tint !== undefined) s.tint = rule.reagents.indexOf(v.tint);
     if (v.tintLow !== undefined) s.tintLow = v.tintLow;
     if (v.tintHigh !== undefined) s.tintHigh = v.tintHigh;
-    if (sc.stepsPerFrame) s.stepsPerFrame = sc.stepsPerFrame;
+    if (sc.stepsPerFrame && s.ruleSpeed) s.stepsPerFrame = sc.stepsPerFrame;
     note = sc.description ?? '';
     ui.rebuildRule();
   }
