@@ -319,6 +319,11 @@ export function compileRule(rule: RuleDef): CompiledRule {
   return u32(((y + h) % h) * w + ((x + w) % w));
 }`);
   add(`fn isWall(c: u32) -> bool { return params[c * ${P}u].x > 0.5; }`);
+  // Walls are frozen at what they hold (the rest values, as drawn). Next to a sealed wall (flag 1)
+  // the stencils use the cell's own value: no flux through it (Neumann). A feed wall (flag 2) is an
+  // ordinary neighbour holding its rest values, which diffuse out (Dirichlet). FFT rules can't seal
+  // (their Laplacian sees every cell), so all their walls feed, the stencil terms too, to agree.
+  add(spectral ? `fn isSealed(c: u32) -> bool { return false; }` : `fn isSealed(c: u32) -> bool { let w = params[c * ${P}u].x; return w > 0.5 && w < 1.5; }`);
   add(`// OpenCL-style pow: negative bases work for integer exponents.
 fn rd_pow(x: f32, y: f32) -> f32 {
   if (x > 0.0) { return pow(x, y); }
@@ -367,7 +372,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
       [1, 0, 4], [-1, 0, 4], [0, 1, 4], [0, -1, 4], [1, 1, 1], [-1, 1, 1], [1, -1, 1], [-1, -1, 1],
     ];
     nbs.forEach(([dx, dy, w], n) => {
-      add(`  let n${n} = cellIndex(x + ${dx}, y + ${dy}); let nw${n} = isWall(n${n});`);
+      add(`  let n${n} = cellIndex(x + ${dx}, y + ${dy}); let nw${n} = isSealed(n${n});`);
       if (mem) add(`  let other${n} = abs(${memValue(`n${n}`)} - myCell) > 0.5;`);
       for (const k of lapSlots) {
         const cond = gated.get(k) ? `vec4<bool>(nw${n}) | (vec4<bool>(other${n}) & gate${k})` : `nw${n}`;
@@ -385,7 +390,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     for (const k of slots) add(`  var ${st.v}${k} = vec4<f32>(0.0);`);
     st.points.forEach(([dx, dy, w], n) => {
-      add(`  let ${st.v}n${n} = cellIndex(x + ${dx}, y + ${dy}); let ${st.v}w${n} = isWall(${st.v}n${n});`);
+      add(`  let ${st.v}n${n} = cellIndex(x + ${dx}, y + ${dy}); let ${st.v}w${n} = isSealed(${st.v}n${n});`);
       for (const k of slots) add(`  ${st.v}${k} += ${w.toFixed(1)} * select(src[${st.v}n${n} * ${S}u + ${k}u], s${k}, ${st.v}w${n});`);
     });
     for (const k of slots) add(`  ${st.v}${k} = ${st.v}${k} / (${st.div.toFixed(1)} * pow(rd_dx, ${st.dxPower.toFixed(1)}));`);

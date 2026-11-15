@@ -14,7 +14,7 @@ struct Brush {
   salt: f32,
   slot: f32,      // MODE_SET_PARAM: flat param slot
   clear: f32,     // MODE_SET_PARAM: 1 = reset chemistry to rest
-  base: f32,      // MODE_SET_PARAM: the param's unpainted value
+  base: f32,      // MODE_SET_PARAM: the param's unpainted value; MODE_WALL: 2 = a feed wall (else sealed)
   seed: array<vec4<f32>, 3>,      // seed target per reagent (up to 12)
   seedMask: array<vec4<f32>, 3>,  // 1 where the seed brush touches that reagent
   seedNoise: array<vec4<f32>, 3>, // noise amplitude added to the seed target
@@ -99,7 +99,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     case MODE_WALL: {
       if (falloff > 0.5) {
-        params[pb].x = 1.0;
+        // 1: sealed (no flux through it); 2: feeding (holds the rest values, which diffuse out)
+        params[pb].x = select(1.0, 2.0, brush.base > 1.5);
         for (var s = 0u; s < S; s++) {
           state[sb + s] = brush.rest[s];
         }

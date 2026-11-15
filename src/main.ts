@@ -1001,10 +1001,13 @@ async function init() {
       if (up && field === 'trap_d') trapsDrawn = true;
       return up ? [sdf(field)] : ['reflect_d', 'absorb_d', 'trap_d'].filter((f) => names.includes(f)).map(sdf);
     }
+    // ordinary walls: sealed, or feeding (FFT rules' walls always feed: see isSealed in rule.ts)
+    const fft = rule.laplacian === 'spectral' || rule.laplacian === 'spectral-exact';
     return [{
       ax, ay, bx, by, mode,
       radius: s.radius / cellScale, strength: s.strength, hardness: s.hardness,
       paint: paintValues(),
+      ...(mode === BrushMode.Wall ? { base: s.wallsFeed || fft ? 2 : 1 } : {}),
     }];
   }
 

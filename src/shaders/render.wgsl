@@ -293,9 +293,16 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     }
   }
 
-  if (paramAt(cell, 0u) > 0.5) {
+  let wallFlag = paramAt(cell, 0u);
+  if (wallFlag > 0.5) {
     let stripe = step(0.5, fract((pos.x + pos.y) / 10.0));
-    col = mix(vec3<f32>(0.32, 0.33, 0.36), vec3<f32>(0.4, 0.41, 0.44), stripe);
+    if (wallFlag > 1.5) {
+      // a feed wall: greenish stripes the other way
+      let s2 = step(0.5, fract((pos.x - pos.y) / 10.0));
+      col = mix(vec3<f32>(0.28, 0.38, 0.32), vec3<f32>(0.36, 0.47, 0.40), s2);
+    } else {
+      col = mix(vec3<f32>(0.32, 0.33, 0.36), vec3<f32>(0.4, 0.41, 0.44), stripe);
+    }
   }
   return vec4<f32>(col, 1.0);
 }
