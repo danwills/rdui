@@ -12,8 +12,8 @@ struct Brush {
   strength: f32,
   hardness: f32,
   salt: f32,
-  _p0: f32,
-  _p1: f32,
+  slot: f32,      // MODE_SET_PARAM: flat param slot
+  clear: f32,     // MODE_SET_PARAM: 1 = reset chemistry to rest
   _p2: f32,
   seed: array<vec4<f32>, 3>,      // seed target per reagent (up to 12)
   seedMask: array<vec4<f32>, 3>,  // 1 where the seed brush touches that reagent
@@ -32,6 +32,7 @@ const MODE_ERASE: u32 = 1u;
 const MODE_PARAMS: u32 = 2u;
 const MODE_WALL: u32 = 3u;
 const MODE_UNWALL: u32 = 4u;
+const MODE_SET_PARAM: u32 = 5u;
 
 @group(0) @binding(0) var<uniform> brush: Brush;
 @group(0) @binding(1) var<uniform> size: Size;
@@ -104,6 +105,18 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     case MODE_UNWALL: {
       if (falloff > 0.5) {
         params[pb].x = 0.0;
+      }
+    }
+    case MODE_SET_PARAM: {
+      // e.g. a reflecting wall in a wave medium: a hard-edged band of high potential
+      if (falloff > 0.5 && !wall) {
+        let k = u32(brush.slot);
+        params[pb + (k >> 2u)][k & 3u] = brush.paint[k >> 2u][k & 3u];
+        if (brush.clear > 0.5) {
+          for (var s = 0u; s < S; s++) {
+            state[sb + s] = brush.rest[s];
+          }
+        }
       }
     }
     default: {}

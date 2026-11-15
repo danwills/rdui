@@ -16,6 +16,8 @@ export const BrushMode = {
   Params: 2,
   Wall: 3,
   Unwall: 4,
+  /** Hard-edged like a wall: set one param slot to its paint value (optionally clearing chemistry). */
+  SetParam: 5,
 } as const;
 export type BrushMode = (typeof BrushMode)[keyof typeof BrushMode];
 
@@ -30,6 +32,9 @@ export interface BrushStroke {
   hardness: number;
   /** Values for the paintable params, in layout order (excluding wall). */
   paint: number[];
+  /** SetParam: the flat param slot to set (1..), and whether to reset the chemistry there to rest. */
+  slot?: number;
+  clear?: boolean;
 }
 
 export interface CellSample {
@@ -302,6 +307,8 @@ export class Simulation {
     f[6] = b.strength;
     f[7] = b.hardness;
     f[8] = Math.random() * 1000;
+    f[9] = b.slot ?? 0;
+    f[10] = b.clear ? 1 : 0;
     rule.reagents.forEach((_, r) => {
       const seed = rule.seed[r];
       f[12 + r] = seed ?? 0;

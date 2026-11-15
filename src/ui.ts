@@ -17,6 +17,8 @@ export interface Settings {
   stepsPerFrame: number;
   /** Whether loading a rule or scene sets steps/frame (untick to keep your own). */
   ruleSpeed: boolean;
+  /** In rules with a paintable potential V, the Wall tool paints reflecting walls of high V instead. */
+  wallsReflect: boolean;
   gridSize: number;
   /** Fraction of full resolution the sim runs at (1, ½, ¼, ⅛). */
   resScale: number;
@@ -89,6 +91,9 @@ export interface RuleContext {
 /** A Rules menu entry: a rule, or (with `rule`, the id of the rule it runs) a scene; group = its family. */
 export interface RuleChoice { id: string; label: string; group: string; rule?: string }
 
+/** The potential the Wall tool paints when 'walls reflect' is on. */
+export const REFLECT_V = 30;
+
 export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'seed', label: 'Seed', key: '1', hint: 'inject the rule\'s seed chemistry · right-drag erases' },
   { id: 'erase', label: 'Erase', key: '2', hint: 'reset reagents to their rest values' },
@@ -111,6 +116,7 @@ export function defaultSettings(): Settings {
     running: true,
     stepsPerFrame: 10,
     ruleSpeed: true,
+    wallsReflect: true,
     gridSize: 512,
     resScale: 1,
     featureSize: 1,
@@ -247,7 +253,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return el('label', { class: 'row log' }, el('span', {}, label), input, num);
   }
 
-  function checkbox(label: string, key: 'ruleSpeed', title: string) {
+  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect', title: string) {
     const input = el('input', { type: 'checkbox' });
     input.addEventListener('change', () => (s[key] = input.checked));
     syncers.push(() => (input.checked = s[key]));
@@ -279,6 +285,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   // --- tools
   const toolRow = el('div', { class: 'tools' });
   const toolHint = el('p', { class: 'hint' });
+  // only for rules with a paintable potential V (the Schrödinger rule, where real walls leak)
+  const reflectBox = checkbox('walls reflect', 'wallsReflect', `the Wall tool paints walls of high potential (V = ${REFLECT_V}) that waves bounce off; untick for ordinary walls`);
+  syncers.push(() => (reflectBox.style.display = rc.rule().paintable.includes('V') ? '' : 'none'));
   for (const t of TOOLS) {
     const b = button(t.label, () => {
       s.tool = t.id;
@@ -442,7 +451,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
 
   root.append(
     el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox'), el('span', { class: 'sub build' }, __BUILD__), button('⛶', actions.toggleUI, 'hide the panel: just the sim, fullscreen · H')),
-    section('Tool', toolRow, toolHint,
+    section('Tool', toolRow, toolHint, reflectBox,
       slider('radius', 'radius', 1, 80, 1, 0),
       slider('strength', 'strength', 0.02, 1, 0.01, 2),
       slider('hardness', 'hardness', 0, 1, 0.01, 2),

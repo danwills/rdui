@@ -1,6 +1,6 @@
 import './style.css';
 import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type ViewOptions } from './sim';
-import { buildPanel, defaultSettings, fmt, TOOLS, type RuleChoice, type Settings } from './ui';
+import { buildPanel, defaultSettings, fmt, REFLECT_V, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
 import { StampLibrary, newStampId, stampThumbnail, transformStamp, type Stamp } from './stamps';
 import { Overlay, type Ghost } from './overlay';
@@ -756,6 +756,14 @@ async function init() {
       case 'wall': mode = alt ? BrushMode.Unwall : BrushMode.Wall; break;
       case 'unwall': mode = alt ? BrushMode.Wall : BrushMode.Unwall; break;
       default: mode = alt ? BrushMode.Erase : BrushMode.Seed; break;
+    }
+    const vi = layoutOf(rule).paramNames.indexOf('V') - 1; // flat slot 1.. → paint index
+    if ((s.tool === 'wall' || s.tool === 'unwall') && s.wallsReflect && vi >= 0) {
+      // reflecting walls: a hard band of high V (clearing the wave there); unwalling puts V back to its global value
+      const up = (s.tool === 'wall') !== alt;
+      const paint = paintValues();
+      paint[vi] = up ? REFLECT_V : globals.V;
+      return { ax, ay, bx, by, mode: BrushMode.SetParam, radius: s.radius / cellScale, strength: 1, hardness: s.hardness, paint, slot: vi + 1, clear: up };
     }
     return {
       ax, ay, bx, by, mode,
