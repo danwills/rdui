@@ -71,30 +71,8 @@ scene('schrodinger-tunnelling', 'Schrödinger tunnelling',
       + packet(0.27, 0.27, 22, kx=0.5, r=0.19) + packet(0.27, 0.73, 22, kx=0.5, r=0.19),
       absorb(), {'reagent': 'n', 'low': 0, 'high': 0.4, 'tint': 'p'})
 
-# --- Anderson localisation
-def anderson(fname, disorder, label, sigma=4):
-    scene(fname, 'Schrödinger Anderson localisation' + label,
-          'Linear Schrödinger equation: two identical packets start at rest. The bottom one spreads into clear space and keeps spreading '
-          'until the border absorbs it. The top one sits in a random potential: the waves it sends out scatter back off the disorder and '
-          'interfere so as to cancel the outward flow, and it stops spreading, held in place with no walls around it. This is Anderson '
-          'localisation (Nobel 1977), why disorder can turn a metal into an insulator. A wall separates the halves. Try: Restart a few '
-          'times (the disorder changes each time).',
-          LIN, disorder + [rect('V', 0, 0, 0.49, 1, 1), rect('V', 30, 0, 0.49, 1, 0.51), rect('V', 30, 0, 0, 1, 0.01), rect('V', 30, 0, 0.99, 1, 1)]
-          + packet(0.5, 0.25, sigma, amp=1.5) + packet(0.5, 0.75, sigma, amp=1.5),
-          absorb('lr'), {'reagent': 'n', 'low': 0, 'high': 0.05, 'tint': 'p'}, steps=16)
-
-
-
-
-def speckle(amp, count, radius, seed):
-    """Smooth random potential in the top half: soft bumps of random sign, about `radius` cells across."""
-    rnd = random.Random(seed)
-    return [{'chem': 'V', 'op': 'add', 'fill': {'type': 'bump', 'value': round(rnd.choice((-1, 1)) * amp * rnd.uniform(0.5, 1), 3), 'edge': radius / 2},
-             'shape': {'type': 'circle', 'cx': round(rnd.random(), 4), 'cy': round(rnd.uniform(0.02, 0.47), 4), 'r': radius / N}} for _ in range(count)]
-
-
-for amp in (0.5, 1, 2):
-    anderson(f'schrodinger-anderson-{amp}', speckle(amp, 300, 8, 11), f' {amp}', sigma=10)
+# Anderson localisation: parked. Neither white-noise nor smooth (speckle) disorder localised a packet
+# in 2D at 256²; a narrow quasi-1D disordered channel should localise much sooner (to try).
 
 # --- quantum fluid vortices (defocusing: g < 0)
 # a uniform fluid needs timestep < 2π/k_max² ≈ 0.02 here (k_max² = 2(π/dx)² on the diagonal), or split-step slowly goes unstable
@@ -248,3 +226,37 @@ scene('schrodinger-bragg', 'Schrödinger Bragg crystal',
       'how X-rays reveal crystal structure) rather than spraying everywhere. Try: change the packet speed to move the beams.',
       LIN, posts + packet(0.22, 0.5, 14, kx=0.55, ky=0.18),
       absorb(), {'reagent': 'n', 'low': 0, 'high': 0.3, 'tint': 'p'}, steps=4)
+
+
+# --- soliton phase collider and ring push-off (focusing, the ring track's medium)
+SOL = dict(sigma=7, amp=2.2, r=0.1)
+lanes, phases = (0.2, 0.4, 0.6, 0.8), (0, 90, 180, 270)
+col = []
+for y, ph in zip(lanes, phases):
+    col.append({'chem': 'V', 'op': 'add', 'fill': {'type': 'constant', 'value': -0.6}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': y - 8 / N, 'x1': 1, 'y1': y + 8 / N}})
+    col += packet(0.3, y, kx=0.05, **SOL) + packet(0.7, y, kx=-0.05, phase=math.radians(ph), **SOL)
+scene('schrodinger-phase-collider', 'Schrödinger soliton phase collider',
+      'Focusing saturable Schrödinger: four straight channels (V = −0.6, the ring track\'s depth), each with two identical solitons '
+      'meeting head-on slowly. The only difference between the lanes is the right-hand soliton\'s phase relative to the left one: '
+      '0° (top), 90°, 180°, 270° (bottom). Measured in the lab: in phase (0°) their fields add, they merge into one bright peak '
+      'and then come out again, equal in power (in open space at this speed, the nls-collisions scene, they stay fused). At 180° '
+      'the fields cancel in the middle: a dark node keeps them about 19 cells apart, and they bounce back with equal power. At 90° '
+      'they trade power, ending about 890 against 520 (out of 2 × 700), and the weaker one is flung out fast; 270° is the mirror '
+      'image, the other one winning. Faster solitons pass through whatever the phase. The border absorbs. Try: Display → mode → '
+      'reagent + param outlines to see the channels; the soliton stamps (four phases, still or moving) to stage your own '
+      'collisions.',
+      {}, col, absorb(), {'reagent': 'n', 'low': 0, 'high': 5, 'tint': 'p', 'tintLow': -2.5, 'tintHigh': 2.5}, steps=4)
+
+# two solitons at rest on the ring track, half a soliton apart in opposite phase: they push each other off round the track
+R0 = (0.3046875 + 0.2421875) / 2
+# the ring track's V (as in nls-ring.json): a channel of −0.6 between r .242 and .305
+push = [{'chem': 'V', 'op': 'add', 'fill': {'type': 'bump', 'value': -0.6, 'edge': 2}, 'shape': {'type': 'circle', 'cx': 0.5, 'cy': 0.5, 'r': 0.3046875}},
+        {'chem': 'V', 'op': 'add', 'fill': {'type': 'bump', 'value': 0.6, 'edge': 2}, 'shape': {'type': 'circle', 'cx': 0.5, 'cy': 0.5, 'r': 0.2421875}}]
+for ang, ph in ((-0.16, 0), (0.16, 180)):
+    push += packet(0.5 + R0 * math.cos(ang), 0.5 + R0 * math.sin(ang), phase=math.radians(ph), **SOL)
+scene('schrodinger-ring-pushoff', 'Schrödinger ring push-off',
+      'The ring track (a circular channel of low V) with two solitons placed at rest, close together, in opposite phase. Neither is '
+      'moving, but the dark node between them pushes them apart: they slide off round the track in opposite directions, meet again '
+      'on the far side, bounce, and so on. Change the phase and they\'d attract instead (try the soliton stamps: drop a 0° and a '
+      '180° soliton on the track, or two at 0°). The border absorbs.',
+      {}, push, absorb(), {'reagent': 'n', 'low': 0, 'high': 5, 'tint': 'p', 'tintLow': -2.5, 'tintHigh': 2.5}, steps=8)

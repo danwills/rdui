@@ -1,0 +1,263 @@
+{
+  "name": "Schrödinger ring push-off",
+  "description": "The ring track (a circular channel of low V) with two solitons placed at rest, close together, in opposite phase. Neither is moving, but the dark node between them pushes them apart: they slide off round the track in opposite directions, meet again on the far side, bounce, and so on. Change the phase and they'd attract instead (try the soliton stamps: drop a 0° and a 180° soliton on the track, or two at 0°). The border absorbs.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "globals": {},
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": -0.6,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.5,
+        "r": 0.3046875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 0.6,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.5,
+        "r": 0.2421875
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7699449602980231,
+        "cy": 0.45643642787891714,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7699449602980231,
+        "cy": 0.45643642787891714,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 3.141592653589793,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7699449602980231,
+        "cy": 0.5435635721210829,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 3.141592653589793,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7699449602980231,
+        "cy": 0.5435635721210829,
+        "r": 0.1
+      }
+    }
+  ],
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        232,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        232,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        240,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        240,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        248,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        248,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 5,
+    "tint": "p",
+    "tintLow": -2.5,
+    "tintHigh": 2.5
+  }
+}

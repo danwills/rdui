@@ -1,0 +1,521 @@
+{
+  "name": "Schrödinger soliton phase collider",
+  "description": "Focusing saturable Schrödinger: four straight channels (V = −0.6, the ring track's depth), each with two identical solitons meeting head-on slowly. The only difference between the lanes is the right-hand soliton's phase relative to the left one: 0° (top), 90°, 180°, 270° (bottom). Measured in the lab: in phase (0°) their fields add, they merge into one bright peak and then come out again, equal in power (in open space at this speed, the nls-collisions scene, they stay fused). At 180° the fields cancel in the middle: a dark node keeps them about 19 cells apart, and they bounce back with equal power. At 90° they trade power, ending about 890 against 520 (out of 2 × 700), and the weaker one is flung out fast; 270° is the mirror image, the other one winning. Faster solitons pass through whatever the phase. The border absorbs. Try: Display → mode → reagent + param outlines to see the channels; the soliton stamps (four phases, still or moving) to stage your own collisions.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 4,
+  "globals": {},
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "constant",
+        "value": -0.6
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.16875,
+        "x1": 1,
+        "y1": 0.23125
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.2,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.2,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.2,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.2,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "constant",
+        "value": -0.6
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.36875,
+        "x1": 1,
+        "y1": 0.43125
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.4,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.4,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0.0,
+        "phase": 1.5707963267948966,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.4,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0.0,
+        "phase": 1.5707963267948966,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.4,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "constant",
+        "value": -0.6
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.56875,
+        "x1": 1,
+        "y1": 0.63125
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.6,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.6,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0.0,
+        "phase": 3.141592653589793,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.6,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0.0,
+        "phase": 3.141592653589793,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.6,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "constant",
+        "value": -0.6
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.76875,
+        "x1": 1,
+        "y1": 0.83125
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.8,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.05,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.8,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0.0,
+        "phase": 4.71238898038469,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.8,
+        "r": 0.1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": -0.05,
+        "ky": 0.0,
+        "phase": 4.71238898038469,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.8,
+        "r": 0.1
+      }
+    }
+  ],
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        232,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        232,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        240,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        240,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        248,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        248,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 5,
+    "tint": "p",
+    "tintLow": -2.5,
+    "tintHigh": 2.5
+  }
+}
