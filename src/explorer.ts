@@ -47,7 +47,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
     return Math.min(hi, Math.max(lo, v));
   };
   const defaults = rule.explore ?? rule.paintable;
-  const unlocked = new Set(defaults.length ? defaults : specs.filter((p) => p.name !== 'timestep').slice(0, 2).map((p) => p.name));
+  const unlocked = new Set(defaults.length ? defaults : specs.filter((p) => !/^(timestep|clamp)/i.test(p.name)).slice(0, 2).map((p) => p.name));
   let strength = 0.08;
   let centre: Record<string, number> = { ...env.globals };
   let mode: 'grid' | 'map' = 'grid';
@@ -194,6 +194,21 @@ export function openExplorerPanel(env: ExplorerEnv) {
     const c = Math.min(hi - w, Math.max(lo + w, centre[n]));
     return [c - w, c + w];
   }
+  // limits typed in for an axis win over the span's window; kept per rule and parameter in this browser
+  const limitKey = (n: string) => `rdui.mapLimits.${rule.name}.${n}`;
+  const limits = (n: string): [number, number] => {
+    try {
+      const v = JSON.parse(localStorage.getItem(limitKey(n)) ?? 'null');
+      if (Array.isArray(v) && v.length === 2 && v.every(Number.isFinite) && v[0] !== v[1]) return [v[0], v[1]];
+    } catch { /* no storage */ }
+    return window_(n);
+  };
+  const setLimits = (n: string, v: [number, number] | null) => {
+    try {
+      if (v) localStorage.setItem(limitKey(n), JSON.stringify(v));
+      else localStorage.removeItem(limitKey(n));
+    } catch { /* no storage */ }
+  };
   function startMap() {
     const N = 256;
     const paintable = [...new Set([mx, my, ...rule.paintable])].slice(0, 7);
@@ -204,7 +219,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
     for (const [k, v] of Object.entries(centre)) sim.setGlobal(k, v);
     const f = initialField(r, N, N, centre, 'zero', env.cell);
     const S4 = compiled.layout.S * 4, P4 = compiled.layout.P * 4, names = compiled.layout.paramNames;
-    const ix = names.indexOf(mx), iy = names.indexOf(my), [x0, x1] = window_(mx), [y0, y1] = window_(my);
+    const ix = names.indexOf(mx), iy = names.indexOf(my), [x0, x1] = limits(mx), [y0, y1] = limits(my);
     let seed = 7;
     const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
@@ -218,7 +233,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
       const cx = rnd() * N, cy = rnd() * N, rad = (3 + rnd() * 5) / env.cell;
       for (let y = Math.floor(cy - rad); y <= cy + rad; y++) for (let x = Math.floor(cx - rad); x <= cx + rad; x++) {
         if (x < 1 || y < 1 || x >= N - 1 || y >= N - 1 || (x - cx) ** 2 + (y - cy) ** 2 > rad * rad) continue;
-        rule.seed.forEach((v, k) => { if (v !== null) f.state[(y * N + x) * S4 + k] = v; });
+        rule.seed.forEach((v, k) => { if (v !== null) f.state[(y * N + x) * S4 + k] = v + (rnd() - 0.5) * (rule.seedNoise?.[k] ?? 0); });
       }
     }
     sim.load(f.state, f.params);
@@ -291,11 +306,31 @@ export function openExplorerPanel(env: ExplorerEnv) {
     sp.addEventListener('input', () => (out.textContent = `${Math.round(Number(sp.value) * 100)}%`));
     sp.addEventListener('change', () => {
       span = Number(sp.value);
+      setLimits(mx, null);
+      setLimits(my, null);
       start();
     });
+    // each axis's ends, typed in: any values (beyond the slider ranges too); low > high flips the axis
+    const limitRow = (n: string, label: string) => {
+      const [lo, hi] = limits(n);
+      const box = (v: number) => el('input', { type: 'number', step: 'any', value: String(+v.toPrecision(6)), class: 'limit' });
+      const a = box(lo), b = box(hi);
+      const apply = () => {
+        const v: [number, number] = [Number(a.value), Number(b.value)];
+        if (!v.every(Number.isFinite) || v[0] === v[1]) return;
+        setLimits(n, v);
+        mapPick = null;
+        start();
+      };
+      a.addEventListener('change', apply);
+      b.addEventListener('change', apply);
+      return el('label', { class: 'row limits', title: `${n} at the map's ${label === 'x' ? 'left and right' : 'bottom and top'} edges` }, el('span', {}, `${label} ${n}`), a, el('span', { class: 'hint' }, 'to'), b);
+    };
     controls.replaceChildren(
       el('div', { class: 'explore-chips' }, el('span', { class: 'hint' }, 'x'), sel(mx, (n) => (mx = n)), el('span', { class: 'hint' }, 'y'), sel(my, (n) => (my = n))),
-      el('label', { class: 'row', title: 'how much of each parameter\'s range the map covers, about the current values' }, el('span', {}, 'span'), sp, out),
+      el('label', { class: 'row', title: 'how much of each parameter\'s range the map covers, about the current values (resets the limits below)' }, el('span', {}, 'span'), sp, out),
+      limitRow(mx, 'x'),
+      limitRow(my, 'y'),
       ...(fieldWide.length > 1 ? [el('p', { class: 'hint' }, `FFT rule: ${fieldWide.filter((n) => specs.some((p) => p.name === n)).join(', ')} can't vary across the field, so they aren't offered.`)] : []),
     );
   }

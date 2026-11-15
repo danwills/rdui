@@ -99,6 +99,7 @@ async function init() {
 
   const strokes: BrushStroke[] = []; // resolved at input time so later tool changes don't affect them
   let pendingSteps = 0;
+  let lastFrameT = performance.now(), stepCarry = 0;
   // no steps while a scene is being set up: its stamps go down one GPU read at a time, and solitons meant to
   // meet in phase must all start on the same step (one frame apart is ~30° of phase for a standard soliton)
   let settingUp = false;
@@ -984,7 +985,14 @@ async function init() {
     for (const b of strokes.splice(0)) sim.brush(b);
 
     const enc = device.createCommandEncoder();
-    const n = settingUp ? 0 : (s.running ? s.stepsPerFrame : 0) + pendingSteps;
+    // steps per frame means per 1/60 s: phones raise the refresh rate (to 120 Hz) while touched,
+    // which made painting run the sim faster. Never more per frame than set, so slow frames don't pile up.
+    const t = performance.now();
+    const due = s.running ? Math.min(s.stepsPerFrame, s.stepsPerFrame * Math.max(0, t - lastFrameT) / (1000 / 60) + stepCarry) : 0;
+    lastFrameT = t;
+    const run = Math.floor(due);
+    stepCarry = s.running ? due - run : 0;
+    const n = settingUp ? 0 : run + pendingSteps;
     pendingSteps = 0;
     sim.step(enc, n);
     stepsDone += n;
