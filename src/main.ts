@@ -16,6 +16,7 @@ import { UserRules } from './userRules';
 import { SavedScenes } from './saved-scenes';
 import { openExplorerPanel } from './explorer';
 import { openCollection, presetImport } from './collection';
+import { startAnalysis } from './analysis';
 import { STARTER_STAMPS, boostStamp, compositeOnto, stampBackground } from './stamps';
 
 const RECT_TOOLS = new Set(['capture', 'probe']);
@@ -613,7 +614,7 @@ async function init() {
       cellScale = 1 / s.featureSize;
       sim.setCellScale(cellScale);
     },
-    toggleUI: (fill?: boolean) => toggleUI(fill),
+    toggleUI: (mode?: 'whole' | 'fill' | 'split') => toggleUI(mode),
     togglePaintable: (name) => {
       const paintable = rule.paintable.includes(name) ? rule.paintable.filter((n) => n !== name) : [...rule.paintable, name];
       if (paintable.length > 7) {
@@ -727,9 +728,12 @@ async function init() {
   function fit() {
     const r = stage.getBoundingClientRect();
     const filling = app.classList.contains('fill');
+    // split: the sim gets the first 55% of the stage's longer side (the analysis the rest)
+    const split = app.classList.contains('split');
+    const bw = split && r.width > r.height ? r.width * 0.55 : r.width, bh = split && r.width <= r.height ? r.height * 0.55 : r.height;
     const scale = filling
       ? Math.min(Math.max(r.width / sim.width, r.height / sim.height), 4096 / (window.devicePixelRatio || 1) / Math.max(sim.width, sim.height))
-      : Math.min((r.width - 24) / sim.width, (r.height - 24) / sim.height);
+      : Math.min((bw - (split ? 8 : 24)) / sim.width, (bh - (split ? 8 : 24)) / sim.height);
     const w = Math.max(1, Math.floor(sim.width * scale));
     const h = Math.max(1, Math.floor(sim.height * scale));
     const dpr = window.devicePixelRatio || 1;
@@ -744,12 +748,19 @@ async function init() {
   fit();
 
   // hide/show the panel (H, or the ⛶ buttons): the sim alone, fullscreen where allowed; centred
-  // whole, or filling the screen (cropped). Back (or Esc, leaving fullscreen) brings the panel back:
-  // a history entry catches Back where fullscreen isn't granted.
-  function toggleUI(fill = false) {
+  // whole, filling the screen (cropped), or split with live analysis (analysis.ts). Back (or Esc,
+  // leaving fullscreen) brings the panel back: a history entry catches Back where fullscreen isn't granted.
+  const analysisCanvas = document.createElement('canvas');
+  analysisCanvas.className = 'analysis';
+  stage.append(analysisCanvas);
+  let analysis: ReturnType<typeof startAnalysis> | null = null;
+  function toggleUI(mode: 'whole' | 'fill' | 'split' = 'whole') {
     const hide = !app.classList.contains('ui-hidden');
     app.classList.toggle('ui-hidden', hide);
-    app.classList.toggle('fill', hide && fill);
+    app.classList.toggle('fill', hide && mode === 'fill');
+    app.classList.toggle('split', hide && mode === 'split');
+    analysis?.stop();
+    analysis = hide && mode === 'split' ? startAnalysis(analysisCanvas, { sim: () => sim, reagents: () => rule.reagents, shown: () => s.reagent }) : null;
     if (hide) {
       history.pushState({ rduiHidden: true }, '');
       document.documentElement.requestFullscreen?.().catch(() => {});
