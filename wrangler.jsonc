@@ -1,6 +1,6 @@
-// Cloudflare deploy of the built app (static files only): npm run build && npx wrangler deploy
+// Cloudflare deploy of the cloud build (static files only): npm run deploy
 {
   "name": "rdui",
   "compatibility_date": "2026-11-13",
-  "assets": { "directory": "./dist" }
+  "assets": { "directory": "./dist-cloud" }
 }

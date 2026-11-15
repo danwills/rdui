@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "deploy": "tsc --noEmit && vite build --mode cloud && wrangler deploy",
     "typecheck": "tsc --noEmit"
   },
   "type": "module",
