@@ -22,7 +22,7 @@ export interface Settings {
   resScale: number;
   /** Feature size relative to the rule's own (grid spacing = 1/featureSize); above 1, stencil rules take (featureSize)² shorter steps per step. */
   featureSize: number;
-  viewMode: 'reagent' | 'params';
+  viewMode: 'reagent' | 'params' | 'outlines';
   /** Displayed reagent index and its range. */
   reagent: number;
   low: number;
@@ -460,7 +460,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     ),
     ...extraSections,
     section('View',
-      select('mode', 'viewMode', () => [['reagent', 'reagent'], ['params', 'parameter map']]).row,
+      select('mode', 'viewMode', () => [['reagent', 'reagent'], ['outlines', 'reagent + param outlines'], ['params', 'parameter map']]).row,
       viewReagent.row,
       rangeRow('low', 'low', [-1, 1]),
       rangeRow('high', 'high', [-1, 2]),

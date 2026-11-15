@@ -144,7 +144,8 @@
             1
           ]
         ],
-        "part": "cos"
+        "part": "cos",
+        "box": true
       },
       "shape": {
         "type": "everywhere"
@@ -279,7 +280,8 @@
             1
           ]
         ],
-        "part": "sin"
+        "part": "sin",
+        "box": true
       },
       "shape": {
         "type": "everywhere"

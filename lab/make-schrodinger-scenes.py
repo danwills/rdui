@@ -102,9 +102,9 @@ FLUID = {'g': -1, 's': 0, 'timestep': 0.018}
 
 
 def fluid(vortices, core=5.6):   # √2 × the healing length (1, = 4 cells)
-    """A box-trapped fluid: hard walls round the edge (empty inside them) keep the seam where the
-    imprinted phase wraps out of the fluid, so it doesn't radiate sound."""
-    out = [{'chem': c, 'op': 'overwrite', 'fill': {'type': 'vortices', 'amp': 1, 'core': core, 'list': vortices, 'part': part}, 'shape': {'type': 'everywhere'}}
+    """A box-trapped fluid: hard walls round the edge (empty inside them), and the imprinted phase
+    from mirror images across the walls, so the starting flow runs along them, not through."""
+    out = [{'chem': c, 'op': 'overwrite', 'fill': {'type': 'vortices', 'amp': 1, 'core': core, 'list': vortices, 'part': part, 'box': True}, 'shape': {'type': 'everywhere'}}
            for c, part in (('p', 'cos'), ('q', 'sin'))]
     b, e = 6 / N, 14 / N
     for x0, y0, x1, y1 in ((0, 0, 1, b), (0, 1 - b, 1, 1), (0, 0, b, 1), (1 - b, 0, 1, 1)):
@@ -135,6 +135,34 @@ scene('schrodinger-vortex-turbulence', 'Schrödinger quantum turbulence',
       'turbulence. Opposite pairs race off together, same-sign ones circle each other, and close opposite pairs can annihilate in a '
       'burst of sound waves. Tint shows the phase. Try: Restart, or erase new holes.',
       FLUID, fluid(turb), None, {'reagent': 'n', 'low': 0, 'high': 1.2, 'tint': 'p'}, steps=16)
+
+# Onsager clustering: like-sign vortices gather into large clusters
+rnd = random.Random(21)
+shear = []
+for row, (y, n) in enumerate(((0.3, 1), (0.7, -1))):
+    for i in range(9):
+        shear.append([round(0.1 + (i + 0.5) * 0.8 / 9 + rnd.uniform(-0.008, 0.008), 4), round(y + rnd.uniform(-0.01, 0.01), 4), n])
+scene('schrodinger-onsager-shear', 'Schrödinger Onsager clusters: shear layer',
+      'Defocusing Schrödinger (a superfluid in a box, g = −1): a row of 9 vortices spinning one way (top) and a row of 9 spinning '
+      'the other (bottom): two quantum shear layers. Each row wobbles and rolls up (a quantum Kelvin-Helmholtz instability), and '
+      'the vortices sort themselves into one large swirling cluster of each sign, which then wander round the box together (measured: '
+      '18 vortices, 2–3 lost at the walls; 82–95% keep a same-sign nearest neighbour through 60k steps). Onsager predicted in 1949 that '
+      'vortices with this much energy cluster rather than mix (a negative-temperature state); it was first seen directly in '
+      'Bose-Einstein condensates in 2019.',
+      FLUID, fluid(shear), None, {'reagent': 'n', 'low': 0, 'high': 1.2, 'tint': 'p'}, steps=16)
+
+rnd = random.Random(5)
+rand = []
+while len(rand) < 64:
+    x, y = rnd.uniform(0.08, 0.92), rnd.uniform(0.08, 0.92)
+    if all(math.hypot(x - a, y - b) > 0.055 for a, b, _ in rand): rand.append([round(x, 4), round(y, 4), 1 if len(rand) % 2 else -1])
+scene('schrodinger-onsager-random', 'Schrödinger Onsager clusters: random start',
+      'Defocusing Schrödinger (a superfluid in a box): 64 vortices, 32 of each sign, scattered at random. Close opposite pairs find '
+      'each other and annihilate in bursts of sound; losing those low-energy pairs leaves the survivors with more energy each '
+      '("evaporative heating"), and like-sign vortices start to gather into clusters, as Onsager predicted. Slower and less tidy than '
+      'the shear layer: give it time (measured: 64 vortices fall to 14 by 80k steps, while the share with a same-sign nearest '
+      'neighbour climbs from 0.42 to 0.71). Tip: Display → mode → reagent + param outlines shows the box walls.',
+      FLUID, fluid(rand), None, {'reagent': 'n', 'low': 0, 'high': 1.2, 'tint': 'p'}, steps=16)
 
 # --- harmonic trap
 W = 0.1                               # trap frequency

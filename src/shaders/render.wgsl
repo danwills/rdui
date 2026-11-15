@@ -1,5 +1,6 @@
 // Draws the field: one reagent through a palette (optionally tinted by a second,
-// typically hidden, reagent), or a false-colour map of three paintable params.
+// typically hidden, reagent), or a false-colour map of three paintable params,
+// or the reagent view with outlines where those params change.
 // Walls are overlaid hatched.
 
 override S: u32 = 1u;
@@ -10,7 +11,7 @@ struct View {
   height: u32,
   canvasW: f32,
   canvasH: f32,
-  mode: u32,       // 0 = reagent, 1 = params
+  mode: u32,       // 0 = reagent, 1 = params, 2 = reagent + param outlines
   palette: u32,
   reagent: u32,
   tint: u32,       // reagent index, or >= 12 for none
@@ -180,6 +181,27 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
       let u = norm(sampleReagent(g, view.tint), view.tintLow, view.tintHigh);
       let h = hue(0.08 + 0.75 * u);
       col = mix(col, col * 0.35 + h * (0.25 + 0.75 * max(t, 0.35)), view.tintStrength * smoothstep(0.02, 0.25, u));
+    }
+  }
+
+  if (view.mode == 2u) {
+    // outline each painted param where it changes: its largest step to a neighbour cell,
+    // sampled per screen pixel so the line stays thin, coloured as in the param map
+    let c = vec2<i32>(floor(g));
+    for (var k = 0u; k < 3u; k++) {
+      let slot = view.paramSlot[k];
+      if (slot == 0u) { continue; }
+      let here = paramAt(cell, slot);
+      var step_ = 0.0;
+      for (var n = 0u; n < 4u; n++) {
+        let o = select(vec2<i32>(0, select(-1, 1, n == 3u)), vec2<i32>(select(-1, 1, n == 1u), 0), n < 2u);
+        step_ = max(step_, abs(paramAt(cellIdx(c + o), slot) - here));
+      }
+      let edge = smoothstep(0.01, 0.04, step_ / max(view.paramMax[k] - view.paramMin[k], 1e-6));
+      var lc = vec3<f32>(1.0, 0.35, 0.3);
+      if (k == 1u) { lc = vec3<f32>(0.35, 1.0, 0.45); }
+      if (k == 2u) { lc = vec3<f32>(0.4, 0.6, 1.0); }
+      col = mix(col, lc, 0.75 * edge);
     }
   }
 

@@ -44,8 +44,11 @@ export type Fill =
    * A uniform complex field amp·Π tanh(d_i/core)·e^{i·n_i·θ_i} with quantised
    * vortices at (cx, cy) (normalized) of charge n; its real part, or with part
    * 'sin' its imaginary part. Keep the net charge 0 on the wrapping field.
+   * With box, the phase comes from mirror images across the field's edges
+   * instead (opposite charge in each mirror), so the flow runs along walls
+   * there rather than through them: for a fluid held in a box.
    */
-  | { type: 'vortices'; amp: number; core: number; list: [number, number, number][]; part?: 'cos' | 'sin' };
+  | { type: 'vortices'; amp: number; core: number; list: [number, number, number][]; part?: 'cos' | 'sin'; box?: boolean };
 export type Shape =
   | { type: 'everywhere' }
   | { type: 'rectangle'; x0: number; y0: number; x1: number; y1: number } // normalized, y down
@@ -540,16 +543,19 @@ function rampValue(fill: { from: number; to: number; axis?: 'x' | 'y' }, sh: Sha
   return fill.from + (fill.to - fill.from) * t;
 }
 
-function vortexValue(fill: { amp: number; core: number; list: [number, number, number][]; part?: 'cos' | 'sin' }, x: number, y: number, w: number, h: number) {
+function vortexValue(fill: { amp: number; core: number; list: [number, number, number][]; part?: 'cos' | 'sin'; box?: boolean }, x: number, y: number, w: number, h: number) {
   let re = fill.amp, im = 0;
   for (const [cx, cy, n] of fill.list) {
-    // the phase sums the vortex's nearby periodic images, so it wraps smoothly
-    // (for net charge 0); the core depth uses the nearest image
-    let th = 0, d = Infinity;
+    // the phase sums the vortex's nearby images: periodic ones, so it wraps
+    // smoothly (for net charge 0), or with box mirror images across the edges
+    // (charge flipped per mirror); the core depth uses the vortex itself
+    let th = 0;
+    const d = Math.hypot(x + 0.5 - cx * w, y + 0.5 - cy * h);
     for (let iy = -2; iy <= 2; iy++) for (let ix = -2; ix <= 2; ix++) {
-      const dx = x + 0.5 - (cx + ix) * w, dy = y + 0.5 - (cy + iy) * h;
-      th += n * Math.atan2(dy, dx);
-      d = Math.min(d, Math.hypot(dx, dy));
+      for (const [sx, sy] of fill.box ? [[1, 1], [-1, 1], [1, -1], [-1, -1]] : [[1, 1]]) {
+        const px = fill.box ? 2 * ix + sx * cx : cx + ix, py = fill.box ? 2 * iy + sy * cy : cy + iy;
+        th += n * sx * sy * Math.atan2(y + 0.5 - py * h, x + 0.5 - px * w);
+      }
     }
     const m = Math.tanh(d / fill.core);
     const zr = m * Math.cos(th), zi = m * Math.sin(th);

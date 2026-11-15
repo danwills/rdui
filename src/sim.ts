@@ -43,7 +43,7 @@ export interface CellSample {
 }
 
 export interface ViewOptions {
-  mode: 'reagent' | 'params';
+  mode: 'reagent' | 'params' | 'outlines';
   palette: number;
   reagent: number;
   low: number;
@@ -347,7 +347,7 @@ export class Simulation {
     const f = new Float32Array(buf);
     u[0] = this.width; u[1] = this.height;
     f[2] = canvasW; f[3] = canvasH;
-    u[4] = v.mode === 'params' ? 1 : 0;
+    u[4] = v.mode === 'params' ? 1 : v.mode === 'outlines' ? 2 : 0;
     u[5] = v.palette;
     u[6] = v.reagent;
     u[7] = v.tint >= 0 ? v.tint : 99;

@@ -74,6 +74,7 @@ async function init() {
   // --- rule state
   let rule: RuleDef = clone(GRAY_SCOTT);
   let ruleId = 'builtin:0';
+  const LAST_RULE_KEY = 'rdui.lastRule';
   let warnings: string[] = [];
   let note = ''; // shown under the rule picker (scene description)
   let globals: Record<string, number> = defaultGlobals(rule);
@@ -355,6 +356,11 @@ async function init() {
         await applyRule(imp.rule, { field: 'initial', id, globals: defaultGlobals(imp.rule), size: imp.rule.size, image: imp.image, warnings: imp.warnings });
       }
       location.hash = `rule=${encodeURIComponent(id)}`;
+      try {
+        localStorage.setItem(LAST_RULE_KEY, id);
+      } catch {
+        // storage blocked: the app just opens on the default next time
+      }
     } catch (e) {
       alert(`Couldn't load ${id}: ${(e as Error).message}`);
       ui.rebuildRule();
@@ -858,7 +864,14 @@ async function init() {
     requestAnimationFrame(frame);
   }
 
-  const wanted = decodeURIComponent(location.hash.match(/rule=([^&]+)/)?.[1] ?? '');
+  // the address's rule, else the one picked last time (the installed app always opens at its start address)
+  let last = '';
+  try {
+    last = localStorage.getItem(LAST_RULE_KEY) ?? '';
+  } catch {
+    // storage blocked
+  }
+  const wanted = decodeURIComponent(location.hash.match(/rule=([^&]+)/)?.[1] ?? '') || last;
   if (wanted && ruleChoices().some((c) => c.id === wanted)) await selectRule(wanted);
   else await applyRule(rule, { field: 'initial', id: ruleId });
   requestAnimationFrame(frame);
