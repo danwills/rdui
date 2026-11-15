@@ -223,15 +223,16 @@ function valueRow(label: string, get: () => number, set: (v: number) => void, ra
 /** Builds the side panel. Returns `sync()` to refresh widgets and `rebuildRule()` after a rule change. */
 /**
  * Sliders don't change by accident (Dan: scrolling past them kept ruining runs). A touch on a
- * slider changes nothing until the finger has clearly moved sideways; a swipe up or down (the
- * panel scrolling), a tap, or a gesture the browser takes over puts the value back. The mouse
- * works as usual, and the wheel never changes a number field. For every slider on the page.
+ * slider changes nothing until it's clearly meant: a sideways drag, or a tap (lifted within a few
+ * pixels of where it landed: the value where it was tapped). A swipe up or down (the panel
+ * scrolling) or a gesture the browser takes over puts the value back. The mouse works as usual,
+ * and the wheel never changes a number field. For every slider on the page.
  */
 let guarded = false;
 export function guardSliders() {
   if (guarded) return;
   guarded = true;
-  let touch: { el: HTMLInputElement; value: string; x: number; y: number; ok: boolean } | null = null;
+  let touch: { el: HTMLInputElement; value: string; x: number; y: number; ok: boolean; far: boolean; wanted?: string } | null = null;
   const isRange = (t: EventTarget | null): t is HTMLInputElement => t instanceof HTMLInputElement && t.type === 'range';
   const undo = () => {
     if (touch && !touch.ok && touch.el.value !== touch.value) touch.el.value = touch.value;
@@ -239,17 +240,26 @@ export function guardSliders() {
   };
   document.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'mouse' || !isRange(e.target)) return;
-    touch = { el: e.target, value: e.target.value, x: e.clientX, y: e.clientY, ok: false };
+    touch = { el: e.target, value: e.target.value, x: e.clientX, y: e.clientY, ok: false, far: false };
   }, true);
   document.addEventListener('pointermove', (e) => {
     if (!touch || touch.ok) return;
     const dx = Math.abs(e.clientX - touch.x), dy = Math.abs(e.clientY - touch.y);
+    if (dx > 6 || dy > 6) touch.far = true;
     if (dx > 10 && dx > 2 * dy) {
       touch.ok = true;
       touch.el.dispatchEvent(new Event('input', { bubbles: true }));
     } else if (dy > 8) undo();
   }, true);
   document.addEventListener('pointerup', () => {
+    if (touch && !touch.ok && !touch.far) {
+      // a tap: the value where it landed (as the browser set it, else from the position)
+      const el = touch.el, r = el.getBoundingClientRect();
+      const lo = Number(el.min || 0), hi = Number(el.max || 100), f = Math.min(1, Math.max(0, (touch.x - r.left) / Math.max(1, r.width)));
+      touch.ok = true;
+      el.value = touch.wanted ?? String(lo + f * (hi - lo));
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     if (touch?.ok) touch.el.dispatchEvent(new Event('change', { bubbles: true }));
     undo();
   }, true);
@@ -258,6 +268,7 @@ export function guardSliders() {
   for (const type of ['input', 'change']) document.addEventListener(type, (e) => {
     if (!touch || touch.ok || e.target !== touch.el) return;
     e.stopImmediatePropagation();
+    touch.wanted = touch.el.value;
     touch.el.value = touch.value;
   }, true);
   document.addEventListener('wheel', (e) => {
@@ -515,7 +526,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         button('Clear all', actions.clearAll, 'a blank field: chemistry at rest, painted params and walls removed (Clear chem keeps them)'),
       ),
       ...(wallBox.childElementCount ? [el('h3', { title: 'walls drawn with the Wall tool (walls reflect / walls absorb): wall_grow moves every edge out (or in, below 0) by that many cells' }, 'Walls'), wallBox] : []),
-      el('details', { class: 'globals-wrap', open: '' }, el('summary', {}, `Global parameters (${globalBox.childElementCount})`), globalBox),
+      el('details', { class: 'globals-wrap' }, el('summary', {}, `Global parameters (${globalBox.childElementCount})`), globalBox),
     );
     ruleBody.replaceChildren(...nodes);
     viewReagent.fill();
