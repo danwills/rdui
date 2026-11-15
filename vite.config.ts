@@ -44,7 +44,7 @@ self.addEventListener('fetch', (e) => {
  * Two builds, so both can be installed side by side and told apart on a home screen: the local
  * one (npm run build -> dist/, served by vite preview to the phone over adb) is "rdui dev" with
  * the DEV-badged icons (lab/make-dev-icon.mjs); the cloud one (npm run deploy -> dist-cloud/,
- * https://rdui.rdui.workers.dev) is plain rdui. The manifest (./manifest.webmanifest) is written
+ * https://rdui.rdui.workers.dev) is plain rdui. The manifest (from ./app-manifest.json: not the name index.html links, or Vite would bundle it as an asset) is written
  * per build.
  */
 function appIdentity(cloud: boolean): Plugin {
@@ -53,7 +53,7 @@ function appIdentity(cloud: boolean): Plugin {
     name: 'rdui-app-identity',
     transformIndexHtml: (html) => html.replace('href="/icon-192.png"', `href="/${icon(192)}"`),
     generateBundle() {
-      const m = JSON.parse(readFileSync('manifest.webmanifest', 'utf8'));
+      const m = JSON.parse(readFileSync('app-manifest.json', 'utf8'));
       if (!cloud) Object.assign(m, { name: `${m.short_name} dev — ${m.name.split(' — ')[1]}`, short_name: `${m.short_name} dev` });
       m.icons = [192, 512].map((s) => ({ src: icon(s), sizes: `${s}x${s}`, type: 'image/png', purpose: 'any maskable' }));
       this.emitFile({ type: 'asset', fileName: 'manifest.webmanifest', source: JSON.stringify(m, null, 2) });
