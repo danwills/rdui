@@ -99,6 +99,9 @@ async function init() {
 
   const strokes: BrushStroke[] = []; // resolved at input time so later tool changes don't affect them
   let pendingSteps = 0;
+  // no steps while a scene is being set up: its stamps go down one GPU read at a time, and solitons meant to
+  // meet in phase must all start on the same step (one frame apart is ~30° of phase for a standard soliton)
+  let settingUp = false;
 
   const userRules = new UserRules();
   const savedScenes = new SavedScenes();
@@ -352,6 +355,15 @@ async function init() {
   }
 
   async function loadScene(id: string, sc: Scene) {
+    settingUp = true;
+    try {
+      await setUpScene(id, sc);
+    } finally {
+      settingUp = false;
+    }
+  }
+
+  async function setUpScene(id: string, sc: Scene) {
     let r: RuleDef;
     let imp: Awaited<ReturnType<typeof loadBundled>> | null = null;
     if (sc.rule.startsWith('builtin:')) r = clone(BUILTIN_RULES[Number(sc.rule.slice(8))]);
@@ -972,7 +984,7 @@ async function init() {
     for (const b of strokes.splice(0)) sim.brush(b);
 
     const enc = device.createCommandEncoder();
-    const n = (s.running ? s.stepsPerFrame : 0) + pendingSteps;
+    const n = settingUp ? 0 : (s.running ? s.stepsPerFrame : 0) + pendingSteps;
     pendingSteps = 0;
     sim.step(enc, n);
     stepsDone += n;
