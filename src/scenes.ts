@@ -25,7 +25,7 @@ export interface Scene {
    * Distance-field walls (rules with reflect_d / absorb_d), drawn as the Wall tool draws them: a disc
    * of radius r at (x, y), or a line of that half-width on to (x2, y2). Cells.
    */
-  sdf?: { field: 'absorb_d' | 'reflect_d' | 'trap_d'; x: number; y: number; x2?: number; y2?: number; r: number }[];
+  sdf?: { field: 'absorb_d' | 'reflect_d' | 'trap_d'; x: number; y: number; x2?: number; y2?: number; r: number; cut?: boolean }[];
   /**
    * Stamps by id (bundled starter packs or the user's library), centred at x, y.
    * Only their chemistry is placed unless `params` is set (then their painted

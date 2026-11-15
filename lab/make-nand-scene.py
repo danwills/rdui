@@ -21,7 +21,9 @@ K, KC = 0.08, 0.04                     # input and clock wavenumbers
 D, L = 66, 130                         # A/B start distance from P1; P1 to P2 (a lone A or B passes 0.26·L from P2: keep it over ~30)
 CHEAD = math.radians(120)              # clock heading
 EARLY = 300                            # clock arrives this many steps early (lone B passes nearer a late clock)
-TAIL = 3000                            # steps after the meeting until the output check
+TAIL = 6000                            # steps after the meeting until the output check (puts the trap 73 cells past P2)
+W = 24                                 # corridor half-width
+BUMP = 0.004                           # height of the speed filter's potential bump (see gate())
 MERGED = 0.96                          # merged soliton's speed / the inputs'
 
 v, vc = K * PER, KC * PER
@@ -47,27 +49,30 @@ def gate(qx, qy, a, b):
     probe = {'name': f'A={a} B={b} → {0 if a and b else 1}', 'x': round(ox - 14), 'y': round(oy - 14), 'w': 28, 'h': 28, 'hold': True, 'round': True}
     # a trap in the box (the rule's trap_d) parks the output soliton there and sets it to the standard power
     eat = [{'field': 'trap_d', 'x': round(ox % N, 1), 'y': round(oy % N, 1), 'r': 14}]
-    # eaters (absorbing discs) on the spare solitons' paths, reached only after the outputs are read:
-    # a lone input well past P1, the merged soliton just past P2
-    w = lambda x, y: {'field': 'absorb_d', 'x': round(x % N, 1), 'y': round(y % N, 1), 'r': 8}
-    if a and not b: eat.append(w(p1[0] + 230 * math.cos(H), p1[1] - 230 * math.sin(H)))
-    if b and not a: eat.append(w(p1[0] + 230 * math.cos(H), p1[1] + 230 * math.sin(H)))
-    if a and b:
-        # the merged soliton drifts east, the fragment from the swallow slowly up and right: a short bar for both
-        e = w(p2[0] + 40, p2[1] - 4)
-        e.update(x2=round((p2[0] + 46) % N, 1), y2=round((p2[1] - 38) % N, 1))
-        eat.append(e)
-        # and a disc on the slow fragment's path (its edge 16 cells from P2: clear of the swallow itself;
-        # off its path, it deflects the fragment instead of eating it)
-        eat.append(dict(w(p2[0] + 14, p2[1] - 24), r=12))
-        # what's left of the fragment then creeps south: a last disc below P2 (its edge 23 cells away)
-        eat.append(dict(w(p2[0] - 10, p2[1] + 36), r=14))
-    return st, probe, eat
+    # the field is all absorbing (painted below); cut out corridors W cells either side of the paths the
+    # gate uses, the same for every input pair: A and B up to P1, the merged path P1 to P2, the clock's path
+    # through P2 to its trap, and room round the trap. Whatever leaves a corridor (a lone input after P1, the
+    # merged soliton after the swallow, a stray fragment, wherever it goes) is soaked up. (Damping starts
+    # 8 cells outside a wall's edge, so solitons on the paths keep 16 cells clear of it.)
+    cut = lambda x, y, x2, y2, r=W: {'field': 'absorb_d', 'cut': True, 'x': round(x, 1), 'y': round(y, 1), 'x2': round(x2, 1), 'y2': round(y2, 1), 'r': r}
+    for sgn in (1, -1):
+        eat.append(cut(p1[0] - D * math.cos(H), p1[1] + sgn * D * math.sin(H), *p1))
+    eat.append(cut(*p1, *p2))
+    eat.append(cut(p2[0] - DC * math.cos(CHEAD), p2[1] + DC * math.sin(CHEAD), ox, oy))
+    eat.append(cut(ox, oy, ox, oy, 30))
+    # a speed filter between P2 and the trap: a low potential bump across the clock's corridor. The heavy remnant
+    # of a swallow creeps off along about the clock's path at ~0.003 cells/step (kinetic energy ~0.0008 per unit
+    # power) and bounces back off it; the clock (0.0115 cells/step: 0.0128, 0.0096 across the band's 30° slant)
+    # goes over. Conservative: nothing is lost either way
+    bx, by = p2[0] + 45 * math.cos(CHEAD), p2[1] - 45 * math.sin(CHEAD)
+    bump = {'rect': [round(bx - 36), round(by - 4), 72, 8], 'values': {'V': BUMP}}
+    return st, probe, eat, bump
 
 
-stamps, probes, eaters = [], [], []
+stamps, probes, eaters, bumps = [], [], [], []
 for (a, b), (qx, qy) in zip(((0, 0), (0, 1), (1, 0), (1, 1)), ((0, 0), (256, 0), (0, 256), (256, 256))):
-    s, p, e = gate(qx, qy, a, b)
+    s, p, e, bp = gate(qx, qy, a, b)
+    bumps.append(bp)
     stamps += s
     probes.append(p)
     eaters += e
@@ -82,11 +87,13 @@ desc = (f'Four NAND gates made only of colliding solitons, no walls: one per inp
         f'circle) that catches the output soliton and keeps it there at the standard power, so the answer stays: a soliton '
         f'sitting in the box is a 1, an empty box a 0 (the boxes are probes, holding their highest reading too). In the lab a single gate gave the same answers with the '
         f'clock up to 600 steps early or late, and at any clock phase. Built on Fredkin and Toffoli\'s billiard-ball computer (1982), with solitons '
-        f'for balls. The red discs are eaters (absorbing walls) that take each spare soliton, so nothing '
-        f'wraps round into the other gates. Try: pause at the start and erase an input (or the clock) to see that gate change its answer.')
+        f'for balls. Everything outside the gates\' paths is absorbing (red): a lone input once past P1, the merged soliton '
+        f'after the swallow and any stray fragment are soaked up wherever they go, so nothing wraps round into the other gates '
+        f'or wanders into a trap. The faint blue band before each trap is a low bump in the potential: the clock has the speed to '
+        f'cross it, the slow heavy remnant of a swallow does not and bounces back. Try: pause at the start and erase an input (or the clock) to see that gate change its answer.')
 
 scene = {'name': 'Schrödinger NAND gates', 'description': desc, 'rule': 'builtin:8', 'size': N, 'start': 'rest',
-         'stepsPerFrame': 12, 'stamps': stamps, 'sdf': eaters, 'probes': probes,
+         'stepsPerFrame': 12, 'paint': [{'rect': [0, 0, N, N], 'values': {'absorb_d': -50}}, *bumps], 'stamps': stamps, 'sdf': eaters, 'probes': probes,
          'view': {'reagent': 'n', 'low': 0, 'high': 6, 'tint': 'p', 'tintLow': -3, 'tintHigh': 3}}
 out = os.path.join(os.path.dirname(__file__), '..', 'scenes', 'schrodinger-nand.json')
 with open(out, 'w') as f:

@@ -13,7 +13,7 @@ export default async function (cfg: { scene: string; at: number[]; frames?: bool
   for (const p of sc.paint ?? []) await lab.paint(p.rect[0], p.rect[1], p.rect[2], p.rect[3], p.values);
   const paint = lab.rule.paintable.map((n) => (lab.rule.params.find((q) => q.name === n)?.distance ? -1e38 : lab.globals[n] ?? 0));
   for (const w of sc.sdf ?? []) {
-    lab.sim.brush({ ax: w.x, ay: w.y, bx: w.x2 ?? w.x, by: w.y2 ?? w.y, radius: w.r, mode: BrushMode.Sdf, strength: 1, hardness: 1, paint, slot: lab.layout.paramNames.indexOf(w.field), clear: false, base: 1 });
+    lab.sim.brush({ ax: w.x, ay: w.y, bx: w.x2 ?? w.x, by: w.y2 ?? w.y, radius: w.r, mode: BrushMode.Sdf, strength: 1, hardness: 1, paint, slot: lab.layout.paramNames.indexOf(w.field), clear: false, base: w.cut ? -1 : 1 });
   }
   for (const p of sc.stamps ?? []) {
     let st = STARTER_STAMPS.find((s) => s.id === p.stamp)!;

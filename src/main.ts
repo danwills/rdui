@@ -397,8 +397,8 @@ async function init() {
         warnings.push(`scene wall field "${w.field}" isn't in this rule`);
         continue;
       }
-      if (w.field === 'trap_d') trapsDrawn = true;
-      sim.brush({ ax: w.x, ay: w.y, bx: w.x2 ?? w.x, by: w.y2 ?? w.y, radius: w.r, mode: BrushMode.Sdf, strength: 1, hardness: 1, paint: paintValues(), slot, clear: false, base: 1 });
+      if (w.field === 'trap_d' && !w.cut) trapsDrawn = true;
+      sim.brush({ ax: w.x, ay: w.y, bx: w.x2 ?? w.x, by: w.y2 ?? w.y, radius: w.r, mode: BrushMode.Sdf, strength: 1, hardness: 1, paint: paintValues(), slot, clear: false, base: w.cut ? -1 : 1 });
     }
     for (const p of sc.stamps ?? []) {
       const base = stamps.get(p.stamp) ?? STARTER_STAMPS.find((st) => st.id === p.stamp);
