@@ -3,7 +3,7 @@ import { defineConfig, type Plugin } from 'vite';
 
 /**
  * Offline support for the installed app: writes sw.js into the build with every
- * emitted file (and the public/ files the manifest uses) in its precache list,
+ * emitted file up to 1 MB (and the public/ files the manifest uses) in its precache list,
  * and a cache name unique to the build so a new build replaces the old cache.
  */
 function serviceWorker(icons: string[]): Plugin {
@@ -12,7 +12,10 @@ function serviceWorker(icons: string[]): Plugin {
     apply: 'build',
     generateBundle(_options, bundle) {
       // (no repeats: addAll rejects a list with the same request twice, and the new service worker never installs)
-      const files = [...new Set(['./', 'manifest.webmanifest', ...icons, ...Object.keys(bundle)])];
+      // big files (Ready patterns with their running state, MBs each) stay out: cached when first opened
+      const size = (f: (typeof bundle)[string]) => (f.type === 'chunk' ? f.code.length : f.source.length);
+      const small = Object.keys(bundle).filter((k) => size(bundle[k]) <= 1_000_000);
+      const files = [...new Set(['./', 'manifest.webmanifest', ...icons, ...small])];
       const source = `// Generated at build time (vite.config.ts): precache the whole app so it runs offline.
 const CACHE = 'rdui-${Date.now().toString(36)}';
 const FILES = ${JSON.stringify(files)};
@@ -36,7 +39,11 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(fetch(req).catch(() => caches.match(req.mode === 'navigate' ? './' : req, opts)));
     return;
   }
-  e.respondWith(caches.match(req, opts).then((hit) => hit || fetch(req)));
+  // (a miss, e.g. a big pattern left out of the precache, is kept once fetched)
+  e.respondWith(caches.match(req, opts).then((hit) => hit || fetch(req).then((res) => {
+    if (res.ok) { const copy = res.clone(); e.waitUntil(caches.open(CACHE).then((c) => c.put(req, copy))); }
+    return res;
+  })));
 });
 `;
       this.emitFile({ type: 'asset', fileName: 'sw.js', source });

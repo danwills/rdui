@@ -458,7 +458,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         button('Clear all', actions.clearAll, 'a blank field: chemistry at rest, painted params and walls removed (Clear chem keeps them)'),
       ),
       ...(wallBox.childElementCount ? [el('h3', { title: 'walls drawn with the Wall tool (walls reflect / walls absorb): wall_grow moves every edge out (or in, below 0) by that many cells' }, 'Walls'), wallBox] : []),
-      el('details', { class: 'globals-wrap' }, el('summary', {}, `Global parameters (${globalBox.childElementCount})`), globalBox),
+      el('details', { class: 'globals-wrap', open: '' }, el('summary', {}, `Global parameters (${globalBox.childElementCount})`), globalBox),
     );
     ruleBody.replaceChildren(...nodes);
     viewReagent.fill();

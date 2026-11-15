@@ -154,7 +154,7 @@ delta_b = clamp( timestep * pow( pow(a*a + b*b, mag_power) * mag_amp + mag_zeroP
       <use_image_interpolation value="true">
         
       </use_image_interpolation>
-      <timesteps_per_render value="1407">
+      <timesteps_per_render value="11">
         
       </timesteps_per_render>
       

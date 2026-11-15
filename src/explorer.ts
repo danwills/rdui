@@ -17,6 +17,8 @@ export interface ExplorerEnv {
   format: GPUTextureFormat;
   rule: RuleDef;
   globals: Record<string, number>;
+  /** A piece of the main sim's state (S*4 floats per cell) the explorer's sims can start from. */
+  section?: { w: number; h: number; state: Float32Array };
   view(): ViewOptions;
   stepsPerFrame(): number;
   /** Grid spacing (1 / feature size) to run at. */
@@ -51,6 +53,18 @@ export function openExplorerPanel(env: ExplorerEnv) {
   let strength = 0.08;
   let centre: Record<string, number> = { ...env.globals };
   let mode: 'grid' | 'map' = 'grid';
+  let fromSim = !!env.section;
+  /** Fills an N×N state with the main sim's piece (its middle, or repeated if it's smaller); false if there's none. */
+  function fromSection(state: Float32Array, N: number, S4: number) {
+    const sec = env.section;
+    if (!fromSim || !sec) return false;
+    const ox = Math.max(0, (sec.w - N) >> 1), oy = Math.max(0, (sec.h - N) >> 1);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+      const j = (((y + oy) % sec.h) * sec.w + ((x + ox) % sec.w)) * S4;
+      state.set(sec.state.subarray(j, j + S4), (y * N + x) * S4);
+    }
+    return true;
+  }
 
   // --- layout
   const W = window.innerWidth, H = window.innerHeight;
@@ -58,6 +72,15 @@ export function openExplorerPanel(env: ExplorerEnv) {
   const content = el('div', { class: 'explore-content' });
   const controls = el('div', { class: 'explore-controls' });
   const readout = el('div', { class: 'explore-readout' });
+  function startFrom() {
+    const label = () => (fromSim ? 'From: this sim' : 'From: fresh');
+    const b = button(label(), () => {
+      fromSim = !fromSim;
+      b.textContent = label();
+      start();
+    }, 'start the sims from a piece of the main sim (its middle), or from the rule\'s own pattern');
+    return b;
+  }
   const tabs = (['grid', 'map'] as const).map((m) => {
     const b = button(m === 'grid' ? 'Grid' : 'Map', () => {
       mode = m;
@@ -75,7 +98,8 @@ export function openExplorerPanel(env: ExplorerEnv) {
         close();
         env.save(v);
       }, 'keep these values as a new rule under My rules'),
-      button('Reseed', () => start(), 'restart from the initial pattern'),
+      ...(env.section ? [startFrom()] : []),
+      button('Reseed', () => start(), 'start the sims again'),
       button('✕', () => close(), 'close · Esc')),
     controls, content, readout);
   document.body.append(root);
@@ -146,6 +170,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
       sim.setCellScale(env.cell);
       for (const [k, v] of Object.entries(vals)) sim.setGlobal(k, v);
       const f = initialField(rule, N, N, vals, 'zero', env.cell);
+      fromSection(f.state, N, compiled.layout.S * 4);
       sim.load(f.state, f.params);
       const x = (i % 3) * (tileSize + gap), y = Math.floor(i / 3) * (tileSize + gap);
       place(sim, x, y, tileSize);
@@ -228,8 +253,8 @@ export function openExplorerPanel(env: ExplorerEnv) {
       f.params[i * P4 + iy] = y1 - ((y + 0.5) / N) * (y1 - y0);
       if (x === 0 || y === 0 || x === N - 1 || y === N - 1) f.params[i * P4] = 1; // walls: opposite edges don't mix (stencil rules)
     }
-    // seed everywhere with the rule's seed values, so every region gets a chance
-    for (let n = 0; n < (N * N) / 700; n++) {
+    // start from the main sim's piece, or seed everywhere with the rule's seed values, so every region gets a chance
+    if (!fromSection(f.state, N, S4)) for (let n = 0; n < (N * N) / 700; n++) {
       const cx = rnd() * N, cy = rnd() * N, rad = (3 + rnd() * 5) / env.cell;
       for (let y = Math.floor(cy - rad); y <= cy + rad; y++) for (let x = Math.floor(cx - rad); x <= cx + rad; x++) {
         if (x < 1 || y < 1 || x >= N - 1 || y >= N - 1 || (x - cx) ** 2 + (y - cy) ** 2 > rad * rad) continue;

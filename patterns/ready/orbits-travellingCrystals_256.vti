@@ -1,0 +1,233 @@
+<?xml version="1.0"?>
+<VTKFile type="ImageData" version="0.1" byte_order="LittleEndian" compressor="vtkZLibDataCompressor">
+  <RD format_version="3">
+    <description>
+                                                      This is an rd formula that uses an iteration step implemented to treat reagents a and b as a complex number (a+bi) and raise it to a power. Inspired by what a normal orbits-fractal (eg Julia, Mandelbrot) step does.;
+[link]&lt;/a&gt;
+    </description>
+    <rule name="Orbit" type="formula" wrap="1" neighborhood_type="vertex" neighborhood_range="1" neighborhood_weight="laplacian">
+      <param name="timestep">
+        0.05
+      </param>
+      <param name="clampMin">
+        -2
+      </param>
+      <param name="clampMax">
+        2
+      </param>
+      <param name="constReal">
+        -0.09
+      </param>
+      <param name="constImag">
+        0.04
+      </param>
+      <param name="constRealInner">
+        -0.87
+      </param>
+      <param name="constImagInner">
+        -0.3
+      </param>
+      <param name="realPower">
+        1.2
+      </param>
+      <param name="imagPower">
+        -1
+      </param>
+      <param name="D_a">
+        0.12
+      </param>
+      <param name="D_b">
+        0.35
+      </param>
+      <param name="unDa_b">
+        1
+      </param>
+      <param name="unDb_a">
+        -0.5
+      </param>
+      <param name="mag_amp">
+        0.2
+      </param>
+      <param name="mag_power">
+        0.3
+      </param>
+      <param name="mag_zeroPt">
+        0.8
+      </param>
+      <param name="phaseOffset">
+        -0.2
+      </param>
+      <param name="phaseAmp">
+        1
+      </param>
+      <param name="eConst">
+        2.94183
+      </param>
+      <param name="cDisplayOffset">
+        -4
+      </param>
+      <param name="cDisplayMult">
+        1
+      </param>
+      <param name="dDisplayOffset">
+        -1.5707
+      </param>
+      <param name="dDisplayMult">
+        1
+      </param>
+      <formula number_of_chemicals="4">
+                                                                c = pow((a+constRealInner)*(a+constRealInner) + (b+constImagInner)*(b+constImagInner), mag_power) * mag_amp + mag_zeroPt;
+d = atan2( b+constRealInner, a+constRealInner ) * phaseAmp + phaseOffset;
+delta_a = clamp( timestep * pow( c, realPower) * pow( eConst, -imagPower*d ) * cos( imagPower * log( c ) + realPower * d ) + D_a * laplacian_a - unDa_b * laplacian_b + constReal, clampMin, clampMax );
+delta_b = clamp( timestep * pow( c, realPower) * pow( eConst, -imagPower*d ) * sin( imagPower * log( c ) + realPower * d ) + D_b * laplacian_b - unDb_a * laplacian_a + constImag, clampMin, clampMax );
+c = (c + cDisplayOffset) * cDisplayMult;
+d = (d + dDisplayOffset) * dDisplayMult;
+      </formula>
+      
+    </rule>
+    <initial_pattern_generator apply_when_loading="true">
+      <overlay chemical="a">
+        <overwrite>
+          
+        </overwrite>
+        <white_noise low="0.8" high="12.75">
+          
+        </white_noise>
+        <rectangle>
+          <point3D x="0.2" y="0.39" z="0.75">
+            
+          </point3D>
+          <point3D x="0.62" y="0.9" z="0.12">
+            
+          </point3D>
+          
+        </rectangle>
+        
+      </overlay>
+	  <overlay chemical="a">
+        <add>
+          
+        </add>
+        <white_noise low="0.8" high="12.75">
+          
+        </white_noise>
+        <rectangle>
+          <point3D x="0.1" y="0.19" z="0.55">
+            
+          </point3D>
+          <point3D x="0.42" y="0.7" z="0.32">
+            
+          </point3D>
+          
+        </rectangle>
+        
+      </overlay>
+      <overlay chemical="b">
+        <overwrite>
+          
+        </overwrite>
+        <white_noise low="-19.6" high="1.8">
+          
+        </white_noise>
+        <rectangle>
+          <point3D x="0.2" y="0.9" z="0.2">
+            
+          </point3D>
+          <point3D x="0.8" y="0.1" z="0.8">
+            
+          </point3D>
+          
+        </rectangle>
+        
+      </overlay>
+      
+    </initial_pattern_generator>
+    <render_settings>
+      <surface_color r="1" g="1" b="1">
+        
+      </surface_color>
+      <color_low r="0" g="0" b="0">
+        
+      </color_low>
+      <color_high r="1" g="1" b="1">
+        
+      </color_high>
+      <show_color_scale value="false">
+        
+      </show_color_scale>
+      <show_multiple_chemicals value="false">
+        
+      </show_multiple_chemicals>
+      <active_chemical value="c">
+        
+      </active_chemical>
+      <low value="-4">
+        
+      </low>
+      <high value="4">
+        
+      </high>
+      <vertical_scale_1D value="30">
+        
+      </vertical_scale_1D>
+      <vertical_scale_2D value="30">
+        
+      </vertical_scale_2D>
+      <contour_level value="0">
+        
+      </contour_level>
+      <use_wireframe value="false">
+        
+      </use_wireframe>
+      <show_cell_edges value="false">
+        
+      </show_cell_edges>
+      <show_bounding_box value="true">
+        
+      </show_bounding_box>
+      <slice_3D value="true">
+        
+      </slice_3D>
+      <slice_3D_axis value="z">
+        
+      </slice_3D_axis>
+      <slice_3D_position value="0.5">
+        
+      </slice_3D_position>
+      <show_displacement_mapped_surface value="false">
+        
+      </show_displacement_mapped_surface>
+      <color_displacement_mapped_surface value="true">
+        
+      </color_displacement_mapped_surface>
+      <use_image_interpolation value="true">
+        
+      </use_image_interpolation>
+      <timesteps_per_render value="255">
+        
+      </timesteps_per_render>
+      
+    </render_settings>
+    
+  </RD>
+  <ImageData WholeExtent="0 255 0 255 0 0" Origin="0 0 0" Spacing="1 1 1">
+  <Piece Extent="0 255 0 255 0 0">
+    <PointData>
+      <DataArray type="Float32" Name="a" format="binary" RangeMin="0" RangeMax="12.74654007">
+        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
+      </DataArray>
+      <DataArray type="Float32" Name="b" format="binary" RangeMin="0" RangeMax="0">
+        CAAAAACAAAAAAAAANAAAADQAAAA0AAAANAAAADQAAAA0AAAANAAAADQAAAA=eJztwQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgAAAAXic7cEBAQAAAICQ/q/uCAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAF4nO3BAQEAAACAkP6v7ggKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiAAAABeJztwQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgAAAAXic7cEBAQAAAICQ/q/uCAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAF4nO3BAQEAAACAkP6v7ggKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiAAAABeJztwQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgAAAAXic7cEBAQAAAICQ/q/uCAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAE=
+      </DataArray>
+      <DataArray type="Float32" Name="c" format="binary" RangeMin="0" RangeMax="0">
+        CAAAAACAAAAAAAAANAAAADQAAAA0AAAANAAAADQAAAA0AAAANAAAADQAAAA=eJztwQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgAAAAXic7cEBAQAAAICQ/q/uCAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAF4nO3BAQEAAACAkP6v7ggKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiAAAABeJztwQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgAAAAXic7cEBAQAAAICQ/q/uCAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAF4nO3BAQEAAACAkP6v7ggKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiAAAABeJztwQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgAAAAXic7cEBAQAAAICQ/q/uCAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAE=
+      </DataArray>
+      <DataArray type="Float32" Name="d" format="binary" RangeMin="0" RangeMax="0">
+        CAAAAACAAAAAAAAANAAAADQAAAA0AAAANAAAADQAAAA0AAAANAAAADQAAAA=eJztwQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgAAAAXic7cEBAQAAAICQ/q/uCAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAF4nO3BAQEAAACAkP6v7ggKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiAAAABeJztwQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgAAAAXic7cEBAQAAAICQ/q/uCAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAF4nO3BAQEAAACAkP6v7ggKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABiAAAABeJztwQEBAAAAgJD+r+4ICgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYgAAAAXic7cEBAQAAAICQ/q/uCAoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGIAAAAE=
+      </DataArray>
+    </PointData>
+    <CellData>
+    </CellData>
+  </Piece>
+  </ImageData>
+</VTKFile>

@@ -7,9 +7,16 @@ import { makeLab, log, saveFrame } from './lab';
 export default async function (cfg: { name: string; at?: number[]; N?: number; globals?: Record<string, number>; frames?: boolean; lo?: number; hi?: number }) {
   const imp = await loadBundled(cfg.name);
   if (imp.warnings?.length) log(`warnings: ${imp.warnings.join(' | ')}`);
-  const N = cfg.N ?? 256;
+  // at the pattern's own size when it has a stored state, which is loaded as it was saved
+  const N = cfg.N ?? (imp.image ? imp.rule.size!.width : 256);
   const lab = await makeLab(imp.rule, N, cfg.globals ?? {}, 'initial');
   const R = imp.rule.reagents, S4 = lab.layout.S * 4;
+  if (imp.image && imp.rule.size!.width === N && imp.rule.size!.height === N) {
+    const { params, state } = await lab.read();
+    imp.image.forEach((img, r) => { for (let i = 0; i < N * N; i++) state[i * S4 + r] = img[i]; });
+    lab.sim.load(state, params);
+    log('loaded the stored state');
+  }
   let t = 0;
   for (const T of cfg.at ?? [100, 1000, 5000]) {
     await lab.run(T - t);
@@ -21,6 +28,6 @@ export default async function (cfg: { name: string; at?: number[]; N?: number; g
       const n = N * N - nan, m = sum / n;
       return `${name}: ${lo.toFixed(3)} / ${m.toFixed(3)} / ${hi.toFixed(3)} sd ${Math.sqrt(Math.max(0, sq / n - m * m)).toFixed(3)}${nan ? ` NaN ${nan}` : ''}`;
     }).join('  |  '));
-    if (cfg.frames) await saveFrame(`${cfg.name}-${T}.png`, lab, { ri: 0, lo: cfg.lo ?? -2, hi: cfg.hi ?? 2, scale: 2, caption: `${cfg.name} t=${T}` });
+    if (cfg.frames) await saveFrame(`${cfg.name}-${T}.png`, lab, { lo: cfg.lo ?? imp.rule.view.low, hi: cfg.hi ?? imp.rule.view.high, ri: imp.rule.reagents.indexOf(imp.rule.view.reagent), scale: 2, caption: `${cfg.name} t=${T}` });
   }
 }

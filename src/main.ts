@@ -203,12 +203,15 @@ async function init() {
   }
 
   /** The explorer (explorer.ts) on the current rule; the main sim pauses while it's open. */
-  function openExplorer() {
+  async function openExplorer() {
     const wasRunning = s.running;
     s.running = false;
     ui.sync();
+    // a piece from the middle of the field, for the explorer's sims to start from
+    const w = Math.min(256, sim.width), h = Math.min(256, sim.height);
+    const section = { w, h, state: (await sim.readRegion(Math.floor((sim.width - w) / 2), Math.floor((sim.height - h) / 2), w, h)).state };
     openExplorerPanel({
-      device, format, rule, globals: { ...globals },
+      device, format, rule, globals: { ...globals }, section,
       view: viewOptions,
       stepsPerFrame: () => s.stepsPerFrame,
       cell: cellScale,
@@ -553,7 +556,7 @@ async function init() {
       const u = userRules.get(ruleId.slice(5));
       if (u) download(new Blob([JSON.stringify(u.rule, null, 2)], { type: 'application/json' }), `${u.rule.name.replace(/[^\w-]+/g, '_')}.rdui-rule.json`);
     },
-    explore: () => openExplorer(),
+    explore: () => void openExplorer(),
     setGlobal: (name, v) => {
       globals[name] = v;
       sim.setGlobal(name, v);
