@@ -1046,8 +1046,9 @@ delta_b = (B - b)/timestep + A*B*B - (F + k)*B;`,
  * speeds a's diffusion. The shader's wide Laplacian (a flat disc of radius 9,
  * weight 0.02 per cell, halved) is replaced by its smooth equivalent through
  * the FFT: lap_gain·(Gaussian blur − field), with the disc's total weight
- * (gain 2.42) and spread (σ² = ⟨x²⟩ = 19.4). Its 8-bit storage workarounds
- * (neighbour smoothing, spike filter, dither) aren't needed with float state, but
+ * (gain 2.42) and spread (σ² = ⟨x²⟩ = 19.4). Its dither isn't needed with float state, but its neighbour
+ * smoothing and spike filter were also holding down one-cell runaways (flecks): D_micro does that job as a
+ * small ordinary diffusion. And
  * its clamp to [0, 1] is kept: it's part of the dynamics (c would otherwise climb
  * to ~9 and a's diffusion with it, past stability).
  */
@@ -1075,14 +1076,17 @@ export const GS_FLECK: RuleDef = {
     { name: 'b_to_c', value: 0.05, min: 0, max: 0.2 },
     { name: 'lap_size', value: 8.82, min: 2, max: 40 },
     { name: 'lap_gain', value: 2.42, min: 0.5, max: 5 },
+    // ordinary nearest-neighbour diffusion, small: the wide kernel alone damps one-cell features no more than
+    // big ones, so single cells could run away to the clamp (the flecks); this damps them by k² instead
+    { name: 'D_micro', value: 0.02, min: 0, max: 0.08 },
   ],
   paintable: ['F', 'k'],
   laplacian: 'spectral',
   formula: `float La = lap_gain*(kernel_a - a); float Lb = lap_gain*(kernel_b - b); float Lc = lap_gain*(kernel_c - c);
 float Fc = F + c_to_F*c; float kc = k + c_to_k*c; float r = a*b*b;
-float da = (D_a + c*c_to_Da)*La - r + Fc*(1.0 - a);
-float db = (D_b + c*c_to_Db)*Lb + r - (Fc + kc)*b;
-float dc = -c*c_damp + b*b_to_c + D_c*Lc;
+float da = (D_a + c*c_to_Da)*La + D_micro*laplacian_a - r + Fc*(1.0 - a);
+float db = (D_b + c*c_to_Db)*Lb + D_micro*laplacian_b + r - (Fc + kc)*b;
+float dc = -c*c_damp + b*b_to_c + D_c*Lc + D_micro*laplacian_c;
 // the shader's state lives in a colour buffer: every step is clamped to [0, 1]
 delta_a = (clamp(a + da*timestep, 0.0, 1.0) - a)/timestep;
 delta_b = (clamp(b + db*timestep, 0.0, 1.0) - b)/timestep;
@@ -1097,7 +1101,7 @@ delta_c = (clamp(c + dc*timestep, 0.0, 1.0) - c)/timestep;`,
     { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'spots', count: 14, minSize: 16, maxSize: 30, seed: 3 } },
     { chem: 'b', op: 'overwrite', fill: { type: 'white_noise', low: 0.2, high: 0.4 }, shape: { type: 'spots', count: 14, minSize: 16, maxSize: 30, seed: 3 } },
   ],
-  view: { reagent: 'b', low: 0, high: 0.4, stepsPerFrame: 10, palette: 5 },
+  view: { reagent: 'b', low: 0, high: 0.4, stepsPerFrame: 2, palette: 5 },
   size: { width: 512, height: 512 },
 };
 
