@@ -1,0 +1,417 @@
+{
+ "name": "Schrödinger two qubits (product and Bell)",
+ "description": "Two qubits, pictured classically: each 2×2 grid of wells (blue) is left/right for qubit 1 and top/bottom for qubit 2, so the four wells are the four combinations 00, 01, 10, 11. The potential is a double well across plus a double well down, so the two qubits tunnel independently, as if each had its own gate. Left: power in the top row, a product state (qubit 2 is \"top\", qubit 1 is an even mix): the whole row tunnels down and back together. Right: power in top-left and bottom-right only, the shape of a Bell state, the classic entangled pair: it can't be written as a column pattern times a row pattern. It swaps to the other diagonal and back, but never becomes a row or a column: whatever qubit 1 does, qubit 2 does too (steps that act on one qubit at a time can never untangle it, or tangle a product state). What a classical field can't do: here both \"qubits\" are features of one wave in one place, so there is no spooky distance; and n qubits would need 2ⁿ wells (4 here, about a million for 20), the cost real qubits don't pay.",
+ "rule": "builtin:8",
+ "size": 256,
+ "start": "initial",
+ "initial": [
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.2109375,
+    "cy": 0.4609375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.2109375,
+    "cy": 0.4609375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.2890625,
+    "cy": 0.4609375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.2890625,
+    "cy": 0.4609375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7109375,
+    "cy": 0.4609375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7109375,
+    "cy": 0.4609375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7890625,
+    "cy": 0.5390625,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7890625,
+    "cy": 0.5390625,
+    "r": 0.052734375
+   }
+  }
+ ],
+ "paint": [
+  {
+   "rect": [
+    0,
+    0,
+    256,
+    256
+   ],
+   "values": {
+    "absorb_d": -50
+   }
+  },
+  {
+   "rect": [
+    46,
+    72,
+    16,
+    112
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    8,
+    110,
+    112,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    66,
+    72,
+    16,
+    112
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    8,
+    130,
+    112,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    46,
+    110,
+    16,
+    16
+   ],
+   "values": {
+    "V": -1.2
+   }
+  },
+  {
+   "rect": [
+    46,
+    130,
+    16,
+    16
+   ],
+   "values": {
+    "V": -1.2
+   }
+  },
+  {
+   "rect": [
+    66,
+    110,
+    16,
+    16
+   ],
+   "values": {
+    "V": -1.2
+   }
+  },
+  {
+   "rect": [
+    66,
+    130,
+    16,
+    16
+   ],
+   "values": {
+    "V": -1.2
+   }
+  },
+  {
+   "rect": [
+    174,
+    72,
+    16,
+    112
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    136,
+    110,
+    112,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    194,
+    72,
+    16,
+    112
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    136,
+    130,
+    112,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    174,
+    110,
+    16,
+    16
+   ],
+   "values": {
+    "V": -1.2
+   }
+  },
+  {
+   "rect": [
+    174,
+    130,
+    16,
+    16
+   ],
+   "values": {
+    "V": -1.2
+   }
+  },
+  {
+   "rect": [
+    194,
+    110,
+    16,
+    16
+   ],
+   "values": {
+    "V": -1.2
+   }
+  },
+  {
+   "rect": [
+    194,
+    130,
+    16,
+    16
+   ],
+   "values": {
+    "V": -1.2
+   }
+  }
+ ],
+ "sdf": [
+  {
+   "field": "absorb_d",
+   "cut": true,
+   "x": 64,
+   "y": 128.0,
+   "r": 40
+  },
+  {
+   "field": "absorb_d",
+   "cut": true,
+   "x": 192,
+   "y": 128.0,
+   "r": 40
+  }
+ ],
+ "probes": [
+  {
+   "name": "row · TL",
+   "x": 46,
+   "y": 110,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "row · TR",
+   "x": 66,
+   "y": 110,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "row · BL",
+   "x": 46,
+   "y": 130,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "row · BR",
+   "x": 66,
+   "y": 130,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "Bell · TL",
+   "x": 174,
+   "y": 110,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "Bell · TR",
+   "x": 194,
+   "y": 110,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "Bell · BL",
+   "x": 174,
+   "y": 130,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "Bell · BR",
+   "x": 194,
+   "y": 130,
+   "w": 16,
+   "h": 16
+  }
+ ],
+ "stepsPerFrame": 12,
+ "view": {
+  "reagent": "n",
+  "low": 0,
+  "high": 0.012000000000000002,
+  "tint": "p",
+  "tintLow": -0.1,
+  "tintHigh": 0.1
+ }
+}
