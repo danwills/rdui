@@ -163,7 +163,7 @@ button.del:hover { color: #ff7a7a; border-color: var(--line); }
 
 .probe {
   display: grid;
-  grid-template-columns: 10px auto 1fr auto;
+  grid-template-columns: 10px minmax(0, max-content) minmax(0, 1fr) auto;
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 6px;
@@ -171,7 +171,8 @@ button.del:hover { color: #ff7a7a; border-color: var(--line); }
   border-bottom: 1px solid var(--line);
 }
 .probe .swatch { width: 8px; height: 8px; border-radius: 2px; }
-.probe .name { font: 11px ui-monospace, monospace; }
+.probe .name { font: 11px ui-monospace, monospace; overflow-wrap: anywhere; }
+.probe .value { overflow-wrap: anywhere; }
 .probe .value { font: 11px ui-monospace, monospace; color: var(--muted); }
 .probe .spark { grid-column: 2 / 4; width: 100%; height: 26px; }
 .probe .del { grid-row: 1; grid-column: 4; }

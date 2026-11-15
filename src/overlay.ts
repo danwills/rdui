@@ -63,13 +63,19 @@ export class Overlay {
         ctx.ellipse((p.x + p.w / 2) * sx, (p.y + p.h / 2) * sy, (p.w / 2) * sx, (p.h / 2) * sy, 0, 0, 2 * Math.PI);
         ctx.stroke();
       } else ctx.strokeRect(p.x * sx + 0.5, p.y * sy + 0.5, p.w * sx, p.h * sy);
-      const label = `${p.name} ${p.hold ? 'held ' : ''}${ProbeSet.reading(p, reagent).toFixed(3)}`;
-      const tw = ctx.measureText(label).width;
-      const ly = p.y * sy > 14 * dpr ? p.y * sy - 2 * dpr : (p.y + p.h) * sy + 13 * dpr;
+      // the label stays inside the field (shifted left if it would run off the right), and goes onto two
+      // lines, name and value, when it's wider than its box and a quarter of the field (so neighbours don't overlap)
+      const value = `${p.hold ? 'held ' : ''}${ProbeSet.reading(p, reagent).toFixed(3)}`;
+      const one = `${p.name} ${value}`;
+      const lines = ctx.measureText(one).width <= Math.max(p.w * sx, canvas.width / 4) ? [one] : [p.name, value];
+      const tw = Math.max(...lines.map((l) => ctx.measureText(l).width));
+      const lh = 13 * dpr, bh = lh * lines.length;
+      const top = p.y * sy > bh + 2 * dpr ? p.y * sy - 2 * dpr - bh : (p.y + p.h) * sy + 2 * dpr;
+      const lx = Math.max(0, Math.min(p.x * sx, canvas.width - tw - 6 * dpr));
       ctx.fillStyle = '#000a';
-      ctx.fillRect(p.x * sx, ly - 12 * dpr, tw + 6 * dpr, 13 * dpr);
+      ctx.fillRect(lx, top, tw + 6 * dpr, bh);
       ctx.fillStyle = c;
-      ctx.fillText(label, p.x * sx + 3 * dpr, ly);
+      lines.forEach((l, i) => ctx.fillText(l, lx + 3 * dpr, top + lh * (i + 1) - 3 * dpr));
     }
 
     if (shape) {
