@@ -406,6 +406,11 @@ async function init() {
       }
     },
     clearChemistry: () => sim.clearChemistry(),
+    clearAll: () => {
+      // a blank field: rest chemistry, no walls, every param at its global value
+      const f = initialField({ ...rule, initial: [] }, sim.width, sim.height, globals, 'rest', cellScale);
+      sim.load(f.state, f.params);
+    },
     resize: (size) => applyRule(rule, { field: 'initial', size: { width: size, height: size }, keepView: true }),
     stepOnce: () => {
       s.running = false;

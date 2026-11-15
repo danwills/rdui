@@ -1,6 +1,6 @@
 {
   "name": "Schrödinger ring push-off",
-  "description": "The ring track (a circular channel of low V) with two solitons placed at rest, close together, in opposite phase. Neither is moving, but the dark node between them pushes them apart: they slide off round the track in opposite directions, meet again on the far side, bounce, and so on. Change the phase and they'd attract instead (try the soliton stamps: drop a 0° and a 180° soliton on the track, or two at 0°). The border absorbs.",
+  "description": "The ring track (a circular channel of low V) with two solitons placed at rest, close together, in opposite phase. Neither is moving, but the dark node between them pushes them apart: they slide off round the track in opposite directions, meet again on the far side, bounce, and so on. Change the phase and they'd attract instead (try the soliton stamps: drop \"still · phase 0\" and \"still · phase π\" on the track, or two at phase 0). The border absorbs.",
   "rule": "builtin:8",
   "size": 256,
   "start": "initial",

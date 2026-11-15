@@ -1,8 +1,9 @@
-// Soliton stamps for the Saturable Schrödinger rule (stamps/nls-solitons.json): relax a Gaussian
-// into a true soliton (absorbing border takes the radiation it sheds), capture it, then make each
-// phase and velocity exactly by multiplying ψ by e^{i(φ + k·x)}. Checks each stamp's velocity.
+// The soliton stamp for the Saturable Schrödinger rule (stamps/nls-solitons.json): relax a Gaussian
+// into a true soliton (absorbing border takes the radiation it sheds), capture it at phase 0, and
+// save it flagged variants: 'soliton', which the app expands into every phase and heading
+// (solitonVariants in src/stamps.ts). Checks the derived phase-0 stamps' velocities.
 import * as R from '../src/rule';
-import { stampToJSON, type Stamp } from '../src/stamps';
+import { STARTER_STAMPS, boostStamp, stampToJSON } from '../src/stamps';
 import { makeLab, capture, log } from './lab';
 
 const N = 256, W = 56;
@@ -25,32 +26,14 @@ export default async function () {
   log(`relaxed soliton at (${c.x.toFixed(2)}, ${c.y.toFixed(2)}), power ${c.m.toFixed(1)}`);
   const base = await capture(lab, c.x + 0.5, c.y + 0.5, W, W, 'x', 'x', 0.15);
   // centre phase → 0, and clear the captured params (stamps place chemistry; params only if asked)
-  const L = lab.layout, ci = ((W / 2) * W + W / 2) * S4;
+  const ci = ((W / 2) * W + W / 2) * S4;
   const th0 = Math.atan2(base.state[ci + 1], base.state[ci]);
   base.params.fill(0);
-  const n = L.reagents.indexOf('n');
 
-  const make = (deg: number, kx: number, ky: number, id: string, name: string): Stamp => {
-    const state = new Float32Array(base.state);
-    for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
-      const j = (y * W + x) * S4, p = base.state[j], q = base.state[j + 1];
-      const th = -th0 + (deg * Math.PI) / 180 + kx * (x - W / 2) + ky * (y - W / 2);
-      state[j] = p * Math.cos(th) - q * Math.sin(th);
-      state[j + 1] = p * Math.sin(th) + q * Math.cos(th);
-      state[j + n] = p * p + q * q;
-    }
-    return { ...base, id, name, state };
-  };
-  const SLOW = 0.05, FAST = 0.15, D = Math.SQRT1_2;
-  const stamps: Stamp[] = [];
-  for (const deg of [0, 90, 180, 270]) {
-    stamps.push(make(deg, 0, 0, `nls-soliton-${deg}-still`, `Soliton φ ${deg}° · still`));
-    stamps.push(make(deg, SLOW, 0, `nls-soliton-${deg}-slow`, `Soliton φ ${deg}° · → slow`));
-    stamps.push(make(deg, SLOW * D, -SLOW * D, `nls-soliton-${deg}-slow-diag`, `Soliton φ ${deg}° · ↗ slow`));
-    if (deg % 180 === 0) stamps.push(make(deg, FAST, 0, `nls-soliton-${deg}-fast`, `Soliton φ ${deg}° · → fast`));
-  }
-  // check: each stamp alone on a fresh field, velocity over 1500 steps
-  for (const s of stamps.filter((s) => s.id.includes('-0-'))) {
+  const still = boostStamp(base, -th0, 0, 0, 'nls-soliton', 'still · phase 0');
+  // check the app's derived stamps (STARTER_STAMPS expands the saved base into every phase and heading)
+  const derived = STARTER_STAMPS.filter((s) => s.id.startsWith('nls-soliton-0-'));
+  for (const s of derived.length ? derived : [still]) {
     const v = await makeLab(R.SATURABLE_NLS, N);
     await v.place(s, N / 2, N / 2);
     const a = centroid((await v.read()).state, N, S4);
@@ -58,5 +41,5 @@ export default async function () {
     const b = centroid((await v.read()).state, N, S4);
     log(`${s.name}: moved (${(b.x - a.x).toFixed(1)}, ${(b.y - a.y).toFixed(1)}) in 1000 steps, power ${a.m.toFixed(0)} → ${b.m.toFixed(0)}`);
   }
-  await window.__saveText('nls-solitons.json', JSON.stringify(stamps.map(stampToJSON)));
+  await window.__saveText('nls-solitons.json', JSON.stringify([{ ...stampToJSON(still), variants: 'soliton' }]));
 }

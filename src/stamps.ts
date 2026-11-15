@@ -194,6 +194,8 @@ function b64ToF32(s: string) {
 interface StampJSON {
   id: string;
   name: string;
+  /** 'soliton': a still soliton (ψ = p + iq, intensity n) to expand into every phase and heading (solitonVariants). */
+  variants?: 'soliton';
   w: number;
   h: number;
   params: string;
@@ -245,7 +247,44 @@ const STORAGE_KEY = 'rdui.stamps.v1';
 const bundledPacks = import.meta.glob('../stamps/*.json', { eager: true, import: 'default' }) as Record<string, StampJSON[]>;
 
 /** Stamps shipped with rdui (stamps/*.json), by id. */
-export const STARTER_STAMPS: Stamp[] = Object.values(bundledPacks).flat().map(stampFromJSON);
+export const STARTER_STAMPS: Stamp[] = Object.values(bundledPacks).flat().flatMap((j) => (j.variants === 'soliton' ? solitonVariants(stampFromJSON(j)) : [stampFromJSON(j)]));
+
+/**
+ * Multiply a stamp's ψ = p + iq by e^{i(φ + k·x)} (k in radians per cell, x from
+ * the stamp's centre): turns its phase by φ and, for a soliton, sets it moving
+ * along k at 0.8·|k| cells per step in the Saturable Schrödinger rule. Exact.
+ */
+export function boostStamp(s: Stamp, phase: number, kx: number, ky: number, id: string, name: string): Stamp {
+  const S4 = s.S * 4, p = s.reagents.indexOf('p'), q = s.reagents.indexOf('q'), n = s.reagents.indexOf('n');
+  const state = new Float32Array(s.state);
+  for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+    const j = (y * s.w + x) * S4, re = s.state[j + p], im = s.state[j + q];
+    const th = phase + kx * (x - s.w / 2) + ky * (y - s.h / 2);
+    state[j + p] = re * Math.cos(th) - im * Math.sin(th);
+    state[j + q] = re * Math.sin(th) + im * Math.cos(th);
+    if (n >= 0) state[j + n] = re * re + im * im;
+  }
+  return { ...s, id, name, state };
+}
+
+/** A still soliton (phase 0) as named stamps: each phase, still, slow in 8 headings and fast in 4 (north = up). */
+function solitonVariants(base: Stamp): Stamp[] {
+  const PHASES: [number, string][] = [[0, '0'], [Math.PI / 2, 'π/2'], [Math.PI, 'π'], [(3 * Math.PI) / 2, '3π/2']];
+  const HEADINGS = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east'];
+  const out: Stamp[] = [];
+  for (const [ph, label] of PHASES) {
+    const id = `${base.id}-${label.replace('/', '_')}`;
+    out.push(boostStamp(base, ph, 0, 0, `${id}-still`, `still · phase ${label}`));
+    for (const [speed, k, every] of [['slow', 0.05, 1], ['fast', 0.15, 2]] as const) {
+      HEADINGS.forEach((h, i) => {
+        if (i % every) return;
+        const a = (i * Math.PI) / 4;
+        out.push(boostStamp(base, ph, k * Math.cos(a), -k * Math.sin(a), `${id}-${speed}-${h}`, `${speed} ${h} · phase ${label}`));
+      });
+    }
+  }
+  return out;
+}
 
 /** Ordered collection of stamps, persisted to localStorage when possible. */
 export class StampLibrary {

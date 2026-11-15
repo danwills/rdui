@@ -51,6 +51,7 @@ export interface Actions {
   /** Reload the current rule or scene from scratch, as if picked from the menu. */
   restart(): void;
   clearChemistry(): void;
+  clearAll(): void;
   resize(size: number): void;
   stepOnce(): void;
   saveField(): void;
@@ -410,6 +411,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       el('div', { class: 'buttons' },
         button('Fill all', actions.fillParams, 'apply the paint values to the whole field (keeps walls) · F'),
         button('Reset', actions.reset, 'regenerate the initial pattern · R'),
+        button('Clear all', actions.clearAll, 'a blank field: chemistry at rest, painted params and walls removed (Clear chem keeps them)'),
       ),
       el('details', { class: 'globals-wrap' }, el('summary', {}, `Global parameters (${rule.params.length - rule.paintable.length})`), globalBox),
     );

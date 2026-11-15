@@ -257,6 +257,6 @@ for ang, ph in ((-0.16, 0), (0.16, 180)):
 scene('schrodinger-ring-pushoff', 'Schrödinger ring push-off',
       'The ring track (a circular channel of low V) with two solitons placed at rest, close together, in opposite phase. Neither is '
       'moving, but the dark node between them pushes them apart: they slide off round the track in opposite directions, meet again '
-      'on the far side, bounce, and so on. Change the phase and they\'d attract instead (try the soliton stamps: drop a 0° and a '
-      '180° soliton on the track, or two at 0°). The border absorbs.',
+      'on the far side, bounce, and so on. Change the phase and they\'d attract instead (try the soliton stamps: drop "still · phase 0" and '
+      '"still · phase π" on the track, or two at phase 0). The border absorbs.',
       {}, push, absorb(), {'reagent': 'n', 'low': 0, 'high': 5, 'tint': 'p', 'tintLow': -2.5, 'tintHigh': 2.5}, steps=8)
