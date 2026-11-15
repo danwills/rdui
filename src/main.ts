@@ -1,6 +1,6 @@
 import './style.css';
 import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type ViewOptions } from './sim';
-import { buildPanel, defaultSettings, fmt, HUE_DEFAULTS, TOOLS, type RuleChoice, type Settings } from './ui';
+import { buildPanel, defaultSettings, fmt, HUE_DEFAULTS, hueOffsetFor, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
 import { StampLibrary, newStampId, stampThumbnail, transformStamp, type Stamp } from './stamps';
 import { Overlay, type Ghost } from './overlay';
@@ -336,7 +336,7 @@ async function init() {
       if (rule.view.palette !== undefined) s.palette = rule.view.palette;
       else if (s.palette >= 5) s.palette = 0;
       s.hueShape = rule.view.hueShape ?? HUE_DEFAULTS.shape;
-      s.hueOffset = rule.view.hueOffset ?? HUE_DEFAULTS.offset;
+      s.hueOffset = rule.view.hueOffset ?? hueOffsetFor(s.palette);
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);

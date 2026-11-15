@@ -4,8 +4,9 @@ import type { RuleDef } from './rule';
 
 export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'capture' | 'stamp' | 'probe';
 
-/** Fleck palettes' default hue shape and offset (Dan's pick: works for both HSV and OKLCH). */
-export const HUE_DEFAULTS = { shape: 1.2, offset: 0.6 };
+/** Fleck palettes' default hue shape and offset (Dan's picks), the offset per palette: HSV fleck (5), OKLCH fleck (6). */
+export const HUE_DEFAULTS = { shape: 1.2, offset: 0.6, offsets: { 5: 0.48, 6: 0.6 } as Record<number, number> };
+export const hueOffsetFor = (palette: number) => HUE_DEFAULTS.offsets[palette] ?? HUE_DEFAULTS.offset;
 
 export interface Settings {
   tool: Tool;
@@ -525,6 +526,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       slider('hue shape', 'hueShape', 0.1, 4, 0.01, 2),
       slider('hue offset', 'hueOffset', 0, 1, 0.01, 2),
       select('palette', 'palette', () => [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral'], [4, 'HSV: show → hue, tint → sat'], [5, 'HSV fleck: a b c → V S H'], [6, 'OKLCH fleck: a b c → L C h']], () => {
+        // a fleck palette starts from its own hue offset
+        if (s.palette === 5 || s.palette === 6) s.hueOffset = hueOffsetFor(s.palette);
         // HSV wants a second reagent for the saturation: default to the other one
         const n = rc.rule().reagents.length;
         if (s.palette === 4 && s.tint < 0 && n > 1) {
