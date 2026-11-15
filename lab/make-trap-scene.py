@@ -15,7 +15,7 @@ for i, (st, k, label) in enumerate(LANES):
     y = 34 + 62 * i
     stamps.append({'stamp': st, 'x': 40, 'y': y, 'boost': {'kx': k, 'ky': 0, 'phase': 0}})
     sdf.append({'field': 'trap_d', 'x': TX, 'y': y, 'r': R})
-    probes.append({'name': label, 'x': TX - 14, 'y': y - 14, 'w': 28, 'h': 28})
+    probes.append({'name': label, 'x': TX - R, 'y': y - R, 'w': 2 * R, 'h': 2 * R, 'hold': True, 'round': True})  # the trap's own circle
 scene = {
     'name': 'Schrödinger soliton traps',
     'description': 'Four solitons sent east into round traps (orange): a shallow well with friction, and gain that balances '
