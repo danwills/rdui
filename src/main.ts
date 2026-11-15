@@ -43,6 +43,8 @@ interface ApplyOptions {
   keepView?: boolean;
   id?: string;
   warnings?: string[];
+  /** Run at `size` whatever the resolution setting (scenes laid out cell by cell: stamps, eaters). */
+  exact?: boolean;
 }
 
 async function init() {
@@ -266,7 +268,7 @@ async function init() {
       return false;
     }
     // a loaded field or imported image comes at its own resolution: run it as given
-    const fixed = (o.field !== 'initial' && o.field !== 'carry') || !!o.image;
+    const fixed = (o.field !== 'initial' && o.field !== 'carry') || !!o.image || !!o.exact;
     if (o.size) full = fixed ? { width: o.size.width / s.resScale, height: o.size.height / s.resScale } : o.size;
     const scale = o.field === 'carry' ? sim.width / full.width : s.resScale;
     const width = Math.max(8, Math.round(full.width * scale));
@@ -359,7 +361,11 @@ async function init() {
     }
     if (sc.initial) r = { ...r, initial: sc.initial };
     const size = sc.size ? { width: sc.size, height: sc.size } : r.size;
-    const ok = await applyRule(r, { field: 'initial', id, globals: { ...defaultGlobals(r), ...sc.globals }, size, image: imp?.image, warnings: imp?.warnings });
+    // stamps and eaters sit at exact cells (and a soliton stamp is a set number of cells across), so such
+    // a scene runs at its own size whatever the resolution
+    const exact = !!(sc.stamps?.length || sc.sdf?.length);
+    const warn = [...(imp?.warnings ?? []), ...(exact && s.resScale !== 1 ? ['This scene runs at full resolution: it is laid out cell by cell.'] : [])];
+    const ok = await applyRule(r, { field: 'initial', id, globals: { ...defaultGlobals(r), ...sc.globals }, size, image: imp?.image, warnings: warn, exact });
     if (!ok) return;
     if (sc.start === 'rest') sim.clearChemistry();
     // Each rect changes only the params it lists, so rects can be layered.
@@ -490,7 +496,8 @@ async function init() {
       const f = initialField({ ...rule, initial: [] }, sim.width, sim.height, globals, 'rest', cellScale);
       sim.load(f.state, f.params);
     },
-    resize: (size) => applyRule(rule, { field: 'initial', size: { width: size, height: size }, keepView: true }),
+    // a scene is loaded again (its stamps, walls and probes too); anything else restarts from the rule's pattern
+    resize: (size) => (/^(scene|saved):/.test(ruleId) ? selectRule(ruleId) : applyRule(rule, { field: 'initial', size: { width: size, height: size }, keepView: true })),
     stepOnce: () => {
       s.running = false;
       pendingSteps++;
