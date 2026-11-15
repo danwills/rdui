@@ -104,7 +104,14 @@ export function probeSection(probes: ProbeSet, shown: () => { index: number; nam
         render();
       }, 'remove probe');
       del.classList.add('del');
-      list.append(el('div', { class: 'probe' }, swatch, el('span', { class: 'name' }, p.name), value, spark, del));
+      const hold = button(p.hold ? 'held' : 'live', () => {
+        p.hold = !p.hold;
+        p.held.fill(-Infinity);
+        render();
+      }, 'live: the latest reading · held: the highest since Restart (so a passing soliton stays read)');
+      hold.classList.add('hold');
+      hold.classList.toggle('on', p.hold);
+      list.append(el('div', { class: 'probe' }, swatch, el('span', { class: 'name' }, p.name), value, spark, hold, del));
       rows.set(p.id, { value, spark });
     }
     update();
@@ -142,7 +149,7 @@ export function probeSection(probes: ProbeSet, shown: () => { index: number; nam
       const r = rows.get(p.id);
       if (!r) continue;
       const { index, name } = shown();
-      r.value.textContent = `${name} ${p.mean[index].toFixed(3)} ↑${p.max[index].toFixed(2)}`;
+      r.value.textContent = p.hold ? `${name} held ${ProbeSet.reading(p, index).toFixed(3)}` : `${name} ${p.mean[index].toFixed(3)} ↑${p.max[index].toFixed(2)}`;
       drawSpark(r.spark, p);
     }
   }

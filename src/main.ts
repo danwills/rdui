@@ -477,6 +477,7 @@ async function init() {
       sim.load(f.state, f.params);
     },
     restart: () => {
+      probes.resetHolds();
       if (/^(scene|saved|builtin|user|pattern):/.test(ruleId)) void selectRule(ruleId);
       else {
         const f = initialData(sim.width, sim.height);

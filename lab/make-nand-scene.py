@@ -44,7 +44,7 @@ def gate(qx, qy, a, b):
     st.append({'stamp': 'nls-soliton-0-still', 'x': round(p2[0] - DC * math.cos(CHEAD), 2), 'y': round(p2[1] + DC * math.sin(CHEAD), 2), 'boost': boost(CHEAD, KC)})
     ox = p2[0] + vc * (EARLY + TAIL) * math.cos(CHEAD)
     oy = p2[1] - vc * (EARLY + TAIL) * math.sin(CHEAD)
-    probe = {'name': f'A={a} B={b} → {0 if a and b else 1}', 'x': round(ox - 14), 'y': round(oy - 14), 'w': 28, 'h': 28}
+    probe = {'name': f'A={a} B={b} → {0 if a and b else 1}', 'x': round(ox - 14), 'y': round(oy - 14), 'w': 28, 'h': 28, 'hold': True}
     # eaters (absorbing discs) on the spare solitons' paths, reached only after the outputs are read:
     # the clock once past its box, a lone input well past P1, the merged soliton just past P2
     w = lambda x, y: {'field': 'absorb_d', 'x': round(x % N, 1), 'y': round(y % N, 1), 'r': 8}

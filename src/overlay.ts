@@ -1,4 +1,4 @@
-import type { Probe, Rect } from './probes';
+import { ProbeSet, type Probe, type Rect } from './probes';
 
 const PROBE_COLORS = ['#ffcc66', '#66d9ff', '#ff7ab6', '#9dff7a', '#c79bff', '#ff9a5c', '#5cffd6', '#f2f2f2'];
 
@@ -59,7 +59,7 @@ export class Overlay {
       const c = probeColor(p);
       ctx.strokeStyle = c;
       ctx.strokeRect(p.x * sx + 0.5, p.y * sy + 0.5, p.w * sx, p.h * sy);
-      const label = `${p.name} ${p.mean[reagent].toFixed(3)}`;
+      const label = `${p.name} ${p.hold ? 'held ' : ''}${ProbeSet.reading(p, reagent).toFixed(3)}`;
       const tw = ctx.measureText(label).width;
       const ly = p.y * sy > 14 * dpr ? p.y * sy - 2 * dpr : (p.y + p.h) * sy + 13 * dpr;
       ctx.fillStyle = '#000a';

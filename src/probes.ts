@@ -19,6 +19,9 @@ export interface Probe extends Rect {
   /** Latest reading per reagent (layout order; only the first 8 are measured). */
   mean: Float32Array;
   max: Float32Array;
+  /** Hold: show the highest mean seen (since it was added or reset) instead of the latest, so a passing soliton stays read. */
+  hold: boolean;
+  held: Float32Array;
   /** Ring buffer of per-reagent means, HISTORY × 8, newest at `head - 1`. */
   history: Float32Array;
   head: number;
@@ -53,12 +56,12 @@ export class ProbeSet {
     this.staging = device.createBuffer({ size: MAX_PROBES * OUT_BYTES, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
   }
 
-  add(r: Rect, name?: string): Probe | null {
+  add(r: Rect, name?: string, hold = false): Probe | null {
     if (this.probes.length >= MAX_PROBES || r.w < 1 || r.h < 1) return null;
     const id = this.nextId++;
     const p: Probe = {
       ...r, id, name: name ?? `p${id}`,
-      mean: new Float32Array(8), max: new Float32Array(8),
+      mean: new Float32Array(8), max: new Float32Array(8), hold, held: new Float32Array(8).fill(-Infinity),
       history: new Float32Array(HISTORY * 8), head: 0, filled: 0,
     };
     this.probes.push(p);
@@ -74,6 +77,16 @@ export class ProbeSet {
   clear() {
     this.probes = [];
     this.dirty = true;
+  }
+
+  /** Forget held peaks (Restart). */
+  resetHolds() {
+    for (const p of this.probes) p.held.fill(-Infinity);
+  }
+
+  /** What a probe shows for reagent r: its held peak, or its latest mean. */
+  static reading(p: Probe, r: number) {
+    return p.hold && p.held[r] > -Infinity ? p.held[r] : p.mean[r];
   }
 
   /** Probe whose rect contains grid point (x, y), topmost (latest) first. */
@@ -144,6 +157,7 @@ export class ProbeSet {
         const o = i * OUT_VEC4S * 4;
         p.mean.set(d.subarray(o, o + 8));
         p.max.set(d.subarray(o + 8, o + 16));
+        if (p.hold) for (let r = 0; r < 8; r++) p.held[r] = Math.max(p.held[r], p.mean[r]);
         p.history.set(p.mean, p.head * 8);
         p.head = (p.head + 1) % HISTORY;
         p.filled = Math.min(p.filled + 1, HISTORY);
@@ -157,11 +171,11 @@ export class ProbeSet {
 
   /** Plain-data form for snapshots. */
   toJSON() {
-    return this.probes.map(({ name, x, y, w, h }) => ({ name, x, y, w, h }));
+    return this.probes.map(({ name, x, y, w, h, hold }) => ({ name, x, y, w, h, ...(hold ? { hold } : {}) }));
   }
 
-  load(list: (Rect & { name: string })[]) {
+  load(list: (Rect & { name: string; hold?: boolean })[]) {
     this.clear();
-    for (const r of list) this.add(r, r.name);
+    for (const r of list) this.add(r, r.name, r.hold ?? false);
   }
 }

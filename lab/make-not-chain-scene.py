@@ -46,8 +46,8 @@ for a, oy in ((1, 0), (0, 256)):
     stamps.append(sol(at(Q, 180, D + S), 0))                   # C2, from the left
     mid = at(P, 30, S / 2)
     out = at(Q, 0, TAIL)
-    probes.append({'name': f'NOT A = {1 - a}', 'x': round(mid[0] - 14), 'y': round(mid[1] - 14), 'w': 28, 'h': 28})
-    probes.append({'name': f'out = {a}', 'x': round(out[0] - 14), 'y': round(out[1] - 14), 'w': 28, 'h': 28})
+    probes.append({'name': f'NOT A = {1 - a}', 'x': round(mid[0] - 14), 'y': round(mid[1] - 14), 'w': 28, 'h': 28, 'hold': True})
+    probes.append({'name': f'out = {a}', 'x': round(out[0] - 14), 'y': round(out[1] - 14), 'w': 28, 'h': 28, 'hold': True})
     # eater: an absorbing bar across where the spare solitons go (the read output, both merged ones)
     eaters.append({'field': 'absorb_d', 'x': 478, 'y': oy + 25, 'x2': 478, 'y2': oy + 110, 'r': 8})
 

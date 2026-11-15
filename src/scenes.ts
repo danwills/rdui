@@ -33,7 +33,8 @@ export interface Scene {
    * (after rot/flip): it sets off in direction (kx, ky), radians per cell, its phase turned by `phase`.
    */
   stamps?: { stamp: string; x: number; y: number; rot?: number; flip?: boolean; params?: boolean; boost?: { kx: number; ky: number; phase?: number } }[];
-  probes?: { name: string; x: number; y: number; w: number; h: number }[];
+  /** `hold`: the probe keeps the highest reading since Restart (for a soliton that only passes through). */
+  probes?: { name: string; x: number; y: number; w: number; h: number; hold?: boolean }[];
   view?: { reagent?: string; low?: number; high?: number; tint?: string; tintLow?: number; tintHigh?: number };
   stepsPerFrame?: number;
 }
