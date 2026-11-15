@@ -35,6 +35,8 @@ export interface BrushStroke {
   /** SetParam: the flat param slot to set (1..), and whether to reset the chemistry there to rest. */
   slot?: number;
   clear?: boolean;
+  /** SetParam: the param's unpainted value (strokes raise or lower towards paint from it, never past it). */
+  base?: number;
 }
 
 export interface CellSample {
@@ -62,7 +64,8 @@ export interface ViewOptions {
   hueShape: number;
   hueOffset: number;
   /** Up to three flat param slots (>0) with their display ranges. */
-  paramSlots: { slot: number; min: number; max: number }[];
+  /** Painted params to show: flat slot, range, and base (unpainted) value. */
+  paramSlots: { slot: number; min: number; max: number; base: number }[];
 }
 
 const WG = 8;
@@ -131,7 +134,7 @@ export class Simulation {
     this.infoUniform = device.createBuffer({ size: 16, usage: uniform });
     this.globalsUniform = device.createBuffer({ size: compiled.globalVec4s * 16, usage: uniform });
     this.brushUniform = device.createBuffer({ size: 272, usage: uniform });
-    this.viewUniform = device.createBuffer({ size: 112, usage: uniform });
+    this.viewUniform = device.createBuffer({ size: 128, usage: uniform });
     this.writeInfo();
     this.globals = new Float32Array(compiled.globalVec4s * 4);
     compiled.rule.params.forEach((p, i) => (this.globals[i] = p.value));
@@ -309,6 +312,7 @@ export class Simulation {
     f[8] = Math.random() * 1000;
     f[9] = b.slot ?? 0;
     f[10] = b.clear ? 1 : 0;
+    f[11] = b.base ?? 0;
     rule.reagents.forEach((_, r) => {
       const seed = rule.seed[r];
       f[12 + r] = seed ?? 0;
@@ -349,7 +353,7 @@ export class Simulation {
   }
 
   render(enc: GPUCommandEncoder, target: GPUTextureView, canvasW: number, canvasH: number, v: ViewOptions) {
-    const buf = new ArrayBuffer(112);
+    const buf = new ArrayBuffer(128);
     const u = new Uint32Array(buf);
     const f = new Float32Array(buf);
     u[0] = this.width; u[1] = this.height;
@@ -365,6 +369,7 @@ export class Simulation {
       u[16 + k] = p.slot;
       f[20 + k] = p.min;
       f[24 + k] = p.max;
+      f[28 + k] = p.base;
     });
     this.device.queue.writeBuffer(this.viewUniform, 0, buf);
 

@@ -26,6 +26,7 @@ struct View {
   paramSlot: vec4<u32>,   // flat param slots for r, g, b (0 = unused)
   paramMin: vec4<f32>,
   paramMax: vec4<f32>,
+  paramBase: vec4<f32>,   // unpainted value of each (outlines mode)
 };
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -62,6 +63,39 @@ fn sampleReagent(g: vec2<f32>, r: u32) -> f32 {
 fn paramAt(cell: u32, slot: u32) -> f32 {
   return params[cell * P + (slot >> 2u)][slot & 3u];
 }
+
+// How far cell c's param k is from its unpainted value (as a fraction of its range), log-compressed:
+// paint that rises steeply into a wall (V up to 30) then changes steadily from cell to cell, like a
+// distance field, so its contour is smooth; soft paint (tracks, damping) is barely changed.
+fn paintedAt(c: vec2<i32>, k: u32) -> f32 {
+  let dv = abs(paramAt(cellIdx(c), view.paramSlot[k]) - view.paramBase[k]) / max(view.paramMax[k] - view.paramMin[k], 1e-6);
+  return log(1.0 + dv / 0.003) / log(1.0 + 1.0 / 0.003);
+}
+
+fn bspline(t: f32) -> vec4<f32> {
+  let t2 = t * t;
+  let t3 = t2 * t;
+  return vec4<f32>((1.0 - t) * (1.0 - t) * (1.0 - t), 3.0 * t3 - 6.0 * t2 + 4.0, -3.0 * t3 + 3.0 * t2 + 3.0 * t + 1.0, t3) / 6.0;
+}
+
+// How painted param k is here, log-compressed as in paintedAt (outline at OUTLINE_AT). The paint is smoothed with a cubic
+// B-spline first, so the outline is a smooth curve (reflecting walls ramp up over their edge
+// cells, so even they have no cell steps).
+fn samplePainted(g: vec2<f32>, k: u32) -> f32 {
+  let p = g - 0.5;
+  let base = vec2<i32>(floor(p));
+  let wx = bspline(fract(p.x));
+  let wy = bspline(fract(p.y));
+  var m = 0.0;
+  for (var j = 0; j < 4; j++) {
+    for (var i = 0; i < 4; i++) {
+      m += wx[i] * wy[j] * paintedAt(base + vec2<i32>(i - 1, j - 1), k);
+    }
+  }
+  return m;
+}
+
+const OUTLINE_AT = 0.3;
 
 // Cosine palettes (Inigo Quilez).
 fn cosPal(t: f32, a: vec3<f32>, b: vec3<f32>, c: vec3<f32>, d: vec3<f32>) -> vec3<f32> {
@@ -185,23 +219,20 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
   }
 
   if (view.mode == 2u) {
-    // outline each painted param where it changes: its largest step to a neighbour cell,
-    // sampled per screen pixel so the line stays thin, coloured as in the param map
-    let c = vec2<i32>(floor(g));
+    // painted params: where each differs from its unpainted value, a light wash with a crisp
+    // anti-aliased outline (the half-way contour of a smoothly sampled mask), coloured as in the param map
     for (var k = 0u; k < 3u; k++) {
       let slot = view.paramSlot[k];
-      if (slot == 0u) { continue; }
-      let here = paramAt(cell, slot);
-      var step_ = 0.0;
-      for (var n = 0u; n < 4u; n++) {
-        let o = select(vec2<i32>(0, select(-1, 1, n == 3u)), vec2<i32>(select(-1, 1, n == 1u), 0), n < 2u);
-        step_ = max(step_, abs(paramAt(cellIdx(c + o), slot) - here));
-      }
-      let edge = smoothstep(0.01, 0.04, step_ / max(view.paramMax[k] - view.paramMin[k], 1e-6));
+      var m = 0.0;
+      if (slot > 0u) { m = samplePainted(g, k); }
+      let painted = smoothstep(0.0, 2.0 * OUTLINE_AT, m);
+      // a ~1.5 px line along the m = OUTLINE_AT contour, its width set by how fast m changes per pixel
+      let edge = 1.0 - smoothstep(0.5, 1.0, abs(m - OUTLINE_AT) / max(fwidth(m), 1e-6));
       var lc = vec3<f32>(1.0, 0.35, 0.3);
       if (k == 1u) { lc = vec3<f32>(0.35, 1.0, 0.45); }
       if (k == 2u) { lc = vec3<f32>(0.4, 0.6, 1.0); }
-      col = mix(col, lc, 0.75 * edge);
+      col = mix(col, lc, 0.22 * painted);
+      col = mix(col, lc, 0.85 * edge);
     }
   }
 

@@ -767,7 +767,10 @@ async function init() {
       const paint = paintValues();
       paint[slot - 1] = up ? (target === 'V' ? REFLECT_V : ABSORB_GAMMA) : globals[target];
       const graded = up && target === 'gamma';
-      return { ax, ay, bx, by, mode: BrushMode.SetParam, radius: s.radius / cellScale, strength: 1, hardness: graded ? 0 : 1, paint, slot, clear: up && target === 'V' };
+      // absorbing walls spread over twice the brush radius: more damping, gentler edges (lab/absorb-wall.ts)
+      // reflecting walls ramp up over their outer 3 cells, so the display can draw their edge as a smooth curve
+      const r = (s.radius / cellScale) * (graded ? 2 : 1);
+      return { ax, ay, bx, by, mode: BrushMode.SetParam, radius: r, strength: 1, hardness: graded ? 0 : Math.max(0, 1 - 3 / r), paint, slot, clear: up && target === 'V', base: globals[target] };
     }
     return {
       ax, ay, bx, by, mode,
@@ -811,6 +814,8 @@ async function init() {
     if (e.key === 'q' || e.key === 'e' || e.key === 'x') stampPanel.render();
   });
 
+  const colourRank = (n: string) => (n === 'gamma' ? 0 : n === 'V' ? 1 : 2);
+
   function viewOptions(): ViewOptions {
     return {
       mode: s.viewMode,
@@ -824,9 +829,11 @@ async function init() {
       tintStrength: s.tintStrength,
       hueShape: s.hueShape,
       hueOffset: s.hueOffset,
-      paramSlots: rule.paintable.slice(0, 3).map((n, i) => {
+      // param map / outline colours go red, green, blue in this order: damping (gamma, absorbing) red and
+      // the potential (V, reflecting) green whatever order a scene lists them in
+      paramSlots: [...rule.paintable].sort((a, b) => colourRank(a) - colourRank(b)).slice(0, 3).map((n) => {
         const spec = rule.params.find((p) => p.name === n)!;
-        return { slot: i + 1, min: spec.min, max: spec.max };
+        return { slot: layoutOf(rule).paramNames.indexOf(n), min: spec.min, max: spec.max, base: globals[n] };
       }),
     };
   }

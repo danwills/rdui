@@ -14,7 +14,7 @@ struct Brush {
   salt: f32,
   slot: f32,      // MODE_SET_PARAM: flat param slot
   clear: f32,     // MODE_SET_PARAM: 1 = reset chemistry to rest
-  _p2: f32,
+  base: f32,      // MODE_SET_PARAM: the param's unpainted value
   seed: array<vec4<f32>, 3>,      // seed target per reagent (up to 12)
   seedMask: array<vec4<f32>, 3>,  // 1 where the seed brush touches that reagent
   seedNoise: array<vec4<f32>, 3>, // noise amplitude added to the seed target
@@ -112,7 +112,20 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
       // damping graded by the falloff (hardness 0) so its edge doesn't reflect
       if (!wall) {
         let k = u32(brush.slot);
-        params[pb + (k >> 2u)][k & 3u] = mix(params[pb + (k >> 2u)][k & 3u], brush.paint[k >> 2u][k & 3u], falloff);
+        // smooth, so a graded edge stays gentle; a hard wall (clear) rises as falloff⁴ over its edge ramp
+        // instead, low at first so the display's outline (a low level of the smoothed paint) runs smoothly
+        var w = falloff * falloff * (3.0 - 2.0 * falloff);
+        if (brush.clear > 0.5) { w = falloff * falloff * falloff * falloff; }
+        let cur = params[pb + (k >> 2u)][k & 3u];
+        let goal = brush.paint[k >> 2u][k & 3u];
+        var v = mix(cur, goal, w);
+        if (goal != brush.base) {
+          // the stroke's profile, a function of distance to the stroke (base → target by w), kept as a
+          // union with what's there (max / min), so overlapping segments don't stack: an SDF-style union
+          let profile = brush.base + (goal - brush.base) * w;
+          v = select(min(cur, profile), max(cur, profile), goal > brush.base);
+        }
+        params[pb + (k >> 2u)][k & 3u] = v;
         if (brush.clear > 0.5 && falloff > 0.5) {
           for (var s = 0u; s < S; s++) {
             state[sb + s] = brush.rest[s];
