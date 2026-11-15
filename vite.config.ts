@@ -11,12 +11,14 @@ function serviceWorker(icons: string[]): Plugin {
     name: 'rdui-service-worker',
     apply: 'build',
     generateBundle(_options, bundle) {
-      const files = ['./', 'manifest.webmanifest', ...icons, ...Object.keys(bundle)];
+      // (no repeats: addAll rejects a list with the same request twice, and the new service worker never installs)
+      const files = [...new Set(['./', 'manifest.webmanifest', ...icons, ...Object.keys(bundle)])];
       const source = `// Generated at build time (vite.config.ts): precache the whole app so it runs offline.
 const CACHE = 'rdui-${Date.now().toString(36)}';
 const FILES = ${JSON.stringify(files)};
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // cache: 'reload' skips the browser's HTTP cache, so the precache is this build's files
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
@@ -24,12 +26,14 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
-  // pages: the network first (so a reachable server brings updates), else the cache;
-  // everything else has hashed names, so the cache first. ignoreVary: servers send
+  // pages, the manifest and the icons: the network first (so a reachable server brings updates,
+  // and installing reads this build's name and icons), else the cache; everything else has
+  // hashed names, so the cache first. ignoreVary: servers send
   // 'Vary: Origin', and module scripts carry an Origin header the precache didn't.
   const opts = { ignoreVary: true, ignoreSearch: true };
-  if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).catch(() => caches.match('./', opts)));
+  const path = new URL(req.url).pathname;
+  if (req.mode === 'navigate' || path.endsWith('/manifest.webmanifest') || /[/]icon[-a-z0-9]*[.]png$/.test(path)) {
+    e.respondWith(fetch(req).catch(() => caches.match(req.mode === 'navigate' ? './' : req, opts)));
     return;
   }
   e.respondWith(caches.match(req, opts).then((hit) => hit || fetch(req)));
