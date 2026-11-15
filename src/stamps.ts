@@ -1,3 +1,4 @@
+import { FAR } from './rule';
 /**
  * Stamps: captured rectangles of field (params + walls + chemistry) that can be
  * transformed and placed elsewhere — the unit of reusable contraption.
@@ -205,6 +206,13 @@ interface StampJSON {
   name: string;
   /** 'soliton': a still soliton (ψ = p + iq, intensity n) to expand into every phase and heading (solitonVariants). */
   variants?: 'soliton';
+  /** Prefix for the variants' names (e.g. 'weak'); such a set has no fast ones. */
+  label?: string;
+  /**
+   * A round Saturable Schrödinger soliton given by its radial profile instead of state: |ψ| at
+   * r = 0, 1, 2… cells from the centre (lab/nls-family.py); the stamp is twice that across.
+   */
+  profile?: number[];
   w: number;
   h: number;
   params: string;
@@ -256,7 +264,27 @@ const STORAGE_KEY = 'rdui.stamps.v1';
 const bundledPacks = import.meta.glob('../stamps/*.json', { eager: true, import: 'default' }) as Record<string, StampJSON[]>;
 
 /** Stamps shipped with rdui (stamps/*.json), by id. */
-export const STARTER_STAMPS: Stamp[] = Object.values(bundledPacks).flat().flatMap((j) => (j.variants === 'soliton' ? solitonVariants(stampFromJSON(j)) : [stampFromJSON(j)]));
+export const STARTER_STAMPS: Stamp[] = Object.values(bundledPacks).flat().flatMap((j) => {
+  const s = j.profile ? radialSoliton(j) : stampFromJSON(j);
+  return j.variants === 'soliton' ? solitonVariants(s, j.label) : [s];
+});
+
+/** A round soliton stamp for the Saturable Schrödinger rule from its radial profile (phase 0, still). */
+function radialSoliton(j: StampJSON): Stamp {
+  const prof = j.profile!, W = 2 * prof.length;
+  const paramNames = ['wall', 'gamma', 'V', 'reflect_d', 'absorb_d'], P = 2;
+  const state = new Float32Array(W * W * 4), params = new Float32Array(W * W * P * 4);
+  for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
+    const r = Math.hypot(x + 0.5 - W / 2, y + 0.5 - W / 2), i = Math.floor(r), f = r - i;
+    const a = i + 1 < prof.length ? prof[i] * (1 - f) + prof[i + 1] * f : 0;
+    const c = y * W + x;
+    state[c * 4] = a;
+    state[c * 4 + 2] = a * a;
+    params[c * P * 4 + 3] = FAR;
+    params[c * P * 4 + 4] = FAR;
+  }
+  return { id: j.id, name: j.name, w: W, h: W, rule: 'Saturable Schrödinger (NLS)', reagents: ['p', 'q', 'n'], paramNames, S: 1, P, params, state };
+}
 
 /**
  * Multiply a stamp's ψ = p + iq by e^{i(φ + k·x)} (k in radians per cell, x from
@@ -276,17 +304,29 @@ export function boostStamp(s: Stamp, phase: number, kx: number, ky: number, id: 
   return { ...s, id, name, state };
 }
 
-/** A still soliton (phase 0) as named stamps: phase 0, π/2 and π, each still, slow and fast, heading east (rotate to aim). */
-function solitonVariants(base: Stamp): Stamp[] {
+/**
+ * A still soliton (phase 0) as named stamps: phase 0, π/2 and π, each still, slow and fast, heading
+ * east (rotate to aim). A labelled set (weak, faint…) gets the label in its names and no fast ones.
+ */
+function solitonVariants(base: Stamp, prefix?: string): Stamp[] {
   const PHASES: [number, string][] = [[0, '0'], [Math.PI / 2, 'π/2'], [Math.PI, 'π']];
+  const speeds = ([['still', 0], ['slow', 0.05], ['fast', 0.15]] as const).filter(([sp]) => !prefix || sp !== 'fast');
   const out: Stamp[] = [];
   for (const [ph, label] of PHASES) {
     const id = `${base.id}-${label.replace('/', '_')}`;
-    for (const [speed, k] of [['still', 0], ['slow', 0.05], ['fast', 0.15]] as const) {
-      out.push(boostStamp(base, ph, k, 0, `${id}-${speed}`, `${speed}${k ? ' east' : ''} · phase ${label}`));
+    for (const [speed, k] of speeds) {
+      out.push(boostStamp(base, ph, k, 0, `${id}-${speed}`, `${prefix ? `${prefix} ` : ''}${speed}${k ? ' east' : ''} · phase ${label}`));
     }
   }
   return out;
+}
+
+/** Built-in stamp ids already put in the library once. */
+const OFFERED_KEY = 'rdui.stampsOffered';
+
+interface StoredRef {
+  ref: string;
+  name: string;
 }
 
 /** Ordered collection of stamps, persisted to localStorage when possible. */
@@ -301,7 +341,13 @@ export class StampLibrary {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        this.stamps = (JSON.parse(raw) as StampJSON[]).map(stampFromJSON);
+        // built-in stamps are kept by reference (their id and name: see changed)
+        const byId = new Map(STARTER_STAMPS.map((s) => [s.id, s]));
+        this.stamps = (JSON.parse(raw) as (StampJSON | StoredRef)[]).flatMap((j) => {
+          if (!('ref' in j)) return [stampFromJSON(j)];
+          const s = byId.get(j.ref);
+          return s ? [{ ...s, name: j.name }] : [];
+        });
         stored = true;
       }
     } catch (e) {
@@ -312,7 +358,23 @@ export class StampLibrary {
     const starters = new Set(STARTER_STAMPS.map((s) => s.id));
     const n = this.stamps.length;
     this.stamps = this.stamps.filter((s) => !s.id.startsWith('nls-soliton') || starters.has(s.id));
-    if (this.stamps.length < n) this.changed();
+    // and bring in soliton stamps added since (weak, faint…)
+    const have = new Set(this.stamps.map((s) => s.id));
+    // (once each: a deleted one stays deleted)
+    let offered = new Set<string>();
+    try {
+      offered = new Set(JSON.parse(localStorage.getItem(OFFERED_KEY) ?? '[]'));
+    } catch {
+      // storage blocked
+    }
+    const fresh = stored ? STARTER_STAMPS.filter((s) => s.id.startsWith('nls-soliton') && !have.has(s.id) && !offered.has(s.id)) : [];
+    this.stamps.push(...fresh.map((s) => ({ ...s })));
+    try {
+      localStorage.setItem(OFFERED_KEY, JSON.stringify([...new Set([...offered, ...STARTER_STAMPS.map((s) => s.id)])]));
+    } catch {
+      // storage blocked
+    }
+    if (this.stamps.length !== n || fresh.length) this.changed();
   }
 
   get(id: string | null) {
@@ -365,7 +427,10 @@ export class StampLibrary {
 
   private changed() {
     try {
-      localStorage.setItem(STORAGE_KEY, this.export());
+      // a built-in stamp is stored as a reference: the app always has its data
+      const starters = new Set(STARTER_STAMPS.map((s) => s.id));
+      const list = this.stamps.map((s): StampJSON | StoredRef => (starters.has(s.id) ? { ref: s.id, name: s.name } : stampToJSON(s)));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
       this.saveError = null;
     } catch (e) {
       this.saveError = 'stamp library too large for browser storage — export it to keep it';
