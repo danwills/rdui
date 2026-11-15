@@ -51,6 +51,7 @@ async function init() {
   const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
   const overlayCanvas = document.querySelector<HTMLCanvasElement>('#overlay')!;
   const stage = document.querySelector<HTMLElement>('#stage')!;
+  const app = document.querySelector<HTMLElement>('#app')!;
   const readout = document.querySelector<HTMLElement>('#readout')!;
   const panel = document.querySelector<HTMLElement>('#panel')!;
 
@@ -566,7 +567,7 @@ async function init() {
       cellScale = 1 / s.featureSize;
       sim.setCellScale(cellScale);
     },
-    toggleUI: () => toggleUI(),
+    toggleUI: (fill?: boolean) => toggleUI(fill),
     togglePaintable: (name) => {
       const paintable = rule.paintable.includes(name) ? rule.paintable.filter((n) => n !== name) : [...rule.paintable, name];
       if (paintable.length > 7) {
@@ -675,10 +676,14 @@ async function init() {
     }
   }
 
-  // --- canvas sizing: keep the grid's aspect, as large as the stage allows, at device resolution
+  // --- canvas sizing: keep the grid's aspect, as large as the stage allows, at device resolution;
+  // filling (the narrow ⛶), as large as covers the stage, the rest cropped
   function fit() {
     const r = stage.getBoundingClientRect();
-    const scale = Math.min((r.width - 24) / sim.width, (r.height - 24) / sim.height);
+    const filling = app.classList.contains('fill');
+    const scale = filling
+      ? Math.min(Math.max(r.width / sim.width, r.height / sim.height), 4096 / (window.devicePixelRatio || 1) / Math.max(sim.width, sim.height))
+      : Math.min((r.width - 24) / sim.width, (r.height - 24) / sim.height);
     const w = Math.max(1, Math.floor(sim.width * scale));
     const h = Math.max(1, Math.floor(sim.height * scale));
     const dpr = window.devicePixelRatio || 1;
@@ -692,21 +697,24 @@ async function init() {
   new ResizeObserver(fit).observe(stage);
   fit();
 
-  // hide/show the panel (H, or the ⛶ button): the sim alone, centred, fullscreen where allowed
-  const app = document.querySelector<HTMLElement>('#app')!;
-  function toggleUI() {
+  // hide/show the panel (H, or the ⛶ buttons): the sim alone, fullscreen where allowed; centred
+  // whole, or filling the screen (cropped). Back (or Esc, leaving fullscreen) brings the panel back:
+  // a history entry catches Back where fullscreen isn't granted.
+  function toggleUI(fill = false) {
     const hide = !app.classList.contains('ui-hidden');
     app.classList.toggle('ui-hidden', hide);
-    if (hide) document.documentElement.requestFullscreen?.().catch(() => {});
-    else if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    app.classList.toggle('fill', hide && fill);
+    if (hide) {
+      history.pushState({ rduiHidden: true }, '');
+      document.documentElement.requestFullscreen?.().catch(() => {});
+    } else {
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      if (history.state?.rduiHidden) history.back();
+    }
+    fit();
   }
-  // shown only while the panel is hidden: the way back (the panel's header has the other)
-  const uiToggle = document.createElement('button');
-  uiToggle.className = 'ui-toggle';
-  uiToggle.textContent = '⛶';
-  uiToggle.title = 'show the panel · H';
-  uiToggle.addEventListener('click', toggleUI);
-  stage.append(uiToggle);
+  window.addEventListener('popstate', () => app.classList.contains('ui-hidden') && toggleUI());
+  document.addEventListener('fullscreenchange', () => !document.fullscreenElement && app.classList.contains('ui-hidden') && toggleUI());
 
   // --- stamp placement helpers: transform, then remap into the current layout by name
   let ghostCache: { key: string; stamp: Stamp; image: HTMLCanvasElement; state: Float32Array; params: Float32Array } | null = null;

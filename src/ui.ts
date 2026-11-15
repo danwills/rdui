@@ -81,7 +81,7 @@ export interface Actions {
   /** Set the rule's base values for paintable params and retune every cell still holding the old ones. */
   setBackground(values: Record<string, number>): void;
   /** Hide/show the panel (the sim alone, centred, fullscreen). */
-  toggleUI(): void;
+  toggleUI(fill?: boolean): void;
   /** Apply s.featureSize to the running sim. */
   setFeatureSize(): void;
 }
@@ -489,7 +489,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   ], actions.setFeatureSize);
 
   root.append(
-    el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox'), el('span', { class: 'sub build' }, __BUILD__), button('⛶', actions.toggleUI, 'hide the panel: just the sim, fullscreen · H')),
+    el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox'), el('span', { class: 'sub build' }, __BUILD__), button('⛶', () => actions.toggleUI(), 'hide the panel: just the sim, fullscreen · H (Back or Esc returns)'),
+      Object.assign(button('', () => actions.toggleUI(true), 'hide the panel and fill the screen with the sim (cropped, no black bars) · Back or Esc returns'), { className: 'narrow', innerHTML: '<span>⛶</span>' })),
     section('Tool', toolRow, toolHint, wallBoxes,
       slider('radius', 'radius', 1, 80, 1, 0),
       slider('strength', 'strength', 0.02, 1, 0.01, 2),
