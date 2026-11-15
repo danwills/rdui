@@ -4,6 +4,9 @@ import type { RuleDef } from './rule';
 
 export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'capture' | 'stamp' | 'probe';
 
+/** Fleck palettes' default hue shape and offset (Dan's pick: works for both HSV and OKLCH). */
+export const HUE_DEFAULTS = { shape: 1.2, offset: 0.6 };
+
 export interface Settings {
   tool: Tool;
   radius: number;
@@ -137,8 +140,8 @@ export function defaultSettings(): Settings {
     tintHigh: 1,
     tintStrength: 0.8,
     palette: 0,
-    hueShape: 1,
-    hueOffset: 0,
+    hueShape: HUE_DEFAULTS.shape,
+    hueOffset: HUE_DEFAULTS.offset,
     stampId: null,
     stampRot: 0,
     stampFlip: false,
