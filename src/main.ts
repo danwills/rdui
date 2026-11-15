@@ -662,6 +662,8 @@ async function init() {
 
   let drag: { x: number; y: number; alt: boolean } | null = null;
   let rectDrag: { x0: number; y0: number; x1: number; y1: number } | null = null;
+  /** A line or circle being dragged out (brushShape), painted on release. */
+  let shapeDrag: { kind: 'line' | 'circle'; x0: number; y0: number; x1: number; y1: number; alt: boolean } | null = null;
   let hover: [number, number] | null = null;
 
   const dragRect = (): Rect | null => {
@@ -705,6 +707,10 @@ async function init() {
       rectDrag = { x0: cx, y0: cy, x1: cx, y1: cy };
       return;
     }
+    if (s.brushShape !== 'free') {
+      shapeDrag = { kind: s.brushShape, x0: x, y0: y, x1: x, y1: y, alt };
+      return;
+    }
     drag = { x, y, alt };
     strokes.push(toBrush(x, y, x, y, alt));
   });
@@ -715,6 +721,11 @@ async function init() {
       [rectDrag.x1, rectDrag.y1] = clampToGrid(x, y);
       return;
     }
+    if (shapeDrag) {
+      shapeDrag.x1 = x;
+      shapeDrag.y1 = y;
+      return;
+    }
     if (!drag) return;
     strokes.push(toBrush(drag.x, drag.y, x, y, drag.alt));
     drag.x = x;
@@ -722,6 +733,21 @@ async function init() {
   });
   canvas.addEventListener('pointerup', () => {
     drag = null;
+    if (shapeDrag) {
+      const d = shapeDrag;
+      shapeDrag = null;
+      if (d.kind === 'line') strokes.push(toBrush(d.x0, d.y0, d.x1, d.y1, d.alt));
+      else {
+        // a ring of short segments round the centre, about 2 cells each
+        const R = Math.hypot(d.x1 - d.x0, d.y1 - d.y0);
+        const n = Math.max(12, Math.ceil((2 * Math.PI * R) / 2));
+        for (let i = 0; i < n; i++) {
+          const a0 = (2 * Math.PI * i) / n, a1 = (2 * Math.PI * (i + 1)) / n;
+          strokes.push(toBrush(d.x0 + R * Math.cos(a0), d.y0 + R * Math.sin(a0), d.x0 + R * Math.cos(a1), d.y0 + R * Math.sin(a1), d.alt));
+        }
+      }
+      return;
+    }
     const r = dragRect();
     rectDrag = null;
     if (!r) return;
@@ -733,6 +759,7 @@ async function init() {
   });
   canvas.addEventListener('pointercancel', () => {
     drag = null;
+    shapeDrag = null;
     rectDrag = null;
   });
   canvas.addEventListener('pointerleave', () => (hover = null));
@@ -866,7 +893,8 @@ async function init() {
         ghost = { x, y, w: g.stamp.w, h: g.stamp.h, image: g.image };
       }
     }
-    overlay.draw(sim.width, sim.height, probes.probes, s.reagent, dragRect(), s.tool === 'probe' ? '#ffcc66' : '#66d9ff', ghost);
+    const shape = shapeDrag && { ...shapeDrag, r: s.radius / cellScale };
+    overlay.draw(sim.width, sim.height, probes.probes, s.reagent, dragRect(), s.tool === 'probe' ? '#ffcc66' : '#66d9ff', ghost, shape);
 
     frames++;
     const now = performance.now();

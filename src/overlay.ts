@@ -6,6 +6,16 @@ export function probeColor(p: { id: number }) {
   return PROBE_COLORS[(p.id - 1) % PROBE_COLORS.length];
 }
 
+/** A line or circle being dragged out with a painting tool (grid cells; r = the brush radius). */
+export interface ShapePreview {
+  kind: 'line' | 'circle';
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+  r: number;
+}
+
 export interface Ghost {
   x: number;
   y: number;
@@ -24,7 +34,7 @@ export class Overlay {
     this.ctx = canvas.getContext('2d')!;
   }
 
-  draw(gridW: number, gridH: number, probes: Probe[], reagent: number, drag: Rect | null, dragColor: string, ghost: Ghost | null) {
+  draw(gridW: number, gridH: number, probes: Probe[], reagent: number, drag: Rect | null, dragColor: string, ghost: Ghost | null, shape: ShapePreview | null = null) {
     const { ctx, canvas } = this;
     const sx = canvas.width / gridW;
     const sy = canvas.height / gridH;
@@ -56,6 +66,32 @@ export class Overlay {
       ctx.fillRect(p.x * sx, ly - 12 * dpr, tw + 6 * dpr, 13 * dpr);
       ctx.fillStyle = c;
       ctx.fillText(label, p.x * sx + 3 * dpr, ly);
+    }
+
+    if (shape) {
+      // the band the brush will cover, and the path it follows
+      const path = () => {
+        ctx.beginPath();
+        if (shape.kind === 'line') {
+          ctx.moveTo(shape.x0 * sx, shape.y0 * sy);
+          ctx.lineTo(shape.x1 * sx, shape.y1 * sy);
+        } else {
+          const R = Math.hypot(shape.x1 - shape.x0, shape.y1 - shape.y0);
+          ctx.ellipse(shape.x0 * sx, shape.y0 * sy, R * sx, R * sy, 0, 0, 2 * Math.PI);
+        }
+      };
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#ffffff33';
+      ctx.lineWidth = 2 * shape.r * sx;
+      path();
+      ctx.stroke();
+      ctx.strokeStyle = '#ffffffcc';
+      ctx.lineWidth = Math.max(1, dpr);
+      ctx.setLineDash([5 * dpr, 4 * dpr]);
+      path();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.lineCap = 'butt';
     }
 
     if (drag) {

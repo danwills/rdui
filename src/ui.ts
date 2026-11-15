@@ -21,6 +21,8 @@ export interface Settings {
   wallsReflect: boolean;
   /** In rules with a paintable damping gamma, the Wall tool paints absorbing walls instead (reflect wins if both). */
   wallsAbsorb: boolean;
+  /** How the painting tools draw: freehand, a straight line (press → release), or a circle (centre → radius). */
+  brushShape: 'free' | 'line' | 'circle';
   gridSize: number;
   /** Fraction of full resolution the sim runs at (1, ½, ¼, ⅛). */
   resScale: number;
@@ -122,6 +124,7 @@ export function defaultSettings(): Settings {
     ruleSpeed: true,
     wallsReflect: true,
     wallsAbsorb: false,
+    brushShape: 'free',
     gridSize: 512,
     resScale: 1,
     featureSize: 1,
@@ -468,6 +471,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       slider('radius', 'radius', 1, 80, 1, 0),
       slider('strength', 'strength', 0.02, 1, 0.01, 2),
       slider('hardness', 'hardness', 0, 1, 0.01, 2),
+      select('shape', 'brushShape', () => [['free', 'freehand'], ['line', 'line (press, drag to the end)'], ['circle', 'circle (press the centre, drag out)']]).row,
     ),
     section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel), el('div', { class: 'rule-row' }, sceneSel), ruleBody),
     section('Simulation',
