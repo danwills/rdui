@@ -796,6 +796,7 @@ async function init() {
     else return;
     ui.sync();
     if (e.key === 'v') { probePanel.update(); stampPanel.render(); }
+    if (e.key === 'q' || e.key === 'e' || e.key === 'x') stampPanel.render();
   });
 
   function viewOptions(): ViewOptions {

@@ -60,14 +60,25 @@ export function stampSection(lib: StampLibrary, s: Settings, select: (id: string
     }
   }
 
+  // orientation for placing (also Q/E/X on a keyboard)
+  const orientLabel = el('span', { class: 'hint' });
+  const showOrient = () => (orientLabel.textContent = `${s.stampRot * 90}°${s.stampFlip ? ' · mirrored' : ''}`);
+  const turn = (f: () => void) => () => { f(); showOrient(); };
+  const orient = el('div', { class: 'buttons' },
+    button('⟲', turn(() => (s.stampRot = (s.stampRot + 3) % 4)), 'rotate a quarter turn anticlockwise · Q'),
+    button('⟳', turn(() => (s.stampRot = (s.stampRot + 1) % 4)), 'rotate a quarter turn clockwise · E'),
+    button('⇋', turn(() => (s.stampFlip = !s.stampFlip)), 'mirror left-right · X'),
+    orientLabel);
+  showOrient();
+
   const node = section('Stamps',
     grid, empty, hidden, error,
     el('div', { class: 'checks' }, checkbox('params + walls', 'placeParams'), checkbox('chemistry', 'placeChem'), checkbox('all rules', 'showAllStamps', () => render())),
-    el('p', { class: 'hint' }, 'Q/E rotate · X mirror while placing'),
+    orient,
     el('div', { class: 'buttons' }, button('Export…', io.export), button('Import…', io.import), button('+ Starters', starters, 'add the stamps that ship with rdui')),
   );
   render();
-  return { node, render };
+  return { node, render: () => { showOrient(); render(); } };
 }
 
 /** Probe list with live value and sparkline per probe, for the displayed reagent. */

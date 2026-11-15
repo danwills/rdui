@@ -267,20 +267,14 @@ export function boostStamp(s: Stamp, phase: number, kx: number, ky: number, id: 
   return { ...s, id, name, state };
 }
 
-/** A still soliton (phase 0) as named stamps: each phase, still, slow in 8 headings and fast in 4 (north = up). */
+/** A still soliton (phase 0) as named stamps: phase 0, π/2 and π, each still, slow and fast, heading east (rotate to aim). */
 function solitonVariants(base: Stamp): Stamp[] {
-  const PHASES: [number, string][] = [[0, '0'], [Math.PI / 2, 'π/2'], [Math.PI, 'π'], [(3 * Math.PI) / 2, '3π/2']];
-  const HEADINGS = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east'];
+  const PHASES: [number, string][] = [[0, '0'], [Math.PI / 2, 'π/2'], [Math.PI, 'π']];
   const out: Stamp[] = [];
   for (const [ph, label] of PHASES) {
     const id = `${base.id}-${label.replace('/', '_')}`;
-    out.push(boostStamp(base, ph, 0, 0, `${id}-still`, `still · phase ${label}`));
-    for (const [speed, k, every] of [['slow', 0.05, 1], ['fast', 0.15, 2]] as const) {
-      HEADINGS.forEach((h, i) => {
-        if (i % every) return;
-        const a = (i * Math.PI) / 4;
-        out.push(boostStamp(base, ph, k * Math.cos(a), -k * Math.sin(a), `${id}-${speed}-${h}`, `${speed} ${h} · phase ${label}`));
-      });
+    for (const [speed, k] of [['still', 0], ['slow', 0.05], ['fast', 0.15]] as const) {
+      out.push(boostStamp(base, ph, k, 0, `${id}-${speed}`, `${speed}${k ? ' east' : ''} · phase ${label}`));
     }
   }
   return out;
@@ -305,6 +299,11 @@ export class StampLibrary {
       console.warn('could not load stamp library', e);
     }
     if (!stored) this.stamps = STARTER_STAMPS.map((s) => ({ ...s }));
+    // drop saved copies of soliton stamps from earlier, larger sets
+    const starters = new Set(STARTER_STAMPS.map((s) => s.id));
+    const n = this.stamps.length;
+    this.stamps = this.stamps.filter((s) => !s.id.startsWith('nls-soliton') || starters.has(s.id));
+    if (this.stamps.length < n) this.changed();
   }
 
   get(id: string | null) {
