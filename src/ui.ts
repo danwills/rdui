@@ -73,7 +73,7 @@ export interface Actions {
 export interface RuleContext {
   rule(): RuleDef;
   globals(): Record<string, number>;
-  choices(): { id: string; label: string; group: string }[];
+  choices(): RuleChoice[];
   /** Whether the current rule is one of "My rules". */
   isUserRule(): boolean;
   currentId(): string;
@@ -82,6 +82,9 @@ export interface RuleContext {
   /** Whether feature sizes above 1 are stable for the current rule. */
   bigFeatures(): boolean;
 }
+
+/** A Rules menu entry: a rule, or (with `rule`, the id of the rule it runs) a scene; group = its family. */
+export interface RuleChoice { id: string; label: string; group: string; rule?: string }
 
 export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'seed', label: 'Seed', key: '1', hint: 'inject the rule\'s seed chemistry · right-drag erases' },
@@ -276,22 +279,38 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   syncers.push(() => (toolHint.textContent = TOOLS.find((t) => t.id === s.tool)!.hint));
 
   // --- rule section (rebuilt when the rule changes)
-  const ruleSel = el('select', { class: 'rule-select' });
+  // Three menus: the family, its rules, and its scenes.
+  const familySel = el('select', { class: 'rule-select', title: 'rule family' });
+  const ruleSel = el('select', { class: 'rule-select', title: 'rule' });
+  const sceneSel = el('select', { class: 'rule-select', title: 'scenes for this family' });
+  let shownFamily = '';
   function fillRules() {
-    const groups = new Map<string, HTMLOptGroupElement>();
-    ruleSel.replaceChildren();
-    for (const c of rc.choices()) {
-      let g = groups.get(c.group);
-      if (!g) {
-        g = el('optgroup', { label: c.group });
-        groups.set(c.group, g);
-        ruleSel.append(g);
-      }
-      g.append(el('option', { value: c.id }, c.label));
-    }
+    const all = rc.choices(), cur = rc.currentId();
+    const here = all.find((c) => c.id === cur);
+    const family = here?.group ?? (shownFamily || 'Imported');
+    shownFamily = family;
+    const families = [...new Set(all.map((c) => c.group))];
+    if (!families.includes(family)) families.push(family);
+    familySel.replaceChildren(...families.map((f) => el('option', { value: f }, f)));
+    familySel.value = family;
+    const rules = all.filter((c) => !c.rule && c.group === family);
+    ruleSel.replaceChildren(...rules.map((c) => el('option', { value: c.id }, c.label)));
+    const ruleId = here?.rule ?? cur;
+    if (!rules.some((c) => c.id === ruleId)) ruleSel.append(el('option', { value: ruleId }, rc.rule().source ?? rc.rule().name));
+    ruleSel.value = ruleId;
+    const scenes = all.filter((c) => c.rule && c.group === family);
+    sceneSel.replaceChildren(el('option', { value: '' }, scenes.length ? `scenes (${scenes.length})…` : 'no scenes'),
+      ...scenes.map((c) => el('option', { value: c.id }, c.label)));
+    sceneSel.disabled = !scenes.length;
+    sceneSel.value = here?.rule ? cur : '';
   }
   fillRules();
+  familySel.addEventListener('change', () => {
+    const first = rc.choices().find((c) => !c.rule && c.group === familySel.value);
+    if (first) actions.selectRule(first.id);
+  });
   ruleSel.addEventListener('change', () => actions.selectRule(ruleSel.value));
+  sceneSel.addEventListener('change', () => { if (sceneSel.value) actions.selectRule(sceneSel.value); });
   const ruleBody = el('div');
   let ruleSyncers: (() => void)[] = [];
   syncers.push(() => ruleSyncers.forEach((f) => f()));
@@ -301,10 +320,6 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     const globals = rc.globals();
     ruleSyncers = [];
     fillRules();
-    if (![...ruleSel.options].some((o) => o.value === rc.currentId())) {
-      ruleSel.append(el('option', { value: rc.currentId() }, rule.source ?? rule.name));
-    }
-    ruleSel.value = rc.currentId();
 
     const nodes: Node[] = [];
     const warn = rc.warnings();
@@ -420,7 +435,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       slider('strength', 'strength', 0.02, 1, 0.01, 2),
       slider('hardness', 'hardness', 0, 1, 0.01, 2),
     ),
-    section('Rule', el('div', { class: 'rule-row' }, ruleSel, importBtn), ruleBody),
+    section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel), el('div', { class: 'rule-row' }, sceneSel), ruleBody),
     section('Simulation',
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Restart', actions.restart, 'start the rule or scene over from scratch: its own parameters, opening, paint and stamps (Reset keeps your parameters)'), button('Clear chem', actions.clearChemistry, 'C')),
       logSlider('steps/frame', 'stepsPerFrame', 64, 5000),

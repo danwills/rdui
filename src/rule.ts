@@ -1419,6 +1419,16 @@ delta_P_F = ((F1*b1 + F2*b2 + F3*b3 + F4*b4)/(bt + 1e-4) - P_F)/timestep;`,
 
 export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES];
 
+/** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
+export const RULE_FAMILIES: [string, RuleDef[]][] = [
+  ['Gray-Scott', [GRAY_SCOTT, GRAY_SCOTT_ZOOM, GS_FLECK]],
+  ['History + Wave', [GS_HISTORY_WAVE, GS_HW_MEMORY]],
+  ['Parameters as fields', [META_GS, WEATHER_GS]],
+  ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES]],
+  ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
+  ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
+];
+
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
   return Object.fromEntries(rule.params.map((p) => [p.name, p.value]));
 }

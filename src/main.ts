@@ -1,13 +1,13 @@
 import './style.css';
 import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type ViewOptions } from './sim';
-import { buildPanel, defaultSettings, fmt, TOOLS, type Settings } from './ui';
+import { buildPanel, defaultSettings, fmt, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
 import { StampLibrary, newStampId, stampThumbnail, transformStamp, type Stamp } from './stamps';
 import { Overlay, type Ghost } from './overlay';
 import { stampSection, probeSection } from './panels';
 import { encodeSnapshot, decodeSnapshot, download, pickFile } from './snapshot';
 import {
-  BUILTIN_RULES, GRAY_SCOTT, RuleError, compileRule, defaultGlobals, initialField, layoutOf, remapCells,
+  BUILTIN_RULES, RULE_FAMILIES, GRAY_SCOTT, RuleError, compileRule, defaultGlobals, initialField, layoutOf, remapCells,
   type CompiledRule, type RuleDef,
 } from './rule';
 import { BUNDLED_PATTERNS, importReady, loadBundled } from './ready';
@@ -95,11 +95,18 @@ async function init() {
   let pendingSteps = 0;
 
   const userRules = new UserRules();
-  const ruleChoices = () => [
+  const familyOf = (ruleId: string) => {
+    if (ruleId.startsWith('user:')) return 'My rules';
+    if (ruleId.startsWith('pattern:')) return 'Ready patterns';
+    const r = BUILTIN_RULES[Number(ruleId.slice(8))];
+    return RULE_FAMILIES.find(([, rs]) => rs.includes(r))?.[0] ?? 'Other media';
+  };
+  // rules in family order, then each scene under its rule's family
+  const ruleChoices = (): RuleChoice[] => [
     ...userRules.rules.map((u) => ({ id: `user:${u.id}`, label: u.rule.name, group: 'My rules' })),
-    ...BUILTIN_RULES.map((r, i) => ({ id: `builtin:${i}`, label: r.name, group: 'Built-in' })),
+    ...RULE_FAMILIES.flatMap(([fam, rs]) => rs.map((r) => ({ id: `builtin:${BUILTIN_RULES.indexOf(r)}`, label: r.name, group: fam }))),
     ...BUNDLED_PATTERNS.map((p) => ({ id: `pattern:${p.name}`, label: p.name, group: 'Ready patterns' })),
-    ...SCENES.map((sc) => ({ id: `scene:${sc.id}`, label: sc.scene.name, group: 'Scenes' })),
+    ...SCENES.map((sc) => ({ id: `scene:${sc.id}`, label: sc.scene.name, group: familyOf(sc.scene.rule), rule: sc.scene.rule })),
   ];
 
   /**
