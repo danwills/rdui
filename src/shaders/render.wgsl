@@ -293,16 +293,32 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     }
   }
 
-  let wallFlag = paramAt(cell, 0u);
-  if (wallFlag > 0.5) {
-    let stripe = step(0.5, fract((pos.x + pos.y) / 10.0));
-    if (wallFlag > 1.5) {
-      // a feed wall: greenish stripes the other way
-      let s2 = step(0.5, fract((pos.x - pos.y) / 10.0));
-      col = mix(vec3<f32>(0.28, 0.38, 0.32), vec3<f32>(0.36, 0.47, 0.40), s2);
-    } else {
-      col = mix(vec3<f32>(0.32, 0.33, 0.36), vec3<f32>(0.4, 0.41, 0.44), stripe);
-    }
+  // walls: coverage smoothed between cell centres (a cubic B-spline over the nearest 4x4 cells), its
+  // 0.5 contour antialiased over a screen pixel, so a wall's edge is a smooth curve, not the cells' stairs
+  let wb = g - 0.5;
+  let w0 = vec2<i32>(floor(wb)) - vec2<i32>(1);
+  let wf = wb - floor(wb);
+  let bx = bspline(wf.x);
+  let by = bspline(wf.y);
+  var cover = 0.0;
+  var feed = 0.0;
+  for (var j = 0; j < 16; j++) {
+    let o = vec2<i32>(j & 3, j >> 2);
+    let wt = bx[o.x] * by[o.y];
+    let fl = paramAt(cellIdx(w0 + o), 0u);
+    cover += wt * step(0.5, fl);
+    feed += wt * step(1.5, fl);
+  }
+  let aa = max(fwidth(cover), 1e-4);
+  let wallAmt = smoothstep(0.5 - aa, 0.5 + aa, cover);
+  if (wallAmt > 0.0) {
+    let stripe = smoothstep(0.42, 0.58, abs(fract((pos.x + pos.y) / 10.0) - 0.5) * 2.0);
+    let sealedCol = mix(vec3<f32>(0.32, 0.33, 0.36), vec3<f32>(0.4, 0.41, 0.44), stripe);
+    // a feed wall: greenish stripes the other way
+    let s2 = smoothstep(0.42, 0.58, abs(fract((pos.x - pos.y) / 10.0) - 0.5) * 2.0);
+    let feedCol = mix(vec3<f32>(0.28, 0.38, 0.32), vec3<f32>(0.36, 0.47, 0.40), s2);
+    let wc = mix(sealedCol, feedCol, step(0.5, feed / max(cover, 1e-6)));
+    col = mix(col, wc, wallAmt);
   }
   return vec4<f32>(col, 1.0);
 }
