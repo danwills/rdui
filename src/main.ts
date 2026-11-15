@@ -89,6 +89,8 @@ async function init() {
   // and the brush grow with it (so resolution ½ + feature size ½ shows the same picture)
   let full = { width: s.gridSize, height: s.gridSize };
   let cellScale = 1;
+  // outline colours by rank: traps take gamma's (orange) slot once one has been drawn
+  let trapsDrawn = false;
 
   const probes = new ProbeSet(device);
   const stamps = new StampLibrary();
@@ -308,9 +310,12 @@ async function init() {
     if (!o.keepView) s.paint = {};
     for (const n of rule.paintable) s.paint[n] ??= globals[n];
 
+    trapsDrawn = false;
     if (carried) {
       const f = remapField(carried, width * height);
       sim.load(f.state, f.params);
+      const ts = sim.layout.paramNames.indexOf('trap_d'), P4 = sim.layout.P * 4;
+      if (ts >= 0) for (let i = ts; i < f.params.length; i += P4) if (f.params[i] < 100) { trapsDrawn = true; break; }
     } else {
       const f = initialData(width, height, o.image);
       sim.load(f.state, f.params);
@@ -392,6 +397,7 @@ async function init() {
         warnings.push(`scene wall field "${w.field}" isn't in this rule`);
         continue;
       }
+      if (w.field === 'trap_d') trapsDrawn = true;
       sim.brush({ ax: w.x, ay: w.y, bx: w.x2 ?? w.x, by: w.y2 ?? w.y, radius: w.r, mode: BrushMode.Sdf, strength: 1, hardness: 1, paint: paintValues(), slot, clear: false, base: 1 });
     }
     for (const p of sc.stamps ?? []) {
@@ -876,7 +882,8 @@ async function init() {
     // wave media: the Wall tool draws reflecting or absorbing walls into the rule's wall distance fields
     // (SDF union; Unwall or right-drag cuts them out); the rule turns distance into potential or damping
     const names = layoutOf(rule).paramNames;
-    const field = s.wallsReflect && names.includes('reflect_d') ? 'reflect_d' : s.wallsAbsorb && names.includes('absorb_d') ? 'absorb_d' : null;
+    const field = s.wallsReflect && names.includes('reflect_d') ? 'reflect_d' : s.wallsAbsorb && names.includes('absorb_d') ? 'absorb_d'
+      : s.wallsTrap && names.includes('trap_d') ? 'trap_d' : null;
     if ((s.tool === 'wall' || s.tool === 'unwall') && field) {
       const up = (s.tool === 'wall') !== alt;
       const sdf = (f: string): BrushStroke => ({
@@ -884,7 +891,8 @@ async function init() {
         slot: names.indexOf(f), clear: up && f === 'reflect_d', base: up ? 1 : -1,
       });
       // drawing adds the ticked kind of wall; cutting removes both kinds
-      return up ? [sdf(field)] : ['reflect_d', 'absorb_d'].filter((f) => names.includes(f)).map(sdf);
+      if (up && field === 'trap_d') trapsDrawn = true;
+      return up ? [sdf(field)] : ['reflect_d', 'absorb_d', 'trap_d'].filter((f) => names.includes(f)).map(sdf);
     }
     return [{
       ax, ay, bx, by, mode,
@@ -928,7 +936,7 @@ async function init() {
     if (e.key === 'q' || e.key === 'e' || e.key === 'x') stampPanel.render();
   });
 
-  const colourRank = (n: string) => ['absorb_d', 'reflect_d', 'V', 'gamma'].indexOf(n) >>> 0;
+  const colourRank = (n: string) => (trapsDrawn ? ['absorb_d', 'reflect_d', 'V', 'trap_d'] : ['absorb_d', 'reflect_d', 'V', 'gamma']).indexOf(n) >>> 0;
 
   function viewOptions(): ViewOptions {
     return {
@@ -944,7 +952,7 @@ async function init() {
       hueShape: s.hueShape,
       hueOffset: s.hueOffset,
       // param map / outline colours go red, green, blue, orange in this order: absorbing walls red, reflecting
-      // walls green, potential V blue, damping gamma orange, whatever order a scene lists them in
+      // walls green, potential V blue, damping gamma (or traps, once drawn) orange, whatever order a scene lists them in
       paramSlots: [...rule.paintable].sort((a, b) => colourRank(a) - colourRank(b)).slice(0, 4).map((n) => {
         const spec = rule.params.find((p) => p.name === n)!;
         return { slot: layoutOf(rule).paramNames.indexOf(n), min: spec.min, max: spec.max, distance: !!spec.distance, base: spec.distance ? globals.wall_grow ?? 0 : globals[n] };

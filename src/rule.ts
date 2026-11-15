@@ -959,16 +959,32 @@ export const SATURABLE_NLS: RuleDef = {
     { name: 'wall_grow', value: 0, min: -8, max: 8 },
     { name: 'wall_V', value: 30, min: 0, max: 60 },
     { name: 'wall_gamma', value: 0.3, min: 0, max: 2 },
+    // traps (drawn with the Wall tool, "traps"): a shallow well (trap_V) with friction (trap_D, a diffusion
+    // that bleeds off motion) and gain −trap_loss + trap_gain·I − trap_sat·I², balanced at a standard
+    // soliton's power (~700): a soliton that comes in is slowed, parked and grown or shrunk to that power;
+    // faint ripples die, so an empty trap stays empty
+    { name: 'trap_d', value: FAR, min: -FAR, max: FAR, distance: true },
+    { name: 'trap_V', value: 0.3, min: 0, max: 2 },
+    { name: 'trap_D', value: 0.1, min: 0, max: 0.5 },
+    { name: 'trap_loss', value: 0.02, min: 0, max: 0.5 },
+    { name: 'trap_gain', value: 0.108, min: 0, max: 0.5 },
+    { name: 'trap_sat', value: 0.013, min: 0, max: 0.1 },
   ],
-  paintable: ['gamma', 'V', 'reflect_d', 'absorb_d'],
+  paintable: ['gamma', 'V', 'reflect_d', 'absorb_d', 'trap_d'],
   explore: ['gamma', 'V'],
-  formula: `float P = wave_cos_p + wave_sin_q;
-float Q = wave_cos_q - wave_sin_p;
+  formula: `float P0 = wave_cos_p + wave_sin_q;
+float Q0 = wave_cos_q - wave_sin_p;
+// in a trap, friction: push back against the free step's change, −β·i·(ψ' − ψ), which damps like
+// diffusion trap_D (β = 2·trap_D), cell by cell
+float mt = 1.0 - smoothstep(-4.0, 4.0, trap_d - wall_grow);
+float b = 2.0*trap_D*mt;
+float P = P0 + b*(Q0 - q);
+float Q = Q0 - b*(P0 - p);
 float I = P*P + Q*Q;
-float Vw = V + wall_V*(1.0 - smoothstep(-1.5, 1.5, reflect_d - wall_grow));
+float Vw = V - trap_V*mt + wall_V*(1.0 - smoothstep(-1.5, 1.5, reflect_d - wall_grow));
 float gw = gamma + wall_gamma*smoothstep(-8.0, 8.0, wall_grow - absorb_d);
 float ph = (g*I/(1.0 + s*I) - Vw)*timestep;
-float damp = exp(-gw*timestep);
+float damp = exp((mt*(trap_gain*I - trap_sat*I*I - trap_loss) - gw)*timestep);
 float P2 = damp*(P*cos(ph) - Q*sin(ph));
 float Q2 = damp*(P*sin(ph) + Q*cos(ph));
 delta_p = (P2 - p)/timestep;

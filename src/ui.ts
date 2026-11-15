@@ -21,6 +21,8 @@ export interface Settings {
   wallsReflect: boolean;
   /** In rules with a paintable damping gamma, the Wall tool paints absorbing walls instead (reflect wins if both). */
   wallsAbsorb: boolean;
+  /** In rules with traps (trap_d), the Wall tool draws traps instead. */
+  wallsTrap: boolean;
   /** How the painting tools draw: freehand, a straight line (press → release), or a circle (centre → radius). */
   brushShape: 'free' | 'line' | 'circle';
   gridSize: number;
@@ -121,6 +123,7 @@ export function defaultSettings(): Settings {
     ruleSpeed: true,
     wallsReflect: true,
     wallsAbsorb: false,
+    wallsTrap: false,
     brushShape: 'free',
     gridSize: 512,
     resScale: 1,
@@ -258,7 +261,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return el('label', { class: 'row log' }, el('span', {}, label), input, num);
   }
 
-  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb', title: string, then?: () => void) {
+  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap', title: string, then?: () => void) {
     const input = el('input', { type: 'checkbox' });
     input.addEventListener('change', () => { s[key] = input.checked; then?.(); });
     syncers.push(() => (input.checked = s[key]));
@@ -292,13 +295,15 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const toolHint = el('p', { class: 'hint' });
   // only for rules with wall distance fields (the Schrödinger rule, where real walls leak)
   // (one or the other: ticking one unticks the other)
-  const reflectBox = checkbox('walls reflect', 'wallsReflect', 'the Wall tool draws walls of high potential (wall_V) that waves bounce off; untick both for ordinary walls', () => { if (s.wallsReflect) s.wallsAbsorb = false; sync(); });
-  const absorbBox = checkbox('walls absorb', 'wallsAbsorb', "the Wall tool draws damping (wall_gamma, fading in gently so it doesn't reflect) that soaks waves up", () => { if (s.wallsAbsorb) s.wallsReflect = false; sync(); });
-  const wallBoxes = el('div', { class: 'checks' }, reflectBox, absorbBox);
+  const reflectBox = checkbox('walls reflect', 'wallsReflect', 'the Wall tool draws walls of high potential (wall_V) that waves bounce off; untick both for ordinary walls', () => { if (s.wallsReflect) s.wallsAbsorb = s.wallsTrap = false; sync(); });
+  const absorbBox = checkbox('walls absorb', 'wallsAbsorb', "the Wall tool draws damping (wall_gamma, fading in gently so it doesn't reflect) that soaks waves up", () => { if (s.wallsAbsorb) s.wallsReflect = s.wallsTrap = false; sync(); });
+  const trapBox = checkbox('traps', 'wallsTrap', 'the Wall tool draws traps (click for a round one): a shallow well with friction and gain that catches a soliton, parks it and sets it to the standard power', () => { if (s.wallsTrap) s.wallsReflect = s.wallsAbsorb = false; sync(); });
+  const wallBoxes = el('div', { class: 'checks' }, reflectBox, absorbBox, trapBox);
   syncers.push(() => {
     const p = rc.rule().paintable;
     reflectBox.style.display = p.includes('reflect_d') ? '' : 'none';
     absorbBox.style.display = p.includes('absorb_d') ? '' : 'none';
+    trapBox.style.display = p.includes('trap_d') ? '' : 'none';
     wallBoxes.style.display = p.includes('reflect_d') || p.includes('absorb_d') ? '' : 'none';
   });
   for (const t of TOOLS) {

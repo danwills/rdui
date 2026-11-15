@@ -45,10 +45,11 @@ def gate(qx, qy, a, b):
     ox = p2[0] + vc * (EARLY + TAIL) * math.cos(CHEAD)
     oy = p2[1] - vc * (EARLY + TAIL) * math.sin(CHEAD)
     probe = {'name': f'A={a} B={b} → {0 if a and b else 1}', 'x': round(ox - 14), 'y': round(oy - 14), 'w': 28, 'h': 28, 'hold': True}
+    # a trap in the box (the rule's trap_d) parks the output soliton there and sets it to the standard power
+    eat = [{'field': 'trap_d', 'x': round(ox % N, 1), 'y': round(oy % N, 1), 'r': 14}]
     # eaters (absorbing discs) on the spare solitons' paths, reached only after the outputs are read:
-    # the clock once past its box, a lone input well past P1, the merged soliton just past P2
+    # a lone input well past P1, the merged soliton just past P2
     w = lambda x, y: {'field': 'absorb_d', 'x': round(x % N, 1), 'y': round(y % N, 1), 'r': 8}
-    eat = [w(ox + 42 * math.cos(CHEAD), oy - 42 * math.sin(CHEAD))]
     if a and not b: eat.append(w(p1[0] + 230 * math.cos(H), p1[1] - 230 * math.sin(H)))
     if b and not a: eat.append(w(p1[0] + 230 * math.cos(H), p1[1] + 230 * math.sin(H)))
     if a and b:
@@ -77,10 +78,11 @@ desc = (f'Four NAND gates made only of colliding solitons, no walls: one per inp
         f'attract and merge into one heavy soliton heading east (that is A AND B). The slow clock soliton (lower right, always sent) '
         f'crosses that path: if the merged soliton is there it swallows the clock, otherwise the clock goes on into the output box '
         f'(NOT). So the box gets a soliton unless both inputs are 1: NAND, which can build any logic. The clocks reach the boxes '
-        f'after about {T_END} steps ({T_END / 12 / 60:.0f} s at 12 steps per frame and 60 fps; the boxes are probes, so their readout '
-        f'shows the power arriving). In the lab a single gate gave the same answers with the '
+        f'after about {T_END} steps ({T_END / 12 / 60:.0f} s at 12 steps per frame and 60 fps). Each box holds a trap (orange '
+        f'circle) that catches the output soliton and keeps it there at the standard power, so the answer stays: a soliton '
+        f'sitting in the box is a 1, an empty box a 0 (the boxes are probes, holding their highest reading too). In the lab a single gate gave the same answers with the '
         f'clock up to 600 steps early or late, and at any clock phase. Built on Fredkin and Toffoli\'s billiard-ball computer (1982), with solitons '
-        f'for balls. The red discs are eaters (absorbing walls) that take each spare soliton once the outputs are read, so nothing '
+        f'for balls. The red discs are eaters (absorbing walls) that take each spare soliton, so nothing '
         f'wraps round into the other gates. Try: pause at the start and erase an input (or the clock) to see that gate change its answer.')
 
 scene = {'name': 'Schrödinger NAND gates', 'description': desc, 'rule': 'builtin:8', 'size': N, 'start': 'rest',
