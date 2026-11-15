@@ -33,6 +33,8 @@ const MODE_PARAMS: u32 = 2u;
 const MODE_WALL: u32 = 3u;
 const MODE_UNWALL: u32 = 4u;
 const MODE_SET_PARAM: u32 = 5u;
+const MODE_SDF: u32 = 6u;
+const SDF_REACH: f32 = 24.0; // an SDF stroke also writes distances this far outside its edge
 
 @group(0) @binding(0) var<uniform> brush: Brush;
 @group(0) @binding(1) var<uniform> size: Size;
@@ -57,7 +59,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   }
   let cell = vec2<f32>(f32(gid.x) + 0.5, f32(gid.y) + 0.5);
   let d = segDist(cell, brush.a, brush.b);
-  if (d > brush.radius) {
+  if (d > brush.radius + select(0.0, SDF_REACH, brush.mode == MODE_SDF)) {
     return;
   }
   let t = 1.0 - d / brush.radius;
@@ -87,7 +89,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     case MODE_PARAMS: {
       for (var p = 0u; p < P; p++) {
-        var v = mix(params[pb + p], brush.paint[p], k);
+        // a paint value below -1e30 leaves that slot alone (wall distance fields)
+        var v = select(mix(params[pb + p], brush.paint[p], k), params[pb + p], brush.paint[p] < vec4<f32>(-1e30));
         if (p == 0u) {
           v.x = params[pb].x; // keep the wall flag
         }
@@ -127,6 +130,21 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
         params[pb + (k >> 2u)][k & 3u] = v;
         if (brush.clear > 0.5 && falloff > 0.5) {
+          for (var s = 0u; s < S; s++) {
+            state[sb + s] = brush.rest[s];
+          }
+        }
+      }
+    }
+    case MODE_SDF: {
+      // a wall distance field (cells, negative inside): base > 0 adds this stroke (union: the nearer
+      // of the two), base < 0 cuts it out (subtraction)
+      if (!wall) {
+        let k = u32(brush.slot);
+        let cur = params[pb + (k >> 2u)][k & 3u];
+        let sd = d - brush.radius;
+        params[pb + (k >> 2u)][k & 3u] = select(max(cur, -sd), min(cur, sd), brush.base > 0.0);
+        if (brush.clear > 0.5 && sd < 0.0 && brush.base > 0.0) {
           for (var s = 0u; s < S; s++) {
             state[sb + s] = brush.rest[s];
           }

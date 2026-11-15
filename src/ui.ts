@@ -95,11 +95,6 @@ export interface RuleContext {
 /** A Rules menu entry: a rule, or (with `rule`, the id of the rule it runs) a scene; group = its family. */
 export interface RuleChoice { id: string; label: string; group: string; rule?: string }
 
-/** The potential the Wall tool paints when 'walls reflect' is on. */
-export const REFLECT_V = 30;
-/** The damping the Wall tool paints (at the stroke's centre) when 'walls absorb' is on. */
-export const ABSORB_GAMMA = 0.3;
-
 export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'seed', label: 'Seed', key: '1', hint: 'inject the rule\'s seed chemistry · right-drag erases' },
   { id: 'erase', label: 'Erase', key: '2', hint: 'reset reagents to their rest values' },
@@ -293,16 +288,16 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   // --- tools
   const toolRow = el('div', { class: 'tools' });
   const toolHint = el('p', { class: 'hint' });
-  // only for rules with a paintable potential V (the Schrödinger rule, where real walls leak)
+  // only for rules with wall distance fields (the Schrödinger rule, where real walls leak)
   // (one or the other: ticking one unticks the other)
-  const reflectBox = checkbox('walls reflect', 'wallsReflect', `the Wall tool paints walls of high potential (V = ${REFLECT_V}) that waves bounce off; untick both for ordinary walls`, () => { if (s.wallsReflect) s.wallsAbsorb = false; sync(); });
-  const absorbBox = checkbox('walls absorb', 'wallsAbsorb', `the Wall tool paints damping (gamma up to ${ABSORB_GAMMA}, fading out to the brush edge so it doesn't reflect) that soaks waves up`, () => { if (s.wallsAbsorb) s.wallsReflect = false; sync(); });
+  const reflectBox = checkbox('walls reflect', 'wallsReflect', 'the Wall tool draws walls of high potential (wall_V) that waves bounce off; untick both for ordinary walls', () => { if (s.wallsReflect) s.wallsAbsorb = false; sync(); });
+  const absorbBox = checkbox('walls absorb', 'wallsAbsorb', "the Wall tool draws damping (wall_gamma, fading in gently so it doesn't reflect) that soaks waves up", () => { if (s.wallsAbsorb) s.wallsReflect = false; sync(); });
   const wallBoxes = el('div', { class: 'checks' }, reflectBox, absorbBox);
   syncers.push(() => {
     const p = rc.rule().paintable;
-    reflectBox.style.display = p.includes('V') ? '' : 'none';
-    absorbBox.style.display = p.includes('gamma') ? '' : 'none';
-    wallBoxes.style.display = p.includes('V') || p.includes('gamma') ? '' : 'none';
+    reflectBox.style.display = p.includes('reflect_d') ? '' : 'none';
+    absorbBox.style.display = p.includes('absorb_d') ? '' : 'none';
+    wallBoxes.style.display = p.includes('reflect_d') || p.includes('absorb_d') ? '' : 'none';
   });
   for (const t of TOOLS) {
     const b = button(t.label, () => {
@@ -407,6 +402,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     }
     for (const name of rule.paintable) {
       const spec = rule.params.find((p) => p.name === name)!;
+      if (spec.distance) continue; // drawn with the Wall tool
       const unpaint = button('✕', () => actions.togglePaintable(name), 'stop painting this parameter (make it global)');
       unpaint.classList.add('mini');
       const r = valueRow(name, () => s.paint[name], (v) => {
@@ -418,10 +414,22 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     }
     if (!rule.paintable.length) paintBox.append(el('p', { class: 'hint' }, 'No paintable parameters — use 🖌 on a global one below.'));
 
+    // Walls drawn as distance fields: how far to grow (or shrink) them, and their strengths.
+    const WALL_PARAMS = ['wall_grow', 'wall_V', 'wall_gamma'];
+    const wallBox = el('div', { class: 'globals' });
+    for (const spec of rule.params) {
+      if (!WALL_PARAMS.includes(spec.name)) continue;
+      const r = valueRow(spec.name, () => globals[spec.name], (v) => {
+        globals[spec.name] = v;
+        actions.setGlobal(spec.name, v);
+      }, [spec.min, spec.max]);
+      wallBox.append(r.row);
+    }
+
     // Global params: live sliders.
     const globalBox = el('div', { class: 'globals' });
     for (const spec of rule.params) {
-      if (rule.paintable.includes(spec.name)) continue;
+      if (rule.paintable.includes(spec.name) || WALL_PARAMS.includes(spec.name)) continue;
       const paint = button('🖌', () => actions.togglePaintable(spec.name), 'make this parameter paintable per cell');
       paint.classList.add('mini');
       const r = valueRow(spec.name, () => globals[spec.name], (v) => {
@@ -438,7 +446,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         button('Reset', actions.reset, 'regenerate the initial pattern · R'),
         button('Clear all', actions.clearAll, 'a blank field: chemistry at rest, painted params and walls removed (Clear chem keeps them)'),
       ),
-      el('details', { class: 'globals-wrap' }, el('summary', {}, `Global parameters (${rule.params.length - rule.paintable.length})`), globalBox),
+      ...(wallBox.childElementCount ? [el('h3', { title: 'walls drawn with the Wall tool (walls reflect / walls absorb): wall_grow moves every edge out (or in, below 0) by that many cells' }, 'Walls'), wallBox] : []),
+      el('details', { class: 'globals-wrap' }, el('summary', {}, `Global parameters (${globalBox.childElementCount})`), globalBox),
     );
     ruleBody.replaceChildren(...nodes);
     viewReagent.fill();

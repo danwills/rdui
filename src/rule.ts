@@ -23,7 +23,16 @@ export interface ParamSpec {
   value: number;
   min: number;
   max: number;
+  /**
+   * A per-cell signed distance (cells; negative inside) to walls the Wall tool draws, as an
+   * SDF union of its strokes. Not painted by the Params brush or Fill all; the outline view
+   * draws its zero contour, shifted by the rule's wall_grow.
+   */
+  distance?: boolean;
 }
+
+/** The value a wall distance field holds far from any wall (cells): "at least this far". */
+export const FAR = 64;
 
 export type Fill =
   | { type: 'constant'; value: number }
@@ -940,13 +949,24 @@ export const SATURABLE_NLS: RuleDef = {
     { name: 's', value: 0.5, min: 0, max: 5 },
     { name: 'gamma', value: 0, min: 0, max: 1 },
     { name: 'V', value: 0, min: -2, max: 2 },
+    // walls drawn with the Wall tool, as signed distance fields (cells, negative inside): reflecting
+    // ones add wall_V across a 3-cell edge, absorbing ones add damping that fades in from 4 cells
+    // outside to full 8 cells in; wall_grow moves every wall's edge out (or in) by that many cells
+    { name: 'reflect_d', value: FAR, min: -FAR, max: FAR, distance: true },
+    { name: 'absorb_d', value: FAR, min: -FAR, max: FAR, distance: true },
+    { name: 'wall_grow', value: 0, min: -8, max: 8 },
+    { name: 'wall_V', value: 30, min: 0, max: 60 },
+    { name: 'wall_gamma', value: 0.3, min: 0, max: 2 },
   ],
-  paintable: ['gamma', 'V'],
+  paintable: ['gamma', 'V', 'reflect_d', 'absorb_d'],
+  explore: ['gamma', 'V'],
   formula: `float P = wave_cos_p + wave_sin_q;
 float Q = wave_cos_q - wave_sin_p;
 float I = P*P + Q*Q;
-float ph = (g*I/(1.0 + s*I) - V)*timestep;
-float damp = exp(-gamma*timestep);
+float Vw = V + wall_V*(1.0 - smoothstep(-1.5, 1.5, reflect_d - wall_grow));
+float gw = gamma + wall_gamma*smoothstep(-8.0, 8.0, wall_grow - absorb_d);
+float ph = (g*I/(1.0 + s*I) - Vw)*timestep;
+float damp = exp(-gw*timestep);
 float P2 = damp*(P*cos(ph) - Q*sin(ph));
 float Q2 = damp*(P*sin(ph) + Q*cos(ph));
 delta_p = (P2 - p)/timestep;

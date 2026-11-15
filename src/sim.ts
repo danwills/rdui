@@ -18,6 +18,8 @@ export const BrushMode = {
   Unwall: 4,
   /** Hard-edged like a wall: set one param slot to its paint value (optionally clearing chemistry). */
   SetParam: 5,
+  /** Add a stroke to a wall distance field (slot; base > 0), or cut it out (base < 0). */
+  Sdf: 6,
 } as const;
 export type BrushMode = (typeof BrushMode)[keyof typeof BrushMode];
 
@@ -65,7 +67,7 @@ export interface ViewOptions {
   hueOffset: number;
   /** Up to three flat param slots (>0) with their display ranges. */
   /** Painted params to show: flat slot, range, and base (unpainted) value. */
-  paramSlots: { slot: number; min: number; max: number; base: number }[];
+  paramSlots: { slot: number; min: number; max: number; base: number; distance?: boolean }[];
 }
 
 const WG = 8;
@@ -134,7 +136,7 @@ export class Simulation {
     this.infoUniform = device.createBuffer({ size: 16, usage: uniform });
     this.globalsUniform = device.createBuffer({ size: compiled.globalVec4s * 16, usage: uniform });
     this.brushUniform = device.createBuffer({ size: 272, usage: uniform });
-    this.viewUniform = device.createBuffer({ size: 128, usage: uniform });
+    this.viewUniform = device.createBuffer({ size: 144, usage: uniform });
     this.writeInfo();
     this.globals = new Float32Array(compiled.globalVec4s * 4);
     compiled.rule.params.forEach((p, i) => (this.globals[i] = p.value));
@@ -353,7 +355,7 @@ export class Simulation {
   }
 
   render(enc: GPUCommandEncoder, target: GPUTextureView, canvasW: number, canvasH: number, v: ViewOptions) {
-    const buf = new ArrayBuffer(128);
+    const buf = new ArrayBuffer(144);
     const u = new Uint32Array(buf);
     const f = new Float32Array(buf);
     u[0] = this.width; u[1] = this.height;
@@ -365,11 +367,12 @@ export class Simulation {
     f[8] = v.low; f[9] = v.high;
     f[10] = v.tintLow; f[11] = v.tintHigh; f[12] = v.tintStrength;
     f[13] = v.hueShape; f[14] = v.hueOffset; f[15] = this.compiled.rule.reagents.length;
-    v.paramSlots.slice(0, 3).forEach((p, k) => {
+    v.paramSlots.slice(0, 4).forEach((p, k) => {
       u[16 + k] = p.slot;
       f[20 + k] = p.min;
       f[24 + k] = p.max;
       f[28 + k] = p.base;
+      u[32 + k] = p.distance ? 1 : 0;
     });
     this.device.queue.writeBuffer(this.viewUniform, 0, buf);
 

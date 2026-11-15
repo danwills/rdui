@@ -26,7 +26,8 @@ struct View {
   paramSlot: vec4<u32>,   // flat param slots for r, g, b (0 = unused)
   paramMin: vec4<f32>,
   paramMax: vec4<f32>,
-  paramBase: vec4<f32>,   // unpainted value of each (outlines mode)
+  paramBase: vec4<f32>,   // unpainted value of each (outlines mode); for a wall distance field, the wall growth
+  paramKind: vec4<u32>,   // 1 = a wall distance field (signed distance in cells, negative inside)
 };
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -70,6 +71,17 @@ fn paramAt(cell: u32, slot: u32) -> f32 {
 fn paintedAt(c: vec2<i32>, k: u32) -> f32 {
   let dv = abs(paramAt(cellIdx(c), view.paramSlot[k]) - view.paramBase[k]) / max(view.paramMax[k] - view.paramMin[k], 1e-6);
   return log(1.0 + dv / 0.003) / log(1.0 + 1.0 / 0.003);
+}
+
+fn sampleParam(g: vec2<f32>, slot: u32) -> f32 {
+  let p = g - 0.5;
+  let base = vec2<i32>(floor(p));
+  let f = fract(p);
+  let a = paramAt(cellIdx(base), slot);
+  let b = paramAt(cellIdx(base + vec2<i32>(1, 0)), slot);
+  let c = paramAt(cellIdx(base + vec2<i32>(0, 1)), slot);
+  let d = paramAt(cellIdx(base + vec2<i32>(1, 1)), slot);
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
 fn bspline(t: f32) -> vec4<f32> {
@@ -221,16 +233,29 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
   if (view.mode == 2u) {
     // painted params: where each differs from its unpainted value, a light wash with a crisp
     // anti-aliased outline (the half-way contour of a smoothly sampled mask), coloured as in the param map
-    for (var k = 0u; k < 3u; k++) {
+    for (var k = 0u; k < 4u; k++) {
       let slot = view.paramSlot[k];
+      let sdf = view.paramKind[k] == 1u;
+      // m: a wall distance field's signed distance (cells, less the growth; outline at 0), or other
+      // paint's smoothed, log-compressed strength (outline at OUTLINE_AT)
       var m = 0.0;
-      if (slot > 0u) { m = samplePainted(g, k); }
-      let painted = smoothstep(0.0, 2.0 * OUTLINE_AT, m);
-      // a ~1.5 px line along the m = OUTLINE_AT contour, its width set by how fast m changes per pixel
-      let edge = 1.0 - smoothstep(0.5, 1.0, abs(m - OUTLINE_AT) / max(fwidth(m), 1e-6));
+      if (slot > 0u) {
+        if (sdf) { m = sampleParam(g, slot) - view.paramBase[k]; } else { m = samplePainted(g, k); }
+      }
+      let fw = max(fwidth(m), 1e-6);
+      var painted = smoothstep(0.0, 2.0 * OUTLINE_AT, m);
+      var level = OUTLINE_AT;
+      if (sdf) {
+        painted = 1.0 - smoothstep(-0.5, 0.5, m);
+        level = 0.0;
+      }
+      if (slot == 0u) { painted = 0.0; }
+      // a ~1.5 px line along the contour, its width set by how fast m changes per pixel
+      let edge = select(0.0, 1.0 - smoothstep(0.5, 1.0, abs(m - level) / fw), slot > 0u);
       var lc = vec3<f32>(1.0, 0.35, 0.3);
       if (k == 1u) { lc = vec3<f32>(0.35, 1.0, 0.45); }
       if (k == 2u) { lc = vec3<f32>(0.4, 0.6, 1.0); }
+      if (k == 3u) { lc = vec3<f32>(1.0, 0.7, 0.25); }
       col = mix(col, lc, 0.22 * painted);
       col = mix(col, lc, 0.85 * edge);
     }

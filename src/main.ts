@@ -1,6 +1,6 @@
 import './style.css';
 import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type ViewOptions } from './sim';
-import { ABSORB_GAMMA, buildPanel, defaultSettings, fmt, REFLECT_V, TOOLS, type RuleChoice, type Settings } from './ui';
+import { buildPanel, defaultSettings, fmt, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
 import { StampLibrary, newStampId, stampThumbnail, transformStamp, type Stamp } from './stamps';
 import { Overlay, type Ghost } from './overlay';
@@ -171,7 +171,8 @@ async function init() {
     await selectRule(`user:${u.id}`);
   }
 
-  const paintValues = () => rule.paintable.map((n) => s.paint[n] ?? globals[n]);
+  // (wall distance fields get -1e38: the Params brush and Fill all leave them alone)
+  const paintValues = () => rule.paintable.map((n) => (rule.params.find((p) => p.name === n)?.distance ? -1e38 : s.paint[n] ?? globals[n]));
   const restOf = (name: string) => rule.rest[rule.reagents.indexOf(name)] ?? 0;
   const paramFallback = (name: string) => (name === 'wall' ? 0 : s.paint[name] ?? globals[name] ?? 0);
 
@@ -290,7 +291,11 @@ async function init() {
       imp = await loadBundled(sc.rule.slice(8));
       r = imp.rule;
     }
-    if (sc.paintable) r = { ...r, paintable: sc.paintable };
+    // a scene's paintable list keeps the rule's wall distance fields (drawn with the Wall tool)
+    if (sc.paintable) {
+      const base = r;
+      r = { ...r, paintable: [...sc.paintable, ...base.paintable.filter((n) => base.params.find((p) => p.name === n)?.distance && !sc.paintable!.includes(n))] };
+    }
     if (sc.initial) r = { ...r, initial: sc.initial };
     const size = sc.size ? { width: sc.size, height: sc.size } : r.size;
     const ok = await applyRule(r, { field: 'initial', id, globals: { ...defaultGlobals(r), ...sc.globals }, size, image: imp?.image, warnings: imp?.warnings });
@@ -712,7 +717,7 @@ async function init() {
       return;
     }
     drag = { x, y, alt };
-    strokes.push(toBrush(x, y, x, y, alt));
+    strokes.push(...toBrush(x, y, x, y, alt));
   });
   canvas.addEventListener('pointermove', (e) => {
     const [x, y] = toGrid(e);
@@ -727,7 +732,7 @@ async function init() {
       return;
     }
     if (!drag) return;
-    strokes.push(toBrush(drag.x, drag.y, x, y, drag.alt));
+    strokes.push(...toBrush(drag.x, drag.y, x, y, drag.alt));
     drag.x = x;
     drag.y = y;
   });
@@ -736,14 +741,14 @@ async function init() {
     if (shapeDrag) {
       const d = shapeDrag;
       shapeDrag = null;
-      if (d.kind === 'line') strokes.push(toBrush(d.x0, d.y0, d.x1, d.y1, d.alt));
+      if (d.kind === 'line') strokes.push(...toBrush(d.x0, d.y0, d.x1, d.y1, d.alt));
       else {
         // a ring of short segments round the centre, about 2 cells each
         const R = Math.hypot(d.x1 - d.x0, d.y1 - d.y0);
         const n = Math.max(12, Math.ceil((2 * Math.PI * R) / 2));
         for (let i = 0; i < n; i++) {
           const a0 = (2 * Math.PI * i) / n, a1 = (2 * Math.PI * (i + 1)) / n;
-          strokes.push(toBrush(d.x0 + R * Math.cos(a0), d.y0 + R * Math.sin(a0), d.x0 + R * Math.cos(a1), d.y0 + R * Math.sin(a1), d.alt));
+          strokes.push(...toBrush(d.x0 + R * Math.cos(a0), d.y0 + R * Math.sin(a0), d.x0 + R * Math.cos(a1), d.y0 + R * Math.sin(a1), d.alt));
         }
       }
       return;
@@ -776,7 +781,8 @@ async function init() {
     ui.sync();
   }
 
-  function toBrush(ax: number, ay: number, bx: number, by: number, alt: boolean): BrushStroke {
+  /** The brush strokes for a segment of the current tool (cutting walls makes one per wall distance field). */
+  function toBrush(ax: number, ay: number, bx: number, by: number, alt: boolean): BrushStroke[] {
     let mode: BrushMode;
     switch (s.tool) {
       case 'erase': mode = BrushMode.Erase; break;
@@ -785,25 +791,24 @@ async function init() {
       case 'unwall': mode = alt ? BrushMode.Wall : BrushMode.Unwall; break;
       default: mode = alt ? BrushMode.Erase : BrushMode.Seed; break;
     }
-    // wave media: the Wall tool paints reflecting walls (a hard band of high V, clearing the wave there) or
-    // absorbing ones (damping gamma, graded by the brush falloff so it doesn't reflect); unwalling restores the global value
+    // wave media: the Wall tool draws reflecting or absorbing walls into the rule's wall distance fields
+    // (SDF union; Unwall or right-drag cuts them out); the rule turns distance into potential or damping
     const names = layoutOf(rule).paramNames;
-    const target = s.wallsReflect && names.includes('V') ? 'V' : s.wallsAbsorb && names.includes('gamma') ? 'gamma' : null;
-    if ((s.tool === 'wall' || s.tool === 'unwall') && target) {
-      const up = (s.tool === 'wall') !== alt, slot = names.indexOf(target);
-      const paint = paintValues();
-      paint[slot - 1] = up ? (target === 'V' ? REFLECT_V : ABSORB_GAMMA) : globals[target];
-      const graded = up && target === 'gamma';
-      // absorbing walls spread over twice the brush radius: more damping, gentler edges (lab/absorb-wall.ts)
-      // reflecting walls ramp up over their outer 3 cells, so the display can draw their edge as a smooth curve
-      const r = (s.radius / cellScale) * (graded ? 2 : 1);
-      return { ax, ay, bx, by, mode: BrushMode.SetParam, radius: r, strength: 1, hardness: graded ? 0 : Math.max(0, 1 - 3 / r), paint, slot, clear: up && target === 'V', base: globals[target] };
+    const field = s.wallsReflect && names.includes('reflect_d') ? 'reflect_d' : s.wallsAbsorb && names.includes('absorb_d') ? 'absorb_d' : null;
+    if ((s.tool === 'wall' || s.tool === 'unwall') && field) {
+      const up = (s.tool === 'wall') !== alt;
+      const sdf = (f: string): BrushStroke => ({
+        ax, ay, bx, by, mode: BrushMode.Sdf, radius: s.radius / cellScale, strength: 1, hardness: 1, paint: paintValues(),
+        slot: names.indexOf(f), clear: up && f === 'reflect_d', base: up ? 1 : -1,
+      });
+      // drawing adds the ticked kind of wall; cutting removes both kinds
+      return up ? [sdf(field)] : ['reflect_d', 'absorb_d'].filter((f) => names.includes(f)).map(sdf);
     }
-    return {
+    return [{
       ax, ay, bx, by, mode,
       radius: s.radius / cellScale, strength: s.strength, hardness: s.hardness,
       paint: paintValues(),
-    };
+    }];
   }
 
   // --- keyboard
@@ -841,7 +846,7 @@ async function init() {
     if (e.key === 'q' || e.key === 'e' || e.key === 'x') stampPanel.render();
   });
 
-  const colourRank = (n: string) => (n === 'gamma' ? 0 : n === 'V' ? 1 : 2);
+  const colourRank = (n: string) => ['absorb_d', 'reflect_d', 'V', 'gamma'].indexOf(n) >>> 0;
 
   function viewOptions(): ViewOptions {
     return {
@@ -856,11 +861,11 @@ async function init() {
       tintStrength: s.tintStrength,
       hueShape: s.hueShape,
       hueOffset: s.hueOffset,
-      // param map / outline colours go red, green, blue in this order: damping (gamma, absorbing) red and
-      // the potential (V, reflecting) green whatever order a scene lists them in
-      paramSlots: [...rule.paintable].sort((a, b) => colourRank(a) - colourRank(b)).slice(0, 3).map((n) => {
+      // param map / outline colours go red, green, blue, orange in this order: absorbing walls red, reflecting
+      // walls green, potential V blue, damping gamma orange, whatever order a scene lists them in
+      paramSlots: [...rule.paintable].sort((a, b) => colourRank(a) - colourRank(b)).slice(0, 4).map((n) => {
         const spec = rule.params.find((p) => p.name === n)!;
-        return { slot: layoutOf(rule).paramNames.indexOf(n), min: spec.min, max: spec.max, base: globals[n] };
+        return { slot: layoutOf(rule).paramNames.indexOf(n), min: spec.min, max: spec.max, distance: !!spec.distance, base: spec.distance ? globals.wall_grow ?? 0 : globals[n] };
       }),
     };
   }
