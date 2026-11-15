@@ -1,0 +1,428 @@
+{
+  "name": "Schrödinger Bloch oscillations",
+  "description": "The waveguide array tilted: a steady push to the right (V falls by 1.676 across the field). In free space the packet would accelerate away. In the periodic channels it moves right, slows, turns round and comes back, oscillating in place forever: Bloch oscillations, because momentum in a lattice is cyclic, so a steady force sweeps the wave round its band and back. Period about 1200 steps. Seen in cold atoms in optical lattices and in electrons in superlattices.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "globals": {
+    "g": 0,
+    "s": 0
+  },
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1.5
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.01171875,
+        "y0": 0,
+        "x1": 0.05078125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.07421875,
+        "y0": 0,
+        "x1": 0.11328125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.13671875,
+        "y0": 0,
+        "x1": 0.17578125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.19921875,
+        "y0": 0,
+        "x1": 0.23828125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.26171875,
+        "y0": 0,
+        "x1": 0.30078125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.32421875,
+        "y0": 0,
+        "x1": 0.36328125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.38671875,
+        "y0": 0,
+        "x1": 0.42578125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.44921875,
+        "y0": 0,
+        "x1": 0.48828125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.51171875,
+        "y0": 0,
+        "x1": 0.55078125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.57421875,
+        "y0": 0,
+        "x1": 0.61328125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.63671875,
+        "y0": 0,
+        "x1": 0.67578125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.69921875,
+        "y0": 0,
+        "x1": 0.73828125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.76171875,
+        "y0": 0,
+        "x1": 0.80078125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.82421875,
+        "y0": 0,
+        "x1": 0.86328125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.88671875,
+        "y0": 0,
+        "x1": 0.92578125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.94921875,
+        "y0": 0,
+        "x1": 0.98828125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "ramp",
+        "from": 1.676,
+        "to": 0,
+        "axis": "x"
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 0.012,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.988,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 22,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.5,
+        "r": 0.275
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 22,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.5,
+        "r": 0.275
+      }
+    }
+  ],
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        232,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        240,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        248,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 1,
+    "tint": "p"
+  }
+}

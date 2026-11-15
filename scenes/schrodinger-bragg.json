@@ -1,0 +1,1636 @@
+{
+  "name": "Schrödinger Bragg crystal",
+  "description": "Linear Schrödinger equation: a packet fired into a crystal, a slab of posts (V = 3) every 16 cells. Because the posts are periodic, scattered waves only add up in particular directions, so the packet leaves as a few sharp beams (Bragg diffraction, how X-rays reveal crystal structure) rather than spraying everywhere. Try: change the packet speed to move the beams.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 4,
+  "globals": {
+    "g": 0,
+    "s": 0
+  },
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.03125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.03125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.03125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.03125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.03125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.03125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.09375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.09375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.09375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.09375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.09375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.09375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.15625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.15625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.15625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.15625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.15625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.15625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.21875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.21875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.21875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.21875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.21875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.21875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.28125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.28125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.28125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.28125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.28125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.28125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.34375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.34375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.34375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.34375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.34375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.34375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.40625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.40625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.40625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.40625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.40625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.40625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.46875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.46875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.46875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.46875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.46875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.46875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.53125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.53125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.53125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.53125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.53125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.53125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.59375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.59375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.59375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.59375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.59375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.59375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.65625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.65625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.65625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.65625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.65625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.65625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.71875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.71875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.71875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.71875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.71875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.71875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.78125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.78125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.78125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.78125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.78125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.78125,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.84375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.84375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.84375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.84375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.84375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.84375,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.90625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.90625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.90625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.90625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.90625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.90625,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.96875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.96875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.625,
+        "cy": 0.96875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.96875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.96875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 3,
+        "edge": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.96875,
+        "r": 0.01171875
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 14,
+        "kx": 0.55,
+        "ky": 0.18,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.22,
+        "cy": 0.5,
+        "r": 0.17500000000000002
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 14,
+        "kx": 0.55,
+        "ky": 0.18,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.22,
+        "cy": 0.5,
+        "r": 0.17500000000000002
+      }
+    }
+  ],
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        232,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        232,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        240,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        240,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        248,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        248,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 0.3,
+    "tint": "p"
+  }
+}

@@ -1,0 +1,114 @@
+{
+  "name": "Schrödinger harmonic trap",
+  "description": "Linear Schrödinger equation in a bowl-shaped potential V = ½ω²r² (ω = 0.1). Left: a packet the exact width of the ground state, pulled to one side, swings back and forth through the centre forever without spreading: a coherent state, the most classical a quantum state gets. Top: a squeezed packet, narrower than the ground state, breathes (spreads and refocuses twice per swing) as it swings. Where they cross they interfere. Period about 1260 steps.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "globals": {
+    "g": 0,
+    "s": 0
+  },
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "bowl",
+        "value": 11.52
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.5,
+        "r": 0.75
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 12.65,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.5,
+        "r": 0.15812500000000002
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 12.65,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.5,
+        "r": 0.15812500000000002
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 5.75,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.25,
+        "r": 0.07187500000000001
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 5.75,
+        "kx": 0.0,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.25,
+        "r": 0.07187500000000001
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 1,
+    "tint": "p"
+  }
+}

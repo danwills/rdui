@@ -1,0 +1,241 @@
+{
+  "name": "Schrödinger double slit",
+  "description": "Linear Schrödinger equation (g = 0): a single wave packet meets a wall with two slits. Each part of the wave that gets through spreads out, and where the two overlap they interfere: bright and dark fringes fan out on the far side, exactly as for light or electrons. The wall is V = 30 (far above the packet's energy of about 3); the border absorbs. Try: paint V high over one slit to close it and the fringes vanish, leaving one broad spot; change the packet speed (kx) to change the fringe spacing.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 4,
+  "globals": {
+    "g": 0,
+    "s": 0
+  },
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.44,
+        "y0": 0,
+        "x1": 0.46,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.44,
+        "y0": 0.41,
+        "x1": 0.46,
+        "y1": 0.45
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.44,
+        "y0": 0.55,
+        "x1": 0.46,
+        "y1": 0.59
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 20,
+        "kx": 0.9,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.22,
+        "cy": 0.5,
+        "r": 0.2
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 20,
+        "kx": 0.9,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.22,
+        "cy": 0.5,
+        "r": 0.2
+      }
+    }
+  ],
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        232,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        232,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        240,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        240,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        248,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        248,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 0.25,
+    "tint": "p"
+  }
+}

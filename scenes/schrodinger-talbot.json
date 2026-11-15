@@ -1,0 +1,1048 @@
+{
+  "name": "Schrödinger Talbot kaleidoscope",
+  "description": "Linear Schrödinger equation, no potential: a square lattice of 64 tiny packets at rest. Each spreads and they all interfere, filling the field with ever finer patterns, and yet the whole lattice re-forms exactly after the Talbot time (about 407 steps), shifted by half a cell at half that time, with copies at double and quadruple density at simple fractions in between: the quantum carpet, or Talbot effect (Talbot, 1836, with light through a grating).",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 2,
+  "globals": {
+    "g": 0,
+    "s": 0
+  },
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.0625,
+        "cy": 0.0625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.1875,
+        "cy": 0.0625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3125,
+        "cy": 0.0625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.4375,
+        "cy": 0.0625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.0625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.0625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.0625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.9375,
+        "cy": 0.0625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.0625,
+        "cy": 0.1875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.1875,
+        "cy": 0.1875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3125,
+        "cy": 0.1875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.4375,
+        "cy": 0.1875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.1875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.1875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.1875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.9375,
+        "cy": 0.1875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.0625,
+        "cy": 0.3125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.1875,
+        "cy": 0.3125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3125,
+        "cy": 0.3125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.4375,
+        "cy": 0.3125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.3125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.3125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.3125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.9375,
+        "cy": 0.3125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.0625,
+        "cy": 0.4375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.1875,
+        "cy": 0.4375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3125,
+        "cy": 0.4375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.4375,
+        "cy": 0.4375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.4375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.4375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.4375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.9375,
+        "cy": 0.4375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.0625,
+        "cy": 0.5625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.1875,
+        "cy": 0.5625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3125,
+        "cy": 0.5625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.4375,
+        "cy": 0.5625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.5625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.5625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.5625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.9375,
+        "cy": 0.5625,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.0625,
+        "cy": 0.6875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.1875,
+        "cy": 0.6875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3125,
+        "cy": 0.6875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.4375,
+        "cy": 0.6875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.6875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.6875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.6875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.9375,
+        "cy": 0.6875,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.0625,
+        "cy": 0.8125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.1875,
+        "cy": 0.8125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3125,
+        "cy": 0.8125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.4375,
+        "cy": 0.8125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.8125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.8125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.8125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.9375,
+        "cy": 0.8125,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.0625,
+        "cy": 0.9375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.1875,
+        "cy": 0.9375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3125,
+        "cy": 0.9375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.4375,
+        "cy": 0.9375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5625,
+        "cy": 0.9375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.6875,
+        "cy": 0.9375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8125,
+        "cy": 0.9375,
+        "r": 0.0390625
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.5,
+        "sigma": 2.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.9375,
+        "cy": 0.9375,
+        "r": 0.0390625
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 0.5,
+    "tint": "p"
+  }
+}

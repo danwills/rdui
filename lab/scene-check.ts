@@ -4,7 +4,7 @@ import { STARTER_STAMPS } from '../src/stamps';
 import { makeLab, saveFrame, log } from './lab';
 import type { Scene } from '../src/scenes';
 
-export default async function (cfg: { scene: string; steps: number; every: number; reagent: string; frames?: boolean; tint?: string; tlo?: number; thi?: number }) {
+export default async function (cfg: { tag?: string; scene: string; steps: number; every: number; reagent: string; frames?: boolean; tint?: string; tlo?: number; thi?: number }) {
   const sc: Scene = await (await fetch(`/scenes/${cfg.scene}.json`)).json();
   const base = R.BUILTIN_RULES[+sc.rule.split(':')[1]];
   const rule = { ...base, ...(sc.paintable ? { paintable: sc.paintable } : {}), ...(sc.initial ? { initial: sc.initial } : {}) };
@@ -28,7 +28,7 @@ export default async function (cfg: { scene: string; steps: number; every: numbe
       const ti = cfg.tint ? lab.layout.reagents.indexOf(cfg.tint) : undefined;
       const v = sc.view ?? {}, ri = lab.layout.reagents.indexOf(v.reagent ?? (lab.layout.reagents.includes('b') ? 'b' : rule.view.reagent));
       const vt = v.tint ? lab.layout.reagents.indexOf(v.tint) : ti;
-      await saveFrame(`f${String(n++).padStart(4, '0')}.png`, lab, { ri, lo: v.low ?? rule.view.low, hi: v.high ?? rule.view.high, ti: vt, tlo: v.tintLow ?? cfg.tlo ?? 0, thi: v.tintHigh ?? cfg.thi ?? 1, boxes, caption: `${sc.name}  t=${t}  ${vals.join(' ')}`, outline: rule.membrane ? 'cell' : undefined });
+      await saveFrame(`${cfg.tag ? cfg.tag + '-' : ''}f${String(n++).padStart(4, '0')}.png`, lab, { ri, lo: v.low ?? rule.view.low, hi: v.high ?? rule.view.high, ti: vt, tlo: v.tintLow ?? cfg.tlo ?? 0, thi: v.tintHigh ?? cfg.thi ?? 1, boxes, caption: `${sc.name}  t=${t}  ${vals.join(' ')}`, outline: rule.membrane ? 'cell' : undefined });
     }
   }
 }

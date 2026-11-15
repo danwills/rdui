@@ -1,0 +1,279 @@
+{
+  "name": "Schrödinger tunnelling",
+  "description": "Linear Schrödinger equation: two identical packets, each with energy about 2, hit barriers of height V = 3, more than they have, so classically both bounce straight back. The top barrier is thin (2 cells): a fair part of the wave tunnels through. The bottom one is three times as thick (6 cells): tunnelling falls off exponentially with thickness and almost nothing gets through. The lanes are separated by a wall; the border absorbs. Try: lower a barrier's V below 2 and most of the packet passes over it.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 4,
+  "globals": {
+    "g": 0,
+    "s": 0
+  },
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.49,
+        "x1": 1,
+        "y1": 0.51
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 3
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.5,
+        "y0": 0.05,
+        "x1": 0.508,
+        "y1": 0.49
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 3
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.5,
+        "y0": 0.51,
+        "x1": 0.523,
+        "y1": 0.95
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 22,
+        "kx": 0.5,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.19
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 22,
+        "kx": 0.5,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.19
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 22,
+        "kx": 0.5,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.19
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 1.0,
+        "sigma": 22,
+        "kx": 0.5,
+        "ky": 0.0,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.19
+      }
+    }
+  ],
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        232,
+        256,
+        24
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        232,
+        0,
+        24,
+        256
+      ],
+      "values": {
+        "gamma": 0.02
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        240,
+        256,
+        16
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        240,
+        0,
+        16,
+        256
+      ],
+      "values": {
+        "gamma": 0.08
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        248,
+        256,
+        8
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        0,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    },
+    {
+      "rect": [
+        248,
+        0,
+        8,
+        256
+      ],
+      "values": {
+        "gamma": 0.3
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 0.4,
+    "tint": "p"
+  }
+}

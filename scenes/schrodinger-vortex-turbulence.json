@@ -1,0 +1,611 @@
+{
+  "name": "Schrödinger quantum turbulence",
+  "description": "Defocusing Schrödinger (a superfluid, g = −1, in a box) with 24 quantised vortices, 12 of each sign, scattered at random: quantum turbulence. Opposite pairs race off together, same-sign ones circle each other, and close opposite pairs can annihilate in a burst of sound waves. Tint shows the phase. Try: Restart, or erase new holes.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 16,
+  "globals": {
+    "g": -1,
+    "s": 0,
+    "timestep": 0.018
+  },
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "p",
+      "op": "overwrite",
+      "fill": {
+        "type": "vortices",
+        "amp": 1,
+        "core": 5.6,
+        "list": [
+          [
+            0.264,
+            0.54,
+            -1
+          ],
+          [
+            0.383,
+            0.594,
+            1
+          ],
+          [
+            0.613,
+            0.109,
+            -1
+          ],
+          [
+            0.062,
+            0.804,
+            1
+          ],
+          [
+            0.283,
+            0.261,
+            -1
+          ],
+          [
+            0.946,
+            0.473,
+            1
+          ],
+          [
+            0.803,
+            0.479,
+            -1
+          ],
+          [
+            0.625,
+            0.186,
+            1
+          ],
+          [
+            0.621,
+            0.831,
+            -1
+          ],
+          [
+            0.521,
+            0.717,
+            1
+          ],
+          [
+            0.732,
+            0.582,
+            -1
+          ],
+          [
+            0.321,
+            0.078,
+            1
+          ],
+          [
+            0.697,
+            0.841,
+            -1
+          ],
+          [
+            0.405,
+            0.771,
+            1
+          ],
+          [
+            0.45,
+            0.892,
+            -1
+          ],
+          [
+            0.841,
+            0.138,
+            1
+          ],
+          [
+            0.172,
+            0.245,
+            -1
+          ],
+          [
+            0.614,
+            0.321,
+            1
+          ],
+          [
+            0.507,
+            0.397,
+            -1
+          ],
+          [
+            0.821,
+            0.942,
+            1
+          ],
+          [
+            0.864,
+            0.562,
+            -1
+          ],
+          [
+            0.692,
+            0.24,
+            1
+          ],
+          [
+            0.13,
+            0.771,
+            -1
+          ],
+          [
+            0.419,
+            0.186,
+            1
+          ]
+        ],
+        "part": "cos"
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "q",
+      "op": "overwrite",
+      "fill": {
+        "type": "vortices",
+        "amp": 1,
+        "core": 5.6,
+        "list": [
+          [
+            0.264,
+            0.54,
+            -1
+          ],
+          [
+            0.383,
+            0.594,
+            1
+          ],
+          [
+            0.613,
+            0.109,
+            -1
+          ],
+          [
+            0.062,
+            0.804,
+            1
+          ],
+          [
+            0.283,
+            0.261,
+            -1
+          ],
+          [
+            0.946,
+            0.473,
+            1
+          ],
+          [
+            0.803,
+            0.479,
+            -1
+          ],
+          [
+            0.625,
+            0.186,
+            1
+          ],
+          [
+            0.621,
+            0.831,
+            -1
+          ],
+          [
+            0.521,
+            0.717,
+            1
+          ],
+          [
+            0.732,
+            0.582,
+            -1
+          ],
+          [
+            0.321,
+            0.078,
+            1
+          ],
+          [
+            0.697,
+            0.841,
+            -1
+          ],
+          [
+            0.405,
+            0.771,
+            1
+          ],
+          [
+            0.45,
+            0.892,
+            -1
+          ],
+          [
+            0.841,
+            0.138,
+            1
+          ],
+          [
+            0.172,
+            0.245,
+            -1
+          ],
+          [
+            0.614,
+            0.321,
+            1
+          ],
+          [
+            0.507,
+            0.397,
+            -1
+          ],
+          [
+            0.821,
+            0.942,
+            1
+          ],
+          [
+            0.864,
+            0.562,
+            -1
+          ],
+          [
+            0.692,
+            0.24,
+            1
+          ],
+          [
+            0.13,
+            0.771,
+            -1
+          ],
+          [
+            0.419,
+            0.186,
+            1
+          ]
+        ],
+        "part": "sin"
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 1,
+        "y1": 0.0234375
+      }
+    },
+    {
+      "chem": "p",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 1,
+        "y1": 0.0234375
+      }
+    },
+    {
+      "chem": "q",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 1,
+        "y1": 0.0234375
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.9765625,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.9765625,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.9765625,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 0.0234375,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 0.0234375,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 0.0234375,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.9765625,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.9765625,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.9765625,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "multiply",
+      "fill": {
+        "type": "ramp",
+        "from": 0,
+        "to": 1,
+        "axis": "x"
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.0234375,
+        "y0": 0,
+        "x1": 0.0546875,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "multiply",
+      "fill": {
+        "type": "ramp",
+        "from": 0,
+        "to": 1,
+        "axis": "x"
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.0234375,
+        "y0": 0,
+        "x1": 0.0546875,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "multiply",
+      "fill": {
+        "type": "ramp",
+        "from": 1,
+        "to": 0,
+        "axis": "x"
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.9453125,
+        "y0": 0,
+        "x1": 0.9765625,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "q",
+      "op": "multiply",
+      "fill": {
+        "type": "ramp",
+        "from": 1,
+        "to": 0,
+        "axis": "x"
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.9453125,
+        "y0": 0,
+        "x1": 0.9765625,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "p",
+      "op": "multiply",
+      "fill": {
+        "type": "ramp",
+        "from": 0,
+        "to": 1,
+        "axis": "y"
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.0234375,
+        "x1": 1,
+        "y1": 0.0546875
+      }
+    },
+    {
+      "chem": "q",
+      "op": "multiply",
+      "fill": {
+        "type": "ramp",
+        "from": 0,
+        "to": 1,
+        "axis": "y"
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.0234375,
+        "x1": 1,
+        "y1": 0.0546875
+      }
+    },
+    {
+      "chem": "p",
+      "op": "multiply",
+      "fill": {
+        "type": "ramp",
+        "from": 1,
+        "to": 0,
+        "axis": "y"
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.9453125,
+        "x1": 1,
+        "y1": 0.9765625
+      }
+    },
+    {
+      "chem": "q",
+      "op": "multiply",
+      "fill": {
+        "type": "ramp",
+        "from": 1,
+        "to": 0,
+        "axis": "y"
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.9453125,
+        "x1": 1,
+        "y1": 0.9765625
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 1.2,
+    "tint": "p"
+  }
+}

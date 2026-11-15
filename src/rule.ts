@@ -35,7 +35,17 @@ export type Fill =
    * (sigma in cells, k in radians per cell, relative to the centre), or its
    * sin part with part 'sin'. Covers the circle's r; elsewhere 0.
    */
-  | { type: 'packet'; amp: number; sigma: number; kx?: number; ky?: number; phase?: number; part?: 'cos' | 'sin' };
+  | { type: 'packet'; amp: number; sigma: number; kx?: number; ky?: number; phase?: number; part?: 'cos' | 'sin' }
+  /** On a circle: value·(d/r)², a parabolic bowl (0 at the centre, value at the rim). */
+  | { type: 'bowl'; value: number }
+  /** Linear from `from` to `to` across the shape's extent along `axis` (a rectangle's, or the whole field's). */
+  | { type: 'ramp'; from: number; to: number; axis?: 'x' | 'y' }
+  /**
+   * A uniform complex field amp·Π tanh(d_i/core)·e^{i·n_i·θ_i} with quantised
+   * vortices at (cx, cy) (normalized) of charge n; its real part, or with part
+   * 'sin' its imaginary part. Keep the net charge 0 on the wrapping field.
+   */
+  | { type: 'vortices'; amp: number; core: number; list: [number, number, number][]; part?: 'cos' | 'sin' };
 export type Shape =
   | { type: 'everywhere' }
   | { type: 'rectangle'; x0: number; y0: number; x1: number; y1: number } // normalized, y down
@@ -464,7 +474,7 @@ function shapeCells(shape: Shape, w: number, h: number, salt: number): number[] 
 function scaleOverlay(o: Overlay, cell: number): Overlay {
   const f = o.fill, sh = o.shape;
   const fill: Fill = f.type === 'packet' ? { ...f, sigma: f.sigma / cell, kx: (f.kx ?? 0) * cell, ky: (f.ky ?? 0) * cell }
-    : f.type === 'bump' ? { ...f, edge: (f.edge ?? 2) / cell } : f;
+    : f.type === 'bump' ? { ...f, edge: (f.edge ?? 2) / cell } : f.type === 'vortices' ? { ...f, core: f.core / cell } : f;
   const shape: Shape = sh.type === 'spots' ? { ...sh, minSize: Math.max(1, Math.round(sh.minSize / cell)), maxSize: Math.max(1, Math.round(sh.maxSize / cell)) } : sh;
   return { ...o, fill, shape };
 }
@@ -500,6 +510,9 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
         fill.type === 'constant' ? fill.value
         : fill.type === 'packet' ? packetValue(fill, pk, c % w, Math.floor(c / w))
         : fill.type === 'bump' ? (bump ? fill.value * 0.5 * (1 - Math.tanh((Math.hypot((c % w) + 0.5 - bump.cx, Math.floor(c / w) + 0.5 - bump.cy) - bump.r) / bump.e)) : fill.value)
+        : fill.type === 'bowl' ? bowlValue(fill.value, sh, c % w, Math.floor(c / w), w, h)
+        : fill.type === 'ramp' ? rampValue(fill, sh, c % w, Math.floor(c / w), w, h)
+        : fill.type === 'vortices' ? vortexValue(fill, c % w, Math.floor(c / w), w, h)
         : fill.low + Math.random() * (fill.high - fill.low);
       const k = c * stride + slot;
       switch (o.op) {
@@ -511,6 +524,38 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
     }
   }
   return { state, params };
+}
+
+function bowlValue(value: number, sh: Shape, x: number, y: number, w: number, h: number) {
+  if (sh.type !== 'circle') return value;
+  const r = sh.r * Math.max(w, h);
+  return value * ((x + 0.5 - sh.cx * w) ** 2 + (y + 0.5 - sh.cy * h) ** 2) / (r * r);
+}
+
+function rampValue(fill: { from: number; to: number; axis?: 'x' | 'y' }, sh: Shape, x: number, y: number, w: number, h: number) {
+  const along = fill.axis === 'y';
+  const u = along ? (y + 0.5) / h : (x + 0.5) / w;
+  const [lo, hi] = sh.type === 'rectangle' ? (along ? [sh.y0, sh.y1] : [sh.x0, sh.x1]) : [0, 1];
+  const t = Math.min(1, Math.max(0, (u - lo) / Math.max(hi - lo, 1e-9)));
+  return fill.from + (fill.to - fill.from) * t;
+}
+
+function vortexValue(fill: { amp: number; core: number; list: [number, number, number][]; part?: 'cos' | 'sin' }, x: number, y: number, w: number, h: number) {
+  let re = fill.amp, im = 0;
+  for (const [cx, cy, n] of fill.list) {
+    // the phase sums the vortex's nearby periodic images, so it wraps smoothly
+    // (for net charge 0); the core depth uses the nearest image
+    let th = 0, d = Infinity;
+    for (let iy = -2; iy <= 2; iy++) for (let ix = -2; ix <= 2; ix++) {
+      const dx = x + 0.5 - (cx + ix) * w, dy = y + 0.5 - (cy + iy) * h;
+      th += n * Math.atan2(dy, dx);
+      d = Math.min(d, Math.hypot(dx, dy));
+    }
+    const m = Math.tanh(d / fill.core);
+    const zr = m * Math.cos(th), zi = m * Math.sin(th);
+    [re, im] = [re * zr - im * zi, re * zi + im * zr];
+  }
+  return fill.part === 'sin' ? im : re;
 }
 
 /** Copy cells between layouts, matching reagents/params by name; missing ones get `fallback`. */
@@ -1320,8 +1365,10 @@ delta_P_F = (Fx - P_F)/timestep;`,
  * lives on its own food a1..a4 (fed at its own F), so there is no single
  * ranking by who survives on least food. They compete for space instead:
  * where species overlap each raises the others' death rate (interfere · b_i ·
- * others). An established patch holds its ground and invaders must win at the
- * border. b (total) and P_F (local mean feed) are for display.
+ * others), and each species' food dip (1 − a_i), which spreads round its
+ * pattern, raises the others' death rate too (territory), so a sparse pattern
+ * can hold the ground between its spots. An established patch holds its ground
+ * and invaders must win at the border. b (total) and P_F (local mean feed) are for display.
  */
 export const GS_NICHES: RuleDef = {
   name: 'Gray-Scott Niches',
@@ -1339,19 +1386,22 @@ export const GS_NICHES: RuleDef = {
       { name: `F${i + 1}`, value: F, min: 0, max: 0.1 },
       { name: `k${i + 1}`, value: k, min: 0.03, max: 0.075 },
     ]),
-    { name: 'interfere', value: 1, min: 0, max: 4 },
+    { name: 'interfere', value: 0.3, min: 0, max: 4 },
+    { name: 'territory', value: 0, min: 0, max: 1 },
   ],
   paintable: [],
   explore: ['interfere', 'F1', 'F2', 'F3', 'F4'],
   formula: `float bt = b1 + b2 + b3 + b4;
+// each species' food dip (1 - a_i) spreads round it and marks its ground against the others
+float dt_ = (1.0 - a1) + (1.0 - a2) + (1.0 - a3) + (1.0 - a4);
 delta_a1 = D_a*laplacian_a1 - a1*b1*b1 + F1*(1.0 - a1);
 delta_a2 = D_a*laplacian_a2 - a2*b2*b2 + F2*(1.0 - a2);
 delta_a3 = D_a*laplacian_a3 - a3*b3*b3 + F3*(1.0 - a3);
 delta_a4 = D_a*laplacian_a4 - a4*b4*b4 + F4*(1.0 - a4);
-delta_b1 = D_b*laplacian_b1 + a1*b1*b1 - (F1 + k1 + interfere*(bt - b1))*b1;
-delta_b2 = D_b*laplacian_b2 + a2*b2*b2 - (F2 + k2 + interfere*(bt - b2))*b2;
-delta_b3 = D_b*laplacian_b3 + a3*b3*b3 - (F3 + k3 + interfere*(bt - b3))*b3;
-delta_b4 = D_b*laplacian_b4 + a4*b4*b4 - (F4 + k4 + interfere*(bt - b4))*b4;
+delta_b1 = D_b*laplacian_b1 + a1*b1*b1 - (F1 + k1 + interfere*(bt - b1) + territory*(dt_ - (1.0 - a1)))*b1;
+delta_b2 = D_b*laplacian_b2 + a2*b2*b2 - (F2 + k2 + interfere*(bt - b2) + territory*(dt_ - (1.0 - a2)))*b2;
+delta_b3 = D_b*laplacian_b3 + a3*b3*b3 - (F3 + k3 + interfere*(bt - b3) + territory*(dt_ - (1.0 - a3)))*b3;
+delta_b4 = D_b*laplacian_b4 + a4*b4*b4 - (F4 + k4 + interfere*(bt - b4) + territory*(dt_ - (1.0 - a4)))*b4;
 delta_b = (bt - b)/timestep;
 delta_P_F = ((F1*b1 + F2*b2 + F3*b3 + F4*b4)/(bt + 1e-4) - P_F)/timestep;`,
   rest: [1, 1, 1, 1, 0, 0, 0, 0, 0, 0],

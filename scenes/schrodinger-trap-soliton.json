@@ -1,0 +1,114 @@
+{
+  "name": "Schrödinger soliton in a trap",
+  "description": "Self-focusing Schrödinger (g = 1, saturable) in a bowl potential (ω = 0.05): two solitons launched sideways orbit the centre like planets, held together by their own nonlinearity so they don't spread, and collide each half orbit, passing through or bouncing depending on their phase.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "globals": {
+    "g": 1,
+    "s": 0.5
+  },
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "bowl",
+        "value": 2.88
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.5,
+        "r": 0.75
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.0,
+        "ky": -0.16,
+        "phase": 0.0,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.5,
+        "r": 0.08750000000000001
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.0,
+        "ky": -0.16,
+        "phase": 0.0,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.5,
+        "r": 0.08750000000000001
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.0,
+        "ky": 0.16,
+        "phase": 1.5,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.5,
+        "r": 0.08750000000000001
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0.0,
+        "ky": 0.16,
+        "phase": 1.5,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.5,
+        "r": 0.08750000000000001
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 4,
+    "tint": "p"
+  }
+}

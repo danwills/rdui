@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+"""Write the Schrödinger example scenes (builtin:8, Saturable Schrödinger) to scenes/.
+
+Units: dx = 0.25 length per cell, timestep 0.05. A packet with kx (radians per
+cell) moves at 0.8·kx cells per step and has energy (kx/dx)²/2. g = 0 is the
+linear Schrödinger equation; g > 0 focusing, g < 0 defocusing (a quantum fluid).
+
+  python3 lab/make-schrodinger-scenes.py
+"""
+import json, math, random, os
+
+N = 256
+OUT = os.path.join(os.path.dirname(__file__), '..', 'scenes')
+
+
+def absorb(sides='lrtb'):
+    """Graded absorbing border (gamma) on the given sides."""
+    paint = []
+    for w, g in ((24, 0.02), (16, 0.08), (8, 0.3)):
+        if 't' in sides: paint.append({'rect': [0, 0, N, w], 'values': {'gamma': g}})
+        if 'b' in sides: paint.append({'rect': [0, N - w, N, w], 'values': {'gamma': g}})
+        if 'l' in sides: paint.append({'rect': [0, 0, w, N], 'values': {'gamma': g}})
+        if 'r' in sides: paint.append({'rect': [N - w, 0, w, N], 'values': {'gamma': g}})
+    return paint
+
+
+def rect(chem, value, x0, y0, x1, y1, op='overwrite'):
+    return {'chem': chem, 'op': op, 'fill': {'type': 'constant', 'value': value}, 'shape': {'type': 'rectangle', 'x0': x0, 'y0': y0, 'x1': x1, 'y1': y1}}
+
+
+def packet(cx, cy, sigma, amp=1.0, kx=0.0, ky=0.0, r=None, phase=0.0):
+    """A moving Gaussian packet: both parts of ψ."""
+    r = r if r is not None else min(0.45, 3.2 * sigma / N)
+    shape = {'type': 'circle', 'cx': cx, 'cy': cy, 'r': r}
+    return [{'chem': c, 'op': 'add', 'fill': {'type': 'packet', 'amp': amp, 'sigma': sigma, 'kx': kx, 'ky': ky, 'phase': phase, 'part': part}, 'shape': shape}
+            for c, part in (('p', 'cos'), ('q', 'sin'))]
+
+
+def scene(fname, name, description, globals_, initial, paint=None, view=None, steps=4, size=N):
+    sc = {'name': name, 'description': description, 'rule': 'builtin:8', 'size': size, 'start': 'initial', 'stepsPerFrame': steps,
+          'globals': globals_, 'paintable': ['V', 'gamma'], 'initial': initial}
+    if paint: sc['paint'] = paint
+    sc['view'] = view or {'reagent': 'n', 'low': 0, 'high': 1, 'tint': 'p'}
+    with open(os.path.join(OUT, fname + '.json'), 'w') as f:
+        json.dump(sc, f, indent=2, ensure_ascii=False)
+    print('wrote', fname)
+
+
+LIN = {'g': 0, 's': 0}
+
+# --- double slit
+scene('schrodinger-double-slit', 'Schrödinger double slit',
+      'Linear Schrödinger equation (g = 0): a single wave packet meets a wall with two slits. Each part of the wave that gets through '
+      'spreads out, and where the two overlap they interfere: bright and dark fringes fan out on the far side, exactly as for light or '
+      'electrons. The wall is V = 30 (far above the packet\'s energy of about 3); the border absorbs. Try: paint V high over one slit '
+      'to close it and the fringes vanish, leaving one broad spot; change the packet speed (kx) to change the fringe spacing.',
+      LIN,
+      [rect('V', 30, 0.44, 0, 0.46, 1), rect('V', 0, 0.44, 0.41, 0.46, 0.45), rect('V', 0, 0.44, 0.55, 0.46, 0.59)]
+      + packet(0.22, 0.5, 20, kx=0.9, r=0.2),
+      absorb(), {'reagent': 'n', 'low': 0, 'high': 0.25, 'tint': 'p'})
+
+# --- tunnelling
+scene('schrodinger-tunnelling', 'Schrödinger tunnelling',
+      'Linear Schrödinger equation: two identical packets, each with energy about 2, hit barriers of height V = 3, more than they '
+      'have, so classically both bounce straight back. The top barrier is thin (2 cells): a fair part of the wave tunnels through. '
+      'The bottom one is three times as thick (6 cells): tunnelling falls off exponentially with thickness and almost nothing gets '
+      'through. The lanes are separated by a wall; the border absorbs. Try: lower a barrier\'s V below 2 and most of the packet '
+      'passes over it.',
+      LIN,
+      [rect('V', 30, 0, 0.49, 1, 0.51), rect('V', 3, 0.5, 0.05, 0.508, 0.49), rect('V', 3, 0.5, 0.51, 0.523, 0.95)]
+      + packet(0.27, 0.27, 22, kx=0.5, r=0.19) + packet(0.27, 0.73, 22, kx=0.5, r=0.19),
+      absorb(), {'reagent': 'n', 'low': 0, 'high': 0.4, 'tint': 'p'})
+
+# --- Anderson localisation
+def anderson(fname, disorder, label, sigma=4):
+    scene(fname, 'Schrödinger Anderson localisation' + label,
+          'Linear Schrödinger equation: two identical packets start at rest. The bottom one spreads into clear space and keeps spreading '
+          'until the border absorbs it. The top one sits in a random potential: the waves it sends out scatter back off the disorder and '
+          'interfere so as to cancel the outward flow, and it stops spreading, held in place with no walls around it. This is Anderson '
+          'localisation (Nobel 1977), why disorder can turn a metal into an insulator. A wall separates the halves. Try: Restart a few '
+          'times (the disorder changes each time).',
+          LIN, disorder + [rect('V', 0, 0, 0.49, 1, 1), rect('V', 30, 0, 0.49, 1, 0.51), rect('V', 30, 0, 0, 1, 0.01), rect('V', 30, 0, 0.99, 1, 1)]
+          + packet(0.5, 0.25, sigma, amp=1.5) + packet(0.5, 0.75, sigma, amp=1.5),
+          absorb('lr'), {'reagent': 'n', 'low': 0, 'high': 0.05, 'tint': 'p'}, steps=16)
+
+
+
+
+def speckle(amp, count, radius, seed):
+    """Smooth random potential in the top half: soft bumps of random sign, about `radius` cells across."""
+    rnd = random.Random(seed)
+    return [{'chem': 'V', 'op': 'add', 'fill': {'type': 'bump', 'value': round(rnd.choice((-1, 1)) * amp * rnd.uniform(0.5, 1), 3), 'edge': radius / 2},
+             'shape': {'type': 'circle', 'cx': round(rnd.random(), 4), 'cy': round(rnd.uniform(0.02, 0.47), 4), 'r': radius / N}} for _ in range(count)]
+
+
+for amp in (0.5, 1, 2):
+    anderson(f'schrodinger-anderson-{amp}', speckle(amp, 300, 8, 11), f' {amp}', sigma=10)
+
+# --- quantum fluid vortices (defocusing: g < 0)
+# a uniform fluid needs timestep < 2π/k_max² ≈ 0.02 here (k_max² = 2(π/dx)² on the diagonal), or split-step slowly goes unstable
+FLUID = {'g': -1, 's': 0, 'timestep': 0.018}
+
+
+def fluid(vortices, core=5.6):   # √2 × the healing length (1, = 4 cells)
+    """A box-trapped fluid: hard walls round the edge (empty inside them) keep the seam where the
+    imprinted phase wraps out of the fluid, so it doesn't radiate sound."""
+    out = [{'chem': c, 'op': 'overwrite', 'fill': {'type': 'vortices', 'amp': 1, 'core': core, 'list': vortices, 'part': part}, 'shape': {'type': 'everywhere'}}
+           for c, part in (('p', 'cos'), ('q', 'sin'))]
+    b, e = 6 / N, 14 / N
+    for x0, y0, x1, y1 in ((0, 0, 1, b), (0, 1 - b, 1, 1), (0, 0, b, 1), (1 - b, 0, 1, 1)):
+        out += [rect('V', 30, x0, y0, x1, y1), rect('p', 0, x0, y0, x1, y1), rect('q', 0, x0, y0, x1, y1)]
+    # fade the fluid in from each wall (a sharp edge rings with short waves that never die away)
+    for axis, lo, hi, frm, to in (('x', b, e, 0, 1), ('x', 1 - e, 1 - b, 1, 0), ('y', b, e, 0, 1), ('y', 1 - e, 1 - b, 1, 0)):
+        shape = {'type': 'rectangle', 'x0': lo, 'y0': 0, 'x1': hi, 'y1': 1} if axis == 'x' else {'type': 'rectangle', 'x0': 0, 'y0': lo, 'x1': 1, 'y1': hi}
+        out += [{'chem': c, 'op': 'multiply', 'fill': {'type': 'ramp', 'from': frm, 'to': to, 'axis': axis}, 'shape': shape} for c in ('p', 'q')]
+    return out
+
+
+scene('schrodinger-vortices', 'Schrödinger quantum vortices',
+      'Defocusing Schrödinger (g = −1, the Gross-Pitaevskii equation of a superfluid such as a Bose-Einstein condensate): a uniform '
+      'fluid in a box with quantised vortices, holes where the phase winds once round (tint shows the phase). Left: a vortex and an '
+      'antivortex, which travel together in a straight line. Right: two same-sign pairs, which orbit round each other in opposite '
+      'directions. Vortices can\'t be made or destroyed one at a time, only in opposite pairs. Try: erase a hole into the fluid.',
+      FLUID,
+      fluid([[0.22, 0.42, 1], [0.22, 0.58, -1], [0.62, 0.28, 1], [0.76, 0.28, 1], [0.62, 0.72, -1], [0.76, 0.72, -1]]),
+      None, {'reagent': 'n', 'low': 0, 'high': 1.2, 'tint': 'p'}, steps=8)
+
+random.seed(3)
+turb = []
+while len(turb) < 24:
+    x, y = random.uniform(0.05, 0.95), random.uniform(0.05, 0.95)
+    if all(math.hypot(x - a, y - b) > 0.07 for a, b, _ in turb): turb.append([round(x, 3), round(y, 3), 1 if len(turb) % 2 else -1])
+scene('schrodinger-vortex-turbulence', 'Schrödinger quantum turbulence',
+      'Defocusing Schrödinger (a superfluid, g = −1, in a box) with 24 quantised vortices, 12 of each sign, scattered at random: quantum '
+      'turbulence. Opposite pairs race off together, same-sign ones circle each other, and close opposite pairs can annihilate in a '
+      'burst of sound waves. Tint shows the phase. Try: Restart, or erase new holes.',
+      FLUID, fluid(turb), None, {'reagent': 'n', 'low': 0, 'high': 1.2, 'tint': 'p'}, steps=16)
+
+# --- harmonic trap
+W = 0.1                               # trap frequency
+R = 0.75                              # bowl circle (normalized), covers the corners
+VRIM = 0.5 * W * W * (R * N * 0.25) ** 2
+SIG0 = 1 / math.sqrt(W) / 0.25        # ground-state width in cells
+scene('schrodinger-harmonic-trap', 'Schrödinger harmonic trap',
+      f'Linear Schrödinger equation in a bowl-shaped potential V = ½ω²r² (ω = {W}). Left: a packet the exact width of the ground '
+      'state, pulled to one side, swings back and forth through the centre forever without spreading: a coherent state, the most '
+      'classical a quantum state gets. Top: a squeezed packet, narrower than the ground state, breathes (spreads and refocuses twice '
+      'per swing) as it swings. Where they cross they interfere. Period about 1260 steps.',
+      LIN,
+      [{'chem': 'V', 'op': 'overwrite', 'fill': {'type': 'bowl', 'value': round(VRIM, 3)}, 'shape': {'type': 'circle', 'cx': 0.5, 'cy': 0.5, 'r': R}}]
+      + packet(0.3, 0.5, round(SIG0, 2)) + packet(0.5, 0.25, round(SIG0 / 2.2, 2)),
+      None, {'reagent': 'n', 'low': 0, 'high': 1, 'tint': 'p'}, steps=8)
+
+W2 = 0.05
+scene('schrodinger-trap-soliton', 'Schrödinger soliton in a trap',
+      f'Self-focusing Schrödinger (g = 1, saturable) in a bowl potential (ω = {W2}): two solitons launched sideways orbit the centre '
+      'like planets, held together by their own nonlinearity so they don\'t spread, and collide each half orbit, passing through '
+      'or bouncing depending on their phase.',
+      {'g': 1, 's': 0.5},
+      [{'chem': 'V', 'op': 'overwrite', 'fill': {'type': 'bowl', 'value': round(0.5 * W2 * W2 * (R * N * 0.25) ** 2, 3)}, 'shape': {'type': 'circle', 'cx': 0.5, 'cy': 0.5, 'r': R}}]
+      + packet(0.3, 0.5, 7, amp=2.2, ky=-0.16) + packet(0.7, 0.5, 7, amp=2.2, ky=0.16, phase=1.5),
+      None, {'reagent': 'n', 'low': 0, 'high': 4, 'tint': 'p'}, steps=8)
+
+# --- periodic contraptions
+PER, CH = 16, 10                      # channel period and width (cells)
+
+
+def channels(v):
+    out = [rect('V', v, 0, 0, 1, 1)]
+    for i in range(N // PER):
+        out.append(rect('V', 0, (i * PER + 3) / N, 0, (i * PER + 3 + CH) / N, 1))
+    return out
+
+
+scene('schrodinger-waveguide-array', 'Schrödinger waveguide array',
+      f'Linear Schrödinger equation in a periodic potential: {N // PER} parallel channels (V = 0, {CH} cells wide) separated by low '
+      'walls (V = 1.5) the wave can tunnel through. A packet started in one channel leaks sideways channel to channel: discrete '
+      'diffraction, where the wave runs out in two strong outer lobes with a dark middle, unlike free spreading, which is brightest in '
+      'the middle. Coupled optical waveguide arrays do exactly this. It starts as a line down one channel, so the spread is all sideways.',
+      LIN, channels(1.5) + [o for j in range(13) for o in packet((7 * PER + 3 + CH / 2) / N, 0.26 + j * 0.04, 4, amp=1)],
+      absorb('tb'), {'reagent': 'n', 'low': 0, 'high': 0.6, 'tint': 'p'}, steps=8)
+
+# Bloch oscillations: the channels tilted by a ramp
+TB = 1200 * 0.05                      # Bloch period (time)
+F = 2 * math.pi / (TB * PER * 0.25)
+ramp = round(F * N * 0.25, 3)
+scene('schrodinger-bloch', 'Schrödinger Bloch oscillations',
+      f'The waveguide array tilted: a steady push to the right (V falls by {ramp} across the field). In free space the packet would '
+      'accelerate away. In the periodic channels it moves right, slows, turns round and comes back, oscillating in place forever: '
+      'Bloch oscillations, because momentum in a lattice is cyclic, so a steady force sweeps the wave round its band and back. '
+      'Period about 1200 steps. Seen in cold atoms in optical lattices and in electrons in superlattices.',
+      LIN, channels(1.5) + [{'chem': 'V', 'op': 'add', 'fill': {'type': 'ramp', 'from': ramp, 'to': 0, 'axis': 'x'}, 'shape': {'type': 'everywhere'}},
+                            rect('V', 30, 0, 0, 0.012, 1), rect('V', 30, 0.988, 0, 1, 1)]
+      + packet(0.5, 0.5, 22),
+      absorb('tb'), {'reagent': 'n', 'low': 0, 'high': 1, 'tint': 'p'}, steps=8)
+
+# Talbot: a lattice of tiny packets at rest re-forms itself
+A = 32
+tal = []
+for j in range(N // A):
+    for i in range(N // A):
+        tal.append({'chem': 'p', 'op': 'add', 'fill': {'type': 'packet', 'amp': 1.5, 'sigma': 2.5, 'part': 'cos'},
+                    'shape': {'type': 'circle', 'cx': (i + 0.5) * A / N, 'cy': (j + 0.5) * A / N, 'r': 10 / N}})
+TT = round((A * 0.25) ** 2 / math.pi / 0.05)
+scene('schrodinger-talbot', 'Schrödinger Talbot kaleidoscope',
+      f'Linear Schrödinger equation, no potential: a square lattice of {len(tal)} tiny packets at rest. Each spreads and they all '
+      'interfere, filling the field with ever finer patterns, and yet the whole lattice re-forms exactly after the Talbot time '
+      f'(about {TT} steps), shifted by half a cell at half that time, with copies at double and quadruple density at simple fractions '
+      'in between: the quantum carpet, or Talbot effect (Talbot, 1836, with light through a grating).',
+      LIN, tal, None, {'reagent': 'n', 'low': 0, 'high': 0.5, 'tint': 'p'}, steps=2)
+
+# Bragg crystal: a lattice of posts splits a beam into discrete beams
+posts = []
+for j in range(N // PER):
+    for i in range(6):
+        posts.append({'chem': 'V', 'op': 'add', 'fill': {'type': 'bump', 'value': 3, 'edge': 1}, 'shape': {'type': 'circle', 'cx': (128 + i * PER) / N, 'cy': (j * PER + 8) / N, 'r': 3 / N}})
+scene('schrodinger-bragg', 'Schrödinger Bragg crystal',
+      f'Linear Schrödinger equation: a packet fired into a crystal, a slab of posts (V = 3) every {PER} cells. Because the posts are '
+      'periodic, scattered waves only add up in particular directions, so the packet leaves as a few sharp beams (Bragg diffraction, '
+      'how X-rays reveal crystal structure) rather than spraying everywhere. Try: change the packet speed to move the beams.',
+      LIN, posts + packet(0.22, 0.5, 14, kx=0.55, ky=0.18),
+      absorb(), {'reagent': 'n', 'low': 0, 'high': 0.3, 'tint': 'p'}, steps=4)
