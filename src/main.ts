@@ -13,6 +13,7 @@ import {
 import { BUNDLED_PATTERNS, importReady, loadBundled } from './ready';
 import { SCENES, type Scene } from './scenes';
 import { UserRules } from './userRules';
+import { SavedScenes } from './saved-scenes';
 import { openExplorerPanel } from './explorer';
 import { STARTER_STAMPS, compositeOnto, stampBackground } from './stamps';
 
@@ -96,9 +97,12 @@ async function init() {
   let pendingSteps = 0;
 
   const userRules = new UserRules();
+  const savedScenes = new SavedScenes();
+  await savedScenes.load();
   const familyOf = (ruleId: string) => {
     if (ruleId.startsWith('user:')) return 'My rules';
     if (ruleId.startsWith('pattern:')) return 'Ready patterns';
+    if (!ruleId.startsWith('builtin:')) return 'My rules';
     const r = BUILTIN_RULES[Number(ruleId.slice(8))];
     return RULE_FAMILIES.find(([, rs]) => rs.includes(r))?.[0] ?? 'Other media';
   };
@@ -108,7 +112,64 @@ async function init() {
     ...RULE_FAMILIES.flatMap(([fam, rs]) => rs.map((r) => ({ id: `builtin:${BUILTIN_RULES.indexOf(r)}`, label: r.name, group: fam }))),
     ...BUNDLED_PATTERNS.map((p) => ({ id: `pattern:${p.name}`, label: p.name, group: 'Ready patterns' })),
     ...SCENES.map((sc) => ({ id: `scene:${sc.id}`, label: sc.scene.name, group: familyOf(sc.scene.rule), rule: sc.scene.rule })),
+    ...savedScenes.scenes.map((sc) => ({ id: `saved:${sc.id}`, label: `★ ${sc.name}`, group: familyOf(sc.base), rule: sc.base })),
   ];
+
+  /** The rule the current field runs: a scene's or saved scene's own rule id, else the current id. */
+  function baseRuleId() {
+    if (ruleId.startsWith('scene:')) return SCENES.find((x) => x.id === ruleId.slice(6))?.scene.rule ?? ruleId;
+    if (ruleId.startsWith('saved:')) return savedScenes.get(ruleId.slice(6))?.base ?? ruleId;
+    return ruleId;
+  }
+
+  // the view and painting settings a saved scene keeps
+  const SAVED_VIEW = ['reagent', 'low', 'high', 'tint', 'tintLow', 'tintHigh', 'tintStrength', 'palette', 'hueShape', 'hueOffset', 'viewMode', 'stepsPerFrame', 'paint'] as const;
+
+  /** Save the whole field (rule, params, walls, chemistry, probes) and view as a scene in this browser. */
+  async function saveScene() {
+    const name = prompt('Name for the scene (saved in this browser; Rules menu, ★)', `${rule.name} ${new Date().toLocaleString()}`);
+    if (!name) return;
+    const { params, state } = await sim.readRegion(0, 0, sim.width, sim.height);
+    const L = sim.layout;
+    const data = encodeSnapshot({
+      header: { width: sim.width, height: sim.height, probes: probes.toJSON(), rule, globals, reagents: L.reagents, paramNames: L.paramNames, S: L.S, P: L.P },
+      params, state,
+    });
+    const view = Object.fromEntries(SAVED_VIEW.map((k) => [k, structuredClone(s[k])]));
+    try {
+      const sc = await savedScenes.add({ name, base: baseRuleId(), data, view });
+      ruleId = `saved:${sc.id}`;
+      location.hash = `rule=${encodeURIComponent(ruleId)}`;
+      ui.rebuildRule();
+    } catch (e) {
+      alert(`Couldn't save the scene: ${(e as Error).message}`);
+    }
+  }
+
+  async function loadSavedScene(id: string) {
+    const sc = savedScenes.get(id.slice(6));
+    if (!sc) throw new Error('not in your saved scenes any more');
+    const snap = decodeSnapshot(await sc.data.arrayBuffer());
+    const h = snap.header;
+    const ok = await applyRule(h.rule, {
+      field: { state: snap.state, params: snap.params, reagents: h.reagents, paramNames: h.paramNames, S: h.S, P: h.P },
+      size: { width: h.width, height: h.height }, globals: h.globals, id,
+    });
+    if (!ok) return;
+    probes.load(h.probes ?? []);
+    probePanel.render();
+    const v = sc.view as Partial<Settings>;
+    for (const k of SAVED_VIEW) if (v[k] !== undefined && (k !== 'stepsPerFrame' || s.ruleSpeed)) (s as unknown as Record<string, unknown>)[k] = v[k];
+    note = `Saved ${new Date(sc.created).toLocaleString()} from ${h.rule.name}.`;
+    ui.rebuildRule();
+  }
+
+  async function deleteSavedScene() {
+    const sc = savedScenes.get(ruleId.slice(6));
+    if (!ruleId.startsWith('saved:') || !sc || !confirm(`Delete the saved scene "${sc.name}" from this browser?`)) return;
+    await savedScenes.remove(sc.id);
+    await selectRule(sc.base);
+  }
 
   /**
    * The current rule as a stand-alone rule: parameter values (globals, with any
@@ -357,6 +418,8 @@ async function init() {
         if (!u) throw new Error('not in My rules any more');
         const r = clone(u.rule);
         await applyRule(r, { field: 'initial', id, globals: defaultGlobals(r), size: r.size });
+      } else if (id.startsWith('saved:')) {
+        await loadSavedScene(id);
       } else if (id.startsWith('pattern:')) {
         const imp = await loadBundled(id.slice(8));
         await applyRule(imp.rule, { field: 'initial', id, globals: defaultGlobals(imp.rule), size: imp.rule.size, image: imp.image, warnings: imp.warnings });
@@ -405,7 +468,7 @@ async function init() {
       sim.load(f.state, f.params);
     },
     restart: () => {
-      if (/^(scene|builtin|user|pattern):/.test(ruleId)) void selectRule(ruleId);
+      if (/^(scene|saved|builtin|user|pattern):/.test(ruleId)) void selectRule(ruleId);
       else {
         const f = initialData(sim.width, sim.height);
         sim.load(f.state, f.params);
@@ -424,6 +487,8 @@ async function init() {
       ui.sync();
     },
     saveField,
+    saveScene: () => void saveScene(),
+    deleteSavedScene: () => void deleteSavedScene(),
     loadField,
     selectRule,
     importRule: async () => {

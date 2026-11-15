@@ -61,6 +61,8 @@ export interface Actions {
   resize(size: number): void;
   stepOnce(): void;
   saveField(): void;
+  saveScene(): void;
+  deleteSavedScene(): void;
   loadField(): void;
   selectRule(id: string): void;
   importRule(): void;
@@ -470,6 +472,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
 
   const importBtn = button('Import…', actions.importRule, 'load a Ready formula pattern (.vti) or a saved rdui rule (.json)');
   // feature size: ¼–1 for any rule, up to 4 where the rule's diffusion is exact (stable at any size)
+  // shown while a saved scene is loaded
+  const deleteSceneBtn = button('Delete saved scene', actions.deleteSavedScene, 'remove the current ★ scene from this browser');
+  syncers.push(() => (deleteSceneBtn.style.display = rc.currentId().startsWith('saved:') ? '' : 'none'));
   const featureSel = select('feature size', 'featureSize', () => [
     [0.125, '⅛'], [0.25, '¼'], [0.5, '½'], [1, '1×'], ...(rc.bigFeatures() ? [[2, '2×'], [4, '4×']] as [number, string][] : [[2, '2× (4× slower)'], [4, '4× (16× slower)']] as [number, string][]),
   ], actions.setFeatureSize);
@@ -493,6 +498,10 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       el('div', { class: 'buttons' },
         button('Save field…', actions.saveField, 'download the rule, params, walls, chemistry and probes · ctrl+S'),
         button('Load field…', actions.loadField, 'ctrl+O'),
+      ),
+      el('div', { class: 'buttons' },
+        button('Save scene…', actions.saveScene, 'keep the whole field as it is now (chemistry, walls, painted params, probes, view) as a scene in this browser: Rules menu, ★ under its family'),
+        deleteSceneBtn,
       ),
     ),
     ...extraSections,
