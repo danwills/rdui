@@ -154,7 +154,7 @@ button.del:hover { color: #ff7a7a; border-color: var(--line); }
 .tile.active { border-color: var(--accent); }
 .tile.foreign { opacity: 0.55; }
 .tile canvas { display: block; height: 56px; width: auto; max-width: 100%; object-fit: contain; image-rendering: pixelated; }
-.tile .name { font-size: 10px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .name { font-size: 10px; color: var(--muted); max-width: 100%; overflow: hidden; text-align: center; line-height: 1.2; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
 .tile .del { position: absolute; top: 0; right: 0; }
 
 .checks { display: flex; gap: 12px; margin: 8px 0 2px; }

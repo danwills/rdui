@@ -1,0 +1,203 @@
+{
+  "name": "Schrödinger sandbox: absorbing edges",
+  "description": "An empty focusing Schrödinger field (the ring track's medium) whose edges absorb: a graded band of damping (gamma) round the border swallows anything that reaches it, solitons and ripples alike, so the field never wraps round. Pause, paint tracks with the Params brush (V below 0 is a channel that guides solitons, V above 0 a barrier that turns them back), drop soliton stamps (⟲ ⟳ ⇋ in Stamps aim them; the thumbnail colour is the phase: red 0, yellow-green π/2, cyan π), then play. Display → mode → reagent + param outlines shows what you've painted.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "globals": {},
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.02
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 1,
+        "y1": 0.09375
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.02
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.90625,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.02
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 0.09375,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.02
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.90625,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.08
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 1,
+        "y1": 0.0625
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.08
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.9375,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.08
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 0.0625,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.08
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.9375,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 1,
+        "y1": 0.03125
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.96875,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 0.03125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "gamma",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.96875,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 5,
+    "tint": "p",
+    "tintLow": -2.5,
+    "tintHigh": 2.5
+  }
+}

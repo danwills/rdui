@@ -1,0 +1,83 @@
+{
+  "name": "Schrödinger sandbox: reflecting edges",
+  "description": "An empty focusing Schrödinger field (the ring track's medium) in a box with hard walls: a band of high potential (V = 30) round the border that nothing here has the energy to climb, so solitons bounce off the edges and everything stays in play (ripples too: nothing is lost, so the box slowly fills with them). Pause, paint tracks with the Params brush (V below 0 is a channel that guides solitons, V above 0 a barrier that turns them back), drop soliton stamps (⟲ ⟳ ⇋ in Stamps aim them; the thumbnail colour is the phase: red 0, yellow-green π/2, cyan π), then play. Display → mode → reagent + param outlines shows what you've painted.",
+  "rule": "builtin:8",
+  "size": 256,
+  "start": "initial",
+  "stepsPerFrame": 8,
+  "globals": {},
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 1,
+        "y1": 0.03125
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0.96875,
+        "x1": 1,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0,
+        "y0": 0,
+        "x1": 0.03125,
+        "y1": 1
+      }
+    },
+    {
+      "chem": "V",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 30
+      },
+      "shape": {
+        "type": "rectangle",
+        "x0": 0.96875,
+        "y0": 0,
+        "x1": 1,
+        "y1": 1
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 5,
+    "tint": "p",
+    "tintLow": -2.5,
+    "tintHigh": 2.5
+  }
+}

@@ -260,3 +260,28 @@ scene('schrodinger-ring-pushoff', 'Schrödinger ring push-off',
       'on the far side, bounce, and so on. Change the phase and they\'d attract instead (try the soliton stamps: drop "still · phase 0" and '
       '"still · phase π" on the track, or two at phase 0). The border absorbs.',
       {}, push, absorb(), {'reagent': 'n', 'low': 0, 'high': 5, 'tint': 'p', 'tintLow': -2.5, 'tintHigh': 2.5}, steps=8)
+
+
+# --- blank sandboxes for the soliton stamps: edges that absorb, or that reflect
+def edges(chem, layers):
+    """Border bands of a param (overlays, so they're part of the scene's opening): (width in cells, value), widest first."""
+    out = []
+    for w, v in layers:
+        b = w / N
+        out += [rect(chem, v, x0, y0, x1, y1) for x0, y0, x1, y1 in ((0, 0, 1, b), (0, 1 - b, 1, 1), (0, 0, b, 1), (1 - b, 0, 1, 1))]
+    return out
+
+SANDBOX_TIP = (' Pause, paint tracks with the Params brush (V below 0 is a channel that guides solitons, V above 0 a barrier that '
+               'turns them back), drop soliton stamps (⟲ ⟳ ⇋ in Stamps aim them; the thumbnail colour is the phase: red 0, '
+               'yellow-green π/2, cyan π), then play. Display → mode → reagent + param outlines shows what you\'ve painted.')
+scene('schrodinger-sandbox-absorbing', 'Schrödinger sandbox: absorbing edges',
+      'An empty focusing Schrödinger field (the ring track\'s medium) whose edges absorb: a graded band of damping (gamma) round '
+      'the border swallows anything that reaches it, solitons and ripples alike, so the field never wraps round.' + SANDBOX_TIP,
+      {}, edges('gamma', ((24, 0.02), (16, 0.08), (8, 0.3))), None,
+      {'reagent': 'n', 'low': 0, 'high': 5, 'tint': 'p', 'tintLow': -2.5, 'tintHigh': 2.5}, steps=8)
+scene('schrodinger-sandbox-reflecting', 'Schrödinger sandbox: reflecting edges',
+      'An empty focusing Schrödinger field (the ring track\'s medium) in a box with hard walls: a band of high potential '
+      '(V = 30) round the border that nothing here has the energy to climb, so solitons bounce off the edges and everything '
+      'stays in play (ripples too: nothing is lost, so the box slowly fills with them).' + SANDBOX_TIP,
+      {}, edges('V', ((8, 30),)), None,
+      {'reagent': 'n', 'low': 0, 'high': 5, 'tint': 'p', 'tintLow': -2.5, 'tintHigh': 2.5}, steps=8)

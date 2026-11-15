@@ -146,11 +146,20 @@ export function stampThumbnail(s: Stamp, maxSide = 72, reagent = 'b'): HTMLCanva
     hi = Math.max(hi, v);
   }
   const span = hi - lo > 1e-6 ? hi - lo : 1;
+  // a complex field ψ = p + iq (Schrödinger): hue shows the phase, brightness |ψ|
+  const pr = s.reagents.indexOf('p'), qr = s.reagents.indexOf('q');
+  const complex = pr >= 0 && qr >= 0 && s.reagents.includes('n');
+  let amax = 1e-9;
+  if (complex) for (let i = 0; i < s.w * s.h; i++) amax = Math.max(amax, Math.hypot(s.state[i * ss + pr], s.state[i * ss + qr]));
   for (let i = 0; i < s.w * s.h; i++) {
     const wall = wallSlot >= 0 && s.params[i * ps + wallSlot] > 0.5;
     const v = (s.state[i * ss + r] - lo) / span;
     let cr: number, cg: number, cb: number;
-    if (wall) {
+    if (complex && !wall) {
+      const re = s.state[i * ss + pr], im = s.state[i * ss + qr];
+      const h = ((Math.atan2(im, re) / (2 * Math.PI)) % 1 + 1) % 1, a = Math.min(1, Math.hypot(re, im) / amax);
+      [cr, cg, cb] = [0, 1 / 3, 2 / 3].map((o) => 255 * a * (0.5 + 0.5 * Math.cos(2 * Math.PI * (h - o))));
+    } else if (wall) {
       const stripe = ((i % s.w) + Math.floor(i / s.w)) % 4 < 2;
       cr = cg = cb = stripe ? 90 : 110;
     } else {
