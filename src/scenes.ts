@@ -24,9 +24,10 @@ export interface Scene {
   /**
    * Stamps by id (bundled starter packs or the user's library), centred at x, y.
    * Only their chemistry is placed unless `params` is set (then their painted
-   * params and walls come too).
+   * params and walls come too). `boost` multiplies a wave stamp's ψ = p + iq by e^{i(phase + kx·x + ky·y)}
+   * (after rot/flip): it sets off in direction (kx, ky), radians per cell, its phase turned by `phase`.
    */
-  stamps?: { stamp: string; x: number; y: number; rot?: number; flip?: boolean; params?: boolean }[];
+  stamps?: { stamp: string; x: number; y: number; rot?: number; flip?: boolean; params?: boolean; boost?: { kx: number; ky: number; phase?: number } }[];
   probes?: { name: string; x: number; y: number; w: number; h: number }[];
   view?: { reagent?: string; low?: number; high?: number; tint?: string; tintLow?: number; tintHigh?: number };
   stepsPerFrame?: number;

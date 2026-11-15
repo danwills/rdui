@@ -15,7 +15,7 @@ import { SCENES, type Scene } from './scenes';
 import { UserRules } from './userRules';
 import { SavedScenes } from './saved-scenes';
 import { openExplorerPanel } from './explorer';
-import { STARTER_STAMPS, compositeOnto, stampBackground } from './stamps';
+import { STARTER_STAMPS, boostStamp, compositeOnto, stampBackground } from './stamps';
 
 const RECT_TOOLS = new Set(['capture', 'probe']);
 const PROBE_SAMPLE_EVERY = 3; // frames
@@ -386,7 +386,8 @@ async function init() {
         warnings.push(`scene stamp "${p.stamp}" not found`);
         continue;
       }
-      const st = transformStamp(base, { rot: p.rot ?? 0, flip: p.flip ?? false });
+      let st = transformStamp(base, { rot: p.rot ?? 0, flip: p.flip ?? false });
+      if (p.boost) st = boostStamp(st, p.boost.phase ?? 0, p.boost.kx, p.boost.ky, st.id, st.name);
       const f = remapField(st, st.w * st.h);
       const [ox, oy] = stampOrigin(st, p.x, p.y);
       await compositeStamp(ox, oy, st.w, st.h, f.state, p.params ? f.params : undefined);
