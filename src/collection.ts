@@ -11,6 +11,7 @@
 import { importReady, type ReadyImport } from './ready';
 import { compileRule, initialField, type RuleDef } from './rule';
 import { Simulation, type ViewOptions } from './sim';
+import { growSeed, loadSeed } from './seeds';
 import { el, button } from './ui';
 
 const BASE = `${import.meta.env.BASE_URL}vti/`;
@@ -39,7 +40,27 @@ export function loadFamily(id: string) {
   return p;
 }
 
-/** A preset as a rule: the family's rule with the preset's values (or `params`, e.g. a blend) and view. */
+/**
+ * A preset's start state on a w×h grid, grown from its seed (seeds.ts), one array per reagent
+ * of `reagents` (holes where the seed has none); undefined when it has no seed (the rule's
+ * initial pattern then starts it, as Ready did).
+ */
+export async function presetStart(famId: string, md5: string, reagents: string[], w: number, h: number) {
+  const fam = await loadFamily(famId);
+  const p = fam.presets.find((q) => q.md5 === md5);
+  if (!p?.seed) return undefined;
+  const seed = await loadSeed(md5);
+  if (!seed) return undefined;
+  const grown = growSeed(seed, w, h);
+  const out: Float32Array[] = [];
+  reagents.forEach((r, i) => {
+    const k = seed.names.indexOf(r);
+    if (k >= 0) out[i] = grown[k];
+  });
+  return out;
+}
+
+/** A preset as a rule: the family's rule with the preset's values (or `params`, e.g. a blend) and view, and its seed grown to start it. */
 export async function presetImport(famId: string, md5: string, params?: Record<string, number>): Promise<ReadyImport> {
   const fam = await loadFamily(famId);
   const p = fam.presets.find((q) => q.md5 === md5) ?? fam.presets.find((q) => q.md5 === fam.representative)!;
@@ -54,7 +75,8 @@ export async function presetImport(famId: string, md5: string, params?: Record<s
   if (p.view.stepsPerFrame) rule.view.stepsPerFrame = Math.min(200, Math.max(1, Math.round(p.view.stepsPerFrame)));
   if (p.grid) rule.size = { width: Math.min(1024, p.grid[0]), height: Math.min(1024, p.grid[1]) };
   rule.description = `${p.path} (from Dan's Ready collection; family ${fam.id}, ${fam.presets.length} presets)\n\n${rule.description ?? ''}`;
-  return { ...imp, image: undefined };
+  const image = rule.size ? await presetStart(famId, p.md5, rule.reagents, rule.size.width, rule.size.height).catch(() => undefined) : undefined;
+  return { ...imp, image };
 }
 
 // --- the tree
@@ -179,6 +201,7 @@ export interface CollectionEnv {
   view(): ViewOptions;
   /** The family the main sim is running (if it's from the collection), and a piece of its state to start previews from. */
   current?: { famId: string; section: { w: number; h: number; state: Float32Array } };
+  /** Run the preview's preset (and values) in the main sim, filling the screen. */
   use(famId: string, md5: string, params: Record<string, number>): void;
   onClose(): void;
 }
@@ -189,24 +212,32 @@ export function openCollection(env: CollectionEnv) {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const canvas = el('canvas', { class: 'coll-canvas' });
   const g = canvas.getContext('2d')!;
+  // the preview fills the background (cropped to cover it); the tree is drawn over it, opaque on
+  // the left and fading out to the right
   const pv = el('canvas', { class: 'coll-preview' });
-  const pvSize = Math.min(260, Math.floor(window.innerWidth * 0.42));
-  pv.width = pv.height = Math.floor(pvSize * dpr);
-  pv.style.width = pv.style.height = `${pvSize}px`;
   const readout = el('div', { class: 'coll-readout' }, 'Loading the collection…');
-  const useBtn = button('Use', () => use(), 'run the preview\'s rule and values in the main sim');
   const root = el('div', { class: 'coll' },
-    el('div', { class: 'explore-bar' }, el('strong', {}, 'Ready collection'), useBtn,
-      button('Restart', () => restartPreview(), 'start the preview again'),
+    el('div', { class: 'explore-bar' }, el('strong', {}, 'Ready collection'),
+      button('Restart', () => restartPreview(), 'start the preview again from its seed'),
       button('Fit', () => fitView(), 'zoom to show the whole tree'),
-      button('✕', () => close(), 'close · Esc')),
-    el('div', { class: 'coll-main' }, canvas, el('div', { class: 'coll-side' }, pv, readout)));
+      button('Cancel', () => close(false), 'close without changing the main sim'),
+      button('✕ Close', () => close(true), 'close: what the preview shows becomes the main sim, filling the screen (Back or Esc too)')),
+    el('div', { class: 'coll-main' }, pv, canvas, readout));
   document.body.append(root);
   const onKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') close(true);
     e.stopPropagation();
   };
   window.addEventListener('keydown', onKey, true);
+  // Back closes it, like ✕ (an entry pushed now, taken back if it closes another way)
+  history.pushState({ rduiCollection: true }, '');
+  const onPop = () => close(true, true);
+  window.addEventListener('popstate', onPop);
+  function sizePreview() {
+    const r = pv.getBoundingClientRect();
+    const side = Math.min(1024, Math.floor(Math.max(r.width, r.height, 64) * dpr));
+    if (pv.width !== side) pv.width = pv.height = side;
+  }
 
   // --- view transform: screen = (world - pan) * zoom
   let zoom = 1, panX = -20, panY = -20;
@@ -264,7 +295,13 @@ export function openCollection(env: CollectionEnv) {
       canvas.height = Math.floor(H * dpr);
     }
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.fillStyle = '#0b0c10';
+    g.clearRect(0, 0, W, H);
+    const fade = g.createLinearGradient(0, 0, W, 0);
+    fade.addColorStop(0, 'rgba(11,12,16,0.94)');
+    fade.addColorStop(0.35, 'rgba(11,12,16,0.85)');
+    fade.addColorStop(0.75, 'rgba(11,12,16,0.15)');
+    fade.addColorStop(1, 'rgba(11,12,16,0)');
+    g.fillStyle = fade;
     g.fillRect(0, 0, W, H);
     // links
     g.strokeStyle = 'rgba(140,160,190,0.35)';
@@ -350,7 +387,7 @@ export function openCollection(env: CollectionEnv) {
   ctx.configure({ device: env.device, format: env.format, alphaMode: 'opaque', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST });
   let pvSim: { sim: Simulation; rule: RuleDef; famId: string; spf: number; view: Partial<ViewOptions> } | null = null;
   let tex: GPUTexture | null = null;
-  const PN = 192;
+  const PN = 256;
   let raf = 0;
   let building: Promise<void> | null = null;
   async function preview(famId: string, md5: string, params: Record<string, number>, restart = false) {
@@ -371,6 +408,14 @@ export function openCollection(env: CollectionEnv) {
       for (const [k, v] of Object.entries(globals)) sim.setGlobal(k, v);
       const f = initialField(rule, PN, PN, globals, 'zero', 1);
       const cur = env.current;
+      const S4p = compiled.layout.S * 4;
+      // from the main sim when it's running this family, else from the preset's seed
+      const grown = cur && cur.famId === famId ? undefined : await presetStart(famId, md5, rule.reagents, PN, PN).catch(() => undefined);
+      grown?.forEach((img, r) => { for (let i = 0; i < PN * PN; i++) f.state[i * S4p + r] = img[i]; });
+      if (closed) {
+        sim.destroy();
+        return;
+      }
       if (cur && cur.famId === famId) {
         const S4 = compiled.layout.S * 4, sec = cur.section;
         const ox = Math.max(0, (sec.w - PN) >> 1), oy = Math.max(0, (sec.h - PN) >> 1);
@@ -389,6 +434,7 @@ export function openCollection(env: CollectionEnv) {
     if (previewKey) void preview(previewKey.famId, previewKey.md5, previewKey.params, true);
   }
   function loop() {
+    sizePreview();
     if (pvSim) {
       if (!tex || tex.width !== pv.width) {
         tex?.destroy();
@@ -417,11 +463,6 @@ export function openCollection(env: CollectionEnv) {
   const firstPreset = (n: Node): Preset | undefined => n.preset ?? n.children.map(firstPreset).find(Boolean);
   const famOf = (n: Node) => n.famId ?? n.famEntry?.id;
 
-  function use() {
-    if (!previewKey) return;
-    env.use(previewKey.famId, previewKey.md5, previewKey.params);
-    close();
-  }
 
   // --- pointers: drag empty space to pan, pinch or wheel to zoom, tap an entry to open and
   // preview it, drag from an entry to blend towards the nearest other entry of its family
@@ -531,14 +572,26 @@ export function openCollection(env: CollectionEnv) {
   const ro = new ResizeObserver(() => draw());
   ro.observe(canvas);
 
-  function close() {
-    cancelAnimationFrame(raf);
-    pvSim?.sim.destroy();
-    tex?.destroy();
-    ctx.unconfigure();
-    ro.disconnect();
+  /** Closes; with `use`, what the preview shows becomes the main sim. `popped`: Back did it. */
+  let closed = false;
+  function close(use: boolean, popped = false) {
+    if (closed) return;
+    closed = true;
+    // the page first, so it goes whatever the cleanup does
     root.remove();
     window.removeEventListener('keydown', onKey, true);
+    window.removeEventListener('popstate', onPop);
+    if (!popped && history.state?.rduiCollection) history.replaceState(null, '');
+    cancelAnimationFrame(raf);
+    try {
+      ro.disconnect();
+      pvSim?.sim.destroy();
+      tex?.destroy();
+      ctx.unconfigure();
+    } catch (e) {
+      console.warn('collection cleanup', e);
+    }
+    if (use && previewKey) env.use(previewKey.famId, previewKey.md5, previewKey.params);
     env.onClose();
   }
 

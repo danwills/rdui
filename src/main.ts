@@ -153,7 +153,7 @@ async function init() {
     try {
       const sc = await savedScenes.add({ name, base: baseRuleId(), data, view });
       ruleId = `saved:${sc.id}`;
-      location.hash = `rule=${encodeURIComponent(ruleId)}`;
+      history.replaceState(history.state, '', `#rule=${encodeURIComponent(ruleId)}`); // the link, without a history entry (Back belongs to the views)
       ui.rebuildRule();
     } catch (e) {
       alert(`Couldn't save the scene: ${(e as Error).message}`);
@@ -235,6 +235,8 @@ async function init() {
           s.running = true;
           ui.rebuildRule();
           ui.sync();
+          // the preview carries on as the main view, filling the screen (Back brings the panel)
+          if (!app.classList.contains('ui-hidden')) toggleUI('fill');
         });
       },
       onClose: () => {
@@ -503,12 +505,12 @@ async function init() {
       } else if (id.startsWith('vti:')) {
         const [, fam, md5] = id.split(':');
         const imp = await presetImport(fam, md5);
-        await applyRule(imp.rule, { field: 'initial', id, globals: defaultGlobals(imp.rule), size: imp.rule.size, warnings: imp.warnings });
+        await applyRule(imp.rule, { field: 'initial', id, globals: defaultGlobals(imp.rule), size: imp.rule.size, image: imp.image, warnings: imp.warnings });
       } else if (id.startsWith('pattern:')) {
         const imp = await loadBundled(id.slice(8));
         await applyRule(imp.rule, { field: 'initial', id, globals: defaultGlobals(imp.rule), size: imp.rule.size, image: imp.image, warnings: imp.warnings });
       }
-      location.hash = `rule=${encodeURIComponent(id)}`;
+      history.replaceState(history.state, '', `#rule=${encodeURIComponent(id)}`);
       try {
         localStorage.setItem(LAST_RULE_KEY, id);
       } catch {

@@ -212,7 +212,52 @@ function valueRow(label: string, get: () => number, set: (v: number) => void, ra
 }
 
 /** Builds the side panel. Returns `sync()` to refresh widgets and `rebuildRule()` after a rule change. */
+/**
+ * Sliders don't change by accident (Dan: scrolling past them kept ruining runs). A touch on a
+ * slider changes nothing until the finger has clearly moved sideways; a swipe up or down (the
+ * panel scrolling), a tap, or a gesture the browser takes over puts the value back. The mouse
+ * works as usual, and the wheel never changes a number field. For every slider on the page.
+ */
+let guarded = false;
+export function guardSliders() {
+  if (guarded) return;
+  guarded = true;
+  let touch: { el: HTMLInputElement; value: string; x: number; y: number; ok: boolean } | null = null;
+  const isRange = (t: EventTarget | null): t is HTMLInputElement => t instanceof HTMLInputElement && t.type === 'range';
+  const undo = () => {
+    if (touch && !touch.ok && touch.el.value !== touch.value) touch.el.value = touch.value;
+    touch = null;
+  };
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' || !isRange(e.target)) return;
+    touch = { el: e.target, value: e.target.value, x: e.clientX, y: e.clientY, ok: false };
+  }, true);
+  document.addEventListener('pointermove', (e) => {
+    if (!touch || touch.ok) return;
+    const dx = Math.abs(e.clientX - touch.x), dy = Math.abs(e.clientY - touch.y);
+    if (dx > 10 && dx > 2 * dy) {
+      touch.ok = true;
+      touch.el.dispatchEvent(new Event('input', { bubbles: true }));
+    } else if (dy > 8) undo();
+  }, true);
+  document.addEventListener('pointerup', () => {
+    if (touch?.ok) touch.el.dispatchEvent(new Event('change', { bubbles: true }));
+    undo();
+  }, true);
+  document.addEventListener('pointercancel', undo, true);
+  // until the gesture is a sideways drag, the slider's own events don't reach the app
+  for (const type of ['input', 'change']) document.addEventListener(type, (e) => {
+    if (!touch || touch.ok || e.target !== touch.el) return;
+    e.stopImmediatePropagation();
+    touch.el.value = touch.value;
+  }, true);
+  document.addEventListener('wheel', (e) => {
+    if (e.target instanceof HTMLInputElement && e.target.type === 'number' && document.activeElement === e.target) e.target.blur();
+  }, { capture: true, passive: true });
+}
+
 export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc: RuleContext, extraSections: Node[] = []) {
+  guardSliders();
   const syncers: (() => void)[] = [];
   const sync = () => syncers.forEach((f) => f());
 

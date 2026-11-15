@@ -9,11 +9,16 @@ kernels). Writes:
   public/vti/families/index.json   the families (and Dan's curated packs)
   public/vti/families/<id>.json    one family's header and presets
   public/vti/thumbs/<md5>.webp     thumbnails (the warmed-up frame), 96 px
+  public/vti/seeds/<md5>.bin       each start seed, repacked for the browser (src/seeds.ts):
+                                   u32 header length, the header JSON (kind, names, means, the
+                                   small parts, and where each array is), the arrays; gzipped.
+                                   ~120 MB, mostly 8/16-bit state copies: not in git (rerun this)
 (public/, so they're fetched when wanted, not bundled: src/collection.ts)
 
   python3 lab/vtipack-import.py [VTIPACK]
 """
-import json, lzma, os, re, sys
+import gzip, json, lzma, os, re, struct, sys
+import numpy as np
 from PIL import Image
 
 PACK = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser('~/dev/shaderEditor/vtipack')
@@ -21,7 +26,56 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'public', 'vti', 'families')
 THUMBS = os.path.join(ROOT, 'public', 'vti', 'thumbs')
 os.makedirs(OUT, exist_ok=True)
+SEEDS = os.path.join(ROOT, 'public', 'vti', 'seeds')
 os.makedirs(THUMBS, exist_ok=True)
+os.makedirs(SEEDS, exist_ok=True)
+sys.path.insert(0, os.path.expanduser('~/dev/shaderEditor/ShaderEditor/tools/ready'))
+import vtiseed  # noqa: E402  (Dan's seed format: decode only)
+
+GROWABLE = {'synthetic', 'patch', 'patches4', 'patch_on_rest', 'patch_on_synth', 'q8', 'q16', 'exact'}
+
+
+def seed_file(md5):
+    """The stored seed as public/vti/seeds/<md5>.bin; False if there's none to grow."""
+    dst = os.path.join(SEEDS, md5 + '.bin')
+    if os.path.exists(dst):
+        return True
+    src = os.path.join(PACK, 'states', md5 + '.seed')
+    if not os.path.exists(src):
+        return False
+    kind, rec = vtiseed.decode(open(src, 'rb').read())
+    if kind not in GROWABLE:
+        return False
+    head = {'kind': kind, 'arrays': {}}
+    blobs, off = [], 0
+
+    def add(name, a):
+        nonlocal off
+        a = np.ascontiguousarray(a)
+        dt = {'uint8': 'u8', 'uint16': 'u16', 'float32': 'f32', 'float64': 'f32'}[str(a.dtype)]
+        b = (a.astype('<f4') if dt == 'f32' else a.astype('<u2') if dt == 'u16' else a).tobytes()
+        head['arrays'][name] = {'type': dt, 'shape': list(a.shape), 'offset': off}
+        blobs.append(b + b'\0' * (-len(b) % 4))
+        off += len(blobs[-1])
+
+    for k, v in rec.items():
+        if k in ('patches', 'state'):
+            codes, lo, hi = v
+            add(k, codes)
+            head[k + '_lo'], head[k + '_hi'] = np.asarray(lo, 'f8').tolist(), np.asarray(hi, 'f8').tolist()
+        elif isinstance(v, np.ndarray):
+            if v.size <= 64:
+                head[k] = v.astype('f8').tolist()
+            else:
+                add(k, v)
+        else:
+            head[k] = v
+    hj = json.dumps(head, separators=(',', ':')).encode()
+    hj += b' ' * (-len(hj) % 4)
+    with gzip.open(dst, 'wb', compresslevel=9) as f:
+        f.write(struct.pack('<I', len(hj)) + hj + b''.join(blobs))
+    return True
+
 
 index = json.load(open(os.path.join(PACK, 'index.json')))
 headers = json.load(lzma.open(os.path.join(PACK, 'headers.json.xz')))
@@ -102,7 +156,7 @@ for fam in index['families']:
                 'high': num(attr(h, 'high')),
                 'stepsPerFrame': num(attr(h, 'timesteps_per_render')),
             }.items() if v is not None},
-            'seed': st.get('kind'),
+            'seed': st.get('kind') if st.get('kind') in GROWABLE and seed_file(f['md5']) else None,
             'grid': st.get('grid'),
             'thumb': thumb(f['md5']),
         })

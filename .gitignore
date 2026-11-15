@@ -4,3 +4,4 @@ dist
 lab/out/
 .wrangler/
 dist-cloud/
+public/vti/seeds/
