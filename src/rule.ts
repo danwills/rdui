@@ -943,7 +943,9 @@ export const SATURABLE_NLS: RuleDef = {
     'Conservative: solitons collide elastically, merge, repel or swap power depending on their relative phase. gamma absorbs.',
   reagents: ['p', 'q', 'n'],
   params: [
-    { name: 'timestep', value: 0.05, min: 0, max: 0.5 },
+    // keep (k²/2)·timestep < π for every grid mode (k² up to 2(π/dx)², on the diagonal): above 0.02 at dx 0.25
+    // the finest ripples turn about π per step, feed off the field and slowly grow (split-step instability)
+    { name: 'timestep', value: 0.018, min: 0, max: 0.5 },
     { name: 'dx', value: 0.25, min: 0.05, max: 1 },
     { name: 'g', value: 1, min: -2, max: 4 },
     { name: 's', value: 0.5, min: 0, max: 5 },
@@ -982,7 +984,7 @@ delta_n = (P2*P2 + Q2*Q2 - n)/timestep;`,
     { chem: 'p', op: 'add', fill: { type: 'packet', amp: 2, sigma: 6 }, shape: { type: 'circle', cx: 0.65, cy: 0.5, r: 0.12 } },
   ],
   // outlines: painted walls and tracks (V, gamma) show over the wave
-  view: { reagent: 'n', low: 0, high: 4, tint: 'p', stepsPerFrame: 4, mode: 'outlines' },
+  view: { reagent: 'n', low: 0, high: 4, tint: 'p', stepsPerFrame: 12, mode: 'outlines' },
 };
 
 /**

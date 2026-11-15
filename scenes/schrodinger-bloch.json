@@ -1,10 +1,10 @@
 {
   "name": "Schrödinger Bloch oscillations",
-  "description": "The waveguide array tilted: a steady push to the right (V falls by 1.676 across the field). In free space the packet would accelerate away. In the periodic channels it moves right, slows, turns round and comes back, oscillating in place forever: Bloch oscillations, because momentum in a lattice is cyclic, so a steady force sweeps the wave round its band and back. Period about 1200 steps. Seen in cold atoms in optical lattices and in electrons in superlattices.",
+  "description": "The waveguide array tilted: a steady push to the right (V falls by 1.676 across the field). In free space the packet would accelerate away. In the periodic channels it moves right, slows, turns round and comes back, oscillating in place forever: Bloch oscillations, because momentum in a lattice is cyclic, so a steady force sweeps the wave round its band and back. Period about 3300 steps. Seen in cold atoms in optical lattices and in electrons in superlattices.",
   "rule": "builtin:8",
   "size": 256,
   "start": "initial",
-  "stepsPerFrame": 8,
+  "stepsPerFrame": 24,
   "globals": {
     "g": 0,
     "s": 0

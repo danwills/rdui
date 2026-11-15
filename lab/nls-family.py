@@ -9,7 +9,7 @@ the phase turns β·timestep per step) comes from the converged field. Prints th
 """
 import sys, numpy as np
 
-N, DX, G, S, DT = 256, 0.25, 1.0, 0.5, 0.05
+N, DX, G, S, DT = 256, 0.25, 1.0, 0.5, 0.018
 k = 2 * np.pi * np.fft.fftfreq(N, d=DX)
 K2 = k[None, :] ** 2 + k[:, None] ** 2
 x = (np.arange(N) - N / 2) * DX

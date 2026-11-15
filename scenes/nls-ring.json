@@ -1,10 +1,10 @@
 {
   "name": "Schrödinger ring track",
-  "description": "Saturable nonlinear Schrödinger equation with a painted potential V: a ring-shaped channel of low V (a circular optical waveguide, depth 0.6) guides solitons round and round. Two solitons chase each other clockwise, half a lap apart. (Sent head-on at this speed they don't pass cleanly: a collision can split off a third soliton.) In the lab a single soliton ran 3–13 laps in 20k steps (depending on speed) without leaving the track. Things to try: paint V (the params brush) to add tracks: negative V is a channel, positive V a wall that bounces solitons; paint a blob of positive V across the ring to make a reflector, or a gap to see one escape; the seed brush adds light — a slow blob dropped on the track gets caught by it.",
+  "description": "Saturable nonlinear Schrödinger equation with a painted potential V: a ring-shaped channel of low V (a circular optical waveguide, depth 0.6) guides solitons round and round. Two solitons chase each other clockwise, half a lap apart. (Sent head-on at this speed they don't pass cleanly: a collision can split off a third soliton.) In the lab a single soliton ran 3–13 laps in 56k steps (depending on speed) without leaving the track. Things to try: paint V (the params brush) to add tracks: negative V is a channel, positive V a wall that bounces solitons; paint a blob of positive V across the ring to make a reflector, or a gap to see one escape; the seed brush adds light — a slow blob dropped on the track gets caught by it.",
   "rule": "builtin:8",
   "size": 256,
   "start": "initial",
-  "stepsPerFrame": 8,
+  "stepsPerFrame": 24,
   "paint": [
     {
       "rect": [

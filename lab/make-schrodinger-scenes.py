@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Write the Schrödinger example scenes (builtin:8, Saturable Schrödinger) to scenes/.
 
-Units: dx = 0.25 length per cell, timestep 0.05. A packet with kx (radians per
-cell) moves at 0.8·kx cells per step and has energy (kx/dx)²/2. g = 0 is the
+Units: dx = 0.25 length per cell, timestep DT = 0.018 (the rule's default; above 0.02 grid-scale
+ripples slowly grow). A packet with kx (radians per cell) moves at kx·DT/dx² = 0.288·kx cells per
+step and has energy (kx/dx)²/2. Scenes were first measured at timestep 0.05: their step counts
+are given in time (steps at 0.05) and converted with at(). g = 0 is the
 linear Schrödinger equation; g > 0 focusing, g < 0 defocusing (a quantum fluid).
 
   python3 lab/make-schrodinger-scenes.py
@@ -10,6 +12,13 @@ linear Schrödinger equation; g > 0 focusing, g < 0 defocusing (a quantum fluid)
 import json, math, random, os
 
 N = 256
+DT = 0.018
+
+
+def at(steps):
+    """A step count measured at timestep 0.05, as steps now (same time), rounded to 2 figures."""
+    n = steps * 0.05 / DT
+    return int(float(f'{n:.2g}'))
 OUT = os.path.join(os.path.dirname(__file__), '..', 'scenes')
 
 
@@ -37,6 +46,8 @@ def packet(cx, cy, sigma, amp=1.0, kx=0.0, ky=0.0, r=None, phase=0.0):
 
 
 def scene(fname, name, description, globals_, initial, paint=None, view=None, steps=4, size=N):
+    # step counts here were chosen at timestep 0.05: three times as many at DT, for about the same pace
+    if 'timestep' not in globals_: steps *= 3
     sc = {'name': name, 'description': description, 'rule': 'builtin:8', 'size': size, 'start': 'initial', 'stepsPerFrame': steps,
           'globals': globals_, 'paintable': ['V', 'gamma'], 'initial': initial}
     if paint: sc['paint'] = paint
@@ -151,7 +162,7 @@ scene('schrodinger-harmonic-trap', 'Schrödinger harmonic trap',
       f'Linear Schrödinger equation in a bowl-shaped potential V = ½ω²r² (ω = {W}). Left: a packet the exact width of the ground '
       'state, pulled to one side, swings back and forth through the centre forever without spreading: a coherent state, the most '
       'classical a quantum state gets. Top: a squeezed packet, narrower than the ground state, breathes (spreads and refocuses twice '
-      'per swing) as it swings. Where they cross they interfere. Period about 1260 steps.',
+      f'per swing) as it swings. Where they cross they interfere. Period about {at(1260)} steps.',
       LIN,
       [{'chem': 'V', 'op': 'overwrite', 'fill': {'type': 'bowl', 'value': round(VRIM, 3)}, 'shape': {'type': 'circle', 'cx': 0.5, 'cy': 0.5, 'r': R}}]
       + packet(0.3, 0.5, round(SIG0, 2)) + packet(0.5, 0.25, round(SIG0 / 2.2, 2)),
@@ -194,7 +205,7 @@ scene('schrodinger-bloch', 'Schrödinger Bloch oscillations',
       f'The waveguide array tilted: a steady push to the right (V falls by {ramp} across the field). In free space the packet would '
       'accelerate away. In the periodic channels it moves right, slows, turns round and comes back, oscillating in place forever: '
       'Bloch oscillations, because momentum in a lattice is cyclic, so a steady force sweeps the wave round its band and back. '
-      'Period about 1200 steps. Seen in cold atoms in optical lattices and in electrons in superlattices.',
+      f'Period about {at(1200)} steps. Seen in cold atoms in optical lattices and in electrons in superlattices.',
       LIN, channels(1.5) + [{'chem': 'V', 'op': 'add', 'fill': {'type': 'ramp', 'from': ramp, 'to': 0, 'axis': 'x'}, 'shape': {'type': 'everywhere'}},
                             rect('V', 30, 0, 0, 0.012, 1), rect('V', 30, 0.988, 0, 1, 1)]
       + packet(0.5, 0.5, 22),
@@ -207,7 +218,7 @@ for j in range(N // A):
     for i in range(N // A):
         tal.append({'chem': 'p', 'op': 'add', 'fill': {'type': 'packet', 'amp': 1.5, 'sigma': 2.5, 'part': 'cos'},
                     'shape': {'type': 'circle', 'cx': (i + 0.5) * A / N, 'cy': (j + 0.5) * A / N, 'r': 10 / N}})
-TT = round((A * 0.25) ** 2 / math.pi / 0.05)
+TT = round((A * 0.25) ** 2 / math.pi / DT)
 scene('schrodinger-talbot', 'Schrödinger Talbot kaleidoscope',
       f'Linear Schrödinger equation, no potential: a square lattice of {len(tal)} tiny packets at rest. Each spreads and they all '
       'interfere, filling the field with ever finer patterns, and yet the whole lattice re-forms exactly after the Talbot time '

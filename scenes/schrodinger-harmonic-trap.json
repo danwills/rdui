@@ -1,10 +1,10 @@
 {
   "name": "Schrödinger harmonic trap",
-  "description": "Linear Schrödinger equation in a bowl-shaped potential V = ½ω²r² (ω = 0.1). Left: a packet the exact width of the ground state, pulled to one side, swings back and forth through the centre forever without spreading: a coherent state, the most classical a quantum state gets. Top: a squeezed packet, narrower than the ground state, breathes (spreads and refocuses twice per swing) as it swings. Where they cross they interfere. Period about 1260 steps.",
+  "description": "Linear Schrödinger equation in a bowl-shaped potential V = ½ω²r² (ω = 0.1). Left: a packet the exact width of the ground state, pulled to one side, swings back and forth through the centre forever without spreading: a coherent state, the most classical a quantum state gets. Top: a squeezed packet, narrower than the ground state, breathes (spreads and refocuses twice per swing) as it swings. Where they cross they interfere. Period about 3500 steps.",
   "rule": "builtin:8",
   "size": 256,
   "start": "initial",
-  "stepsPerFrame": 8,
+  "stepsPerFrame": 24,
   "globals": {
     "g": 0,
     "s": 0

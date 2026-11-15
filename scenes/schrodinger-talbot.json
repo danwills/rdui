@@ -1,10 +1,10 @@
 {
   "name": "Schrödinger Talbot kaleidoscope",
-  "description": "Linear Schrödinger equation, no potential: a square lattice of 64 tiny packets at rest. Each spreads and they all interfere, filling the field with ever finer patterns, and yet the whole lattice re-forms exactly after the Talbot time (about 407 steps), shifted by half a cell at half that time, with copies at double and quadruple density at simple fractions in between: the quantum carpet, or Talbot effect (Talbot, 1836, with light through a grating).",
+  "description": "Linear Schrödinger equation, no potential: a square lattice of 64 tiny packets at rest. Each spreads and they all interfere, filling the field with ever finer patterns, and yet the whole lattice re-forms exactly after the Talbot time (about 1132 steps), shifted by half a cell at half that time, with copies at double and quadruple density at simple fractions in between: the quantum carpet, or Talbot effect (Talbot, 1836, with light through a grating).",
   "rule": "builtin:8",
   "size": 256,
   "start": "initial",
-  "stepsPerFrame": 2,
+  "stepsPerFrame": 6,
   "globals": {
     "g": 0,
     "s": 0

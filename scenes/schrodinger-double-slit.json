@@ -4,7 +4,7 @@
   "rule": "builtin:8",
   "size": 256,
   "start": "initial",
-  "stepsPerFrame": 4,
+  "stepsPerFrame": 12,
   "globals": {
     "g": 0,
     "s": 0
