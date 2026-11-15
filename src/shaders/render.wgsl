@@ -142,15 +142,26 @@ fn hsv(h: f32, s: f32, v: f32) -> vec3<f32> {
 }
 
 // "Fleck" palettes (after Dan's GrayScottHSVFleck shader): the first three
-// reagents (a, b, c) as an RGB colour, re-expressed in HSV or OKLCH, and that
-// triple shown as RGB: (V, S, H) or (L, C, h), the hue shaped and shifted.
+// reagents (a, b, c) as an RGB colour, re-expressed in a polar colour space as (lightness, chroma, hue),
+// and that triple shown as RGB. Each space is just a conversion to that triple (polarOf); the hue
+// shaping below is shared, so another space is one more converter and a palette entry.
+
+// x in [0, 1] → [0, 1], ends fixed: shape 1 is the identity, above 1 steeper in the middle (softer at the
+// ends), below 1 the reverse. Normalised, so every shape keeps the ends exactly at 0 and 1.
 fn smoothMap(x: f32, shape: f32) -> f32 {
   let v = clamp(x * 2.0 - 1.0, -1.0, 1.0);
-  return 0.5 + 0.5 * v / sqrt(1.0 + (shape - 1.0) * v * v);
+  let k = max(shape, 1.0e-3);
+  return 0.5 + 0.5 * v * sqrt(k) / sqrt(1.0 + (k - 1.0) * v * v);
 }
 
-fn shapeHue(h: f32) -> f32 {
-  return fract(smoothMap(clamp(h, 0.0, 1.0), view.hueShape) + view.hueOffset);
+// Hue (turns) as one channel. Hue goes round a circle and a channel is a line, so it can't be shown
+// without a seam unless it folds: it rises from the offset to the opposite hue and falls back again,
+// continuous for every offset and shape (hues mirrored about the offset look alike, the price of no
+// seam). Where there's little colour (chroma near 0) hue is meaningless and jumps about, so it fades out.
+fn hueChannel(h: f32, chroma: f32) -> f32 {
+  let x = fract(h - view.hueOffset);
+  let fold = 1.0 - abs(2.0 * x - 1.0);
+  return smoothMap(fold, view.hueShape) * smoothstep(0.0, 0.06, chroma);
 }
 
 fn rgb2hsv(c: vec3<f32>) -> vec3<f32> {
@@ -177,19 +188,22 @@ fn rgb2oklch(c: vec3<f32>) -> vec3<f32> {
   return vec3<f32>(L, length(vec2<f32>(A, B)) / 0.32, fract(atan2(B, A) / 6.283185307179586));
 }
 
+// (lightness, chroma, hue turns) of an RGB colour in the fleck palette's colour space
+fn polarOf(palette: u32, c: vec3<f32>) -> vec3<f32> {
+  switch palette {
+    case 6u: { return rgb2oklch(c); }
+    default: { let v = rgb2hsv(c); return vec3<f32>(v.z, v.y, v.x); }
+  }
+}
+
 fn fleck(g: vec2<f32>) -> vec3<f32> {
   let a = sampleReagent(g, 0u);
   let b = sampleReagent(g, 1u);
   // With no third reagent, c is stood in by where the shader's c settles: it's made
   // by b and decays (b_to_c 0.05, c_damp 0.0055), so c → 9.1·b, clamped to 1.
   let c = select(clamp(9.1 * b, 0.0, 1.0), sampleReagent(g, 2u), view.reagents > 2.5);
-  let abc = vec3<f32>(a, b, c);
-  if (view.palette == 6u) {
-    let lch = rgb2oklch(max(abc, vec3<f32>(0.0)));
-    return clamp(vec3<f32>(lch.x, lch.y, shapeHue(lch.z)), vec3<f32>(0.0), vec3<f32>(1.0));
-  }
-  let hsv = rgb2hsv(abc);
-  return clamp(vec3<f32>(hsv.z, hsv.y, shapeHue(hsv.x)), vec3<f32>(0.0), vec3<f32>(1.0));
+  let p = polarOf(view.palette, max(vec3<f32>(a, b, c), vec3<f32>(0.0)));
+  return clamp(vec3<f32>(p.x, p.y, hueChannel(p.z, p.y)), vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 fn norm(v: f32, lo: f32, hi: f32) -> f32 {
