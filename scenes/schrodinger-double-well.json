@@ -1,0 +1,453 @@
+{
+ "name": "Schrödinger double wells (one qubit)",
+ "description": "Four double wells (blue: two square dips in the potential), each a two-level system like one qubit: how the wave's power is split between the wells, and the phase between the two parts (the colour). Top: everything starts in the left well and tunnels across and back, a full cycle about every 5800 steps (watch the probes' sparklines swap). Second and third: split evenly in phase, or in opposite phase: the two steady states, which stay put. Bottom: split evenly but a quarter turn apart in phase: the phase difference drives a flow, so the power piles into one well, comes back even, then piles into the other: the relative phase and the power split trade off (round the qubit's sphere). The waves are kept faint so the field is almost linear, as quantum mechanics is; stray ripples are soaked up by the absorbing field (red). Brighter starts behave differently: past a point the power stays stuck in one well (self-trapping), something real qubits never do.",
+ "rule": "builtin:8",
+ "size": 256,
+ "start": "initial",
+ "initial": [
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.1,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4609375,
+    "cy": 0.125,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.1,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4609375,
+    "cy": 0.125,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4609375,
+    "cy": 0.375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4609375,
+    "cy": 0.375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5390625,
+    "cy": 0.375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5390625,
+    "cy": 0.375,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4609375,
+    "cy": 0.625,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4609375,
+    "cy": 0.625,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 3.141592653589793,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5390625,
+    "cy": 0.625,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 3.141592653589793,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5390625,
+    "cy": 0.625,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4609375,
+    "cy": 0.875,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 0,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4609375,
+    "cy": 0.875,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "p",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 1.5707963267948966,
+    "part": "cos"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5390625,
+    "cy": 0.875,
+    "r": 0.052734375
+   }
+  },
+  {
+   "chem": "q",
+   "op": "add",
+   "fill": {
+    "type": "packet",
+    "amp": 0.07071067811865475,
+    "sigma": 4.5,
+    "phase": 1.5707963267948966,
+    "part": "sin"
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5390625,
+    "cy": 0.875,
+    "r": 0.052734375
+   }
+  }
+ ],
+ "paint": [
+  {
+   "rect": [
+    0,
+    0,
+    256,
+    256
+   ],
+   "values": {
+    "absorb_d": -50
+   }
+  },
+  {
+   "rect": [
+    110,
+    24,
+    16,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    130,
+    24,
+    16,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    110,
+    88,
+    16,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    130,
+    88,
+    16,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    110,
+    152,
+    16,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    130,
+    152,
+    16,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    110,
+    216,
+    16,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  },
+  {
+   "rect": [
+    130,
+    216,
+    16,
+    16
+   ],
+   "values": {
+    "V": -0.6
+   }
+  }
+ ],
+ "sdf": [
+  {
+   "field": "absorb_d",
+   "cut": true,
+   "x": 110.0,
+   "y": 32,
+   "x2": 146.0,
+   "y2": 32,
+   "r": 30
+  },
+  {
+   "field": "absorb_d",
+   "cut": true,
+   "x": 110.0,
+   "y": 96,
+   "x2": 146.0,
+   "y2": 96,
+   "r": 30
+  },
+  {
+   "field": "absorb_d",
+   "cut": true,
+   "x": 110.0,
+   "y": 160,
+   "x2": 146.0,
+   "y2": 160,
+   "r": 30
+  },
+  {
+   "field": "absorb_d",
+   "cut": true,
+   "x": 110.0,
+   "y": 224,
+   "x2": 146.0,
+   "y2": 224,
+   "r": 30
+  }
+ ],
+ "probes": [
+  {
+   "name": "left only · L",
+   "x": 110,
+   "y": 24,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "left only · R",
+   "x": 130,
+   "y": 24,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "in phase · L",
+   "x": 110,
+   "y": 88,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "in phase · R",
+   "x": 130,
+   "y": 88,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "opposite · L",
+   "x": 110,
+   "y": 152,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "opposite · R",
+   "x": 130,
+   "y": 152,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "quarter turn · L",
+   "x": 110,
+   "y": 216,
+   "w": 16,
+   "h": 16
+  },
+  {
+   "name": "quarter turn · R",
+   "x": 130,
+   "y": 216,
+   "w": 16,
+   "h": 16
+  }
+ ],
+ "stepsPerFrame": 12,
+ "view": {
+  "reagent": "n",
+  "low": 0,
+  "high": 0.012000000000000002,
+  "tint": "p",
+  "tintLow": -0.1,
+  "tintHigh": 0.1
+ }
+}

@@ -6,7 +6,7 @@ import type { Scene } from '../src/scenes';
 import { makeLab, log, saveFrame } from './lab';
 import { BrushMode } from '../src/sim';
 
-export default async function (cfg: { scene: string; at: number[]; frames?: boolean; list?: boolean }) {
+export default async function (cfg: { scene: string; at: number[]; frames?: boolean; list?: boolean; digits?: number }) {
   const sc: Scene = await (await fetch(`/scenes/${cfg.scene}.json`)).json();
   const base = R.BUILTIN_RULES[+sc.rule.split(':')[1]];
   const lab = await makeLab(sc.initial ? { ...base, initial: sc.initial } : base, sc.size!, sc.globals ?? {}, sc.start === 'initial' ? 'initial' : 'rest');
@@ -36,7 +36,7 @@ export default async function (cfg: { scene: string; at: number[]; frames?: bool
     await lab.run(T - t); t = T;
     const { state } = await lab.read();
     last = state;
-    log(`t=${T}  ` + (sc.probes ?? []).map((p) => { let s = 0; for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) { const ex = (x - p.x + 0.5) / p.w - 0.5, ey = (y - p.y + 0.5) / p.h - 0.5; if (!p.round || ex * ex + ey * ey <= 0.25) s += I(state, x, y); } return `${p.name}: ${s.toFixed(0)}`; }).join('  |  '));
+    log(`t=${T}  ` + (sc.probes ?? []).map((p) => { let s = 0; for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) { const ex = (x - p.x + 0.5) / p.w - 0.5, ey = (y - p.y + 0.5) / p.h - 0.5; if (!p.round || ex * ex + ey * ey <= 0.25) s += I(state, x, y); } return `${p.name}: ${s.toFixed(cfg.digits ?? 0)}`; }).join('  |  '));
     if (cfg.list) log(`   solitons: ${solitons(state)}`);
     if (cfg.frames) await saveFrame(`${cfg.scene}-${T}.png`, lab, { ri: 2, lo: 0, hi: 6, scale: 1, caption: `t=${T}` });
   }
