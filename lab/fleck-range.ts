@@ -5,7 +5,7 @@ import { loadBundled } from '../src/ready';
 import { gpu, makeLab, log } from './lab';
 import type { ViewOptions } from '../src/sim';
 
-export default async function (cfg: { name: string; steps?: number; ranges?: [number, number][] }) {
+export default async function (cfg: { name: string; steps?: number; ranges?: [number, number][]; gain?: number }) {
   const imp = await loadBundled(cfg.name);
   const N = imp.rule.size!.width;
   const lab = await makeLab(imp.rule, N, {}, 'initial');
@@ -28,7 +28,7 @@ export default async function (cfg: { name: string; steps?: number; ranges?: [nu
   const row = Math.ceil((N * 4) / 256) * 256;
   for (const [label, range] of [['0..1', [0, 1]], ['fitted', fit], ...(cfg.ranges ?? []).map((r) => [`${r[0]}..${r[1]}`, r])] as [string, [number, number]][]) {
     for (const palette of [5, 6]) {
-      const view: ViewOptions = { mode: 'reagent', palette, reagent: 0, low: 0, high: 1, tint: -1, tintLow: 0, tintHigh: 1, tintStrength: 0, hueShape: 1.2, hueOffset: palette === 5 ? 0.48 : 0.6, paramSlots: [], fleckLow: range[0], fleckHigh: range[1] };
+      const view: ViewOptions = { mode: 'reagent', palette, reagent: 0, low: 0, high: 1, tint: -1, tintLow: 0, tintHigh: 1, tintStrength: 0, hueShape: 1.2, hueOffset: palette === 5 ? 0.48 : 0.6, paramSlots: [], fleckLow: range[0], fleckHigh: range[1], fleckGain: cfg.gain ?? 1 };
       const enc = device.createCommandEncoder();
       lab.sim.render(enc, tex.createView(), N, N, view);
       const buf = device.createBuffer({ size: row * N, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
@@ -43,7 +43,7 @@ export default async function (cfg: { name: string; steps?: number; ranges?: [nu
       const c = document.createElement('canvas');
       c.width = c.height = N;
       c.getContext('2d')!.putImageData(img, 0, 0);
-      const name = `${cfg.name}-${palette === 5 ? 'hsv' : 'oklch'}-${label.replace(/[^\w.-]/g, '_')}.png`;
+      const name = `${cfg.name}-${palette === 5 ? "hsv" : "oklch"}-${label.replace(/[^\w.-]/g, "_")}-g${cfg.gain ?? 1}.png`;
       await window.__save(name, c.toDataURL('image/png'));
       log(`saved ${name}`);
     }

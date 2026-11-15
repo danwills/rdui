@@ -51,6 +51,7 @@ export interface Settings {
   /** Fleck palettes: the range a, b and c are mapped through before becoming colour. */
   fleckLow: number;
   fleckHigh: number;
+  fleckGain: number;
   stampId: string | null;
   stampRot: number;
   stampFlip: boolean;
@@ -152,6 +153,7 @@ export function defaultSettings(): Settings {
     hueOffset: HUE_DEFAULTS.offset,
     fleckLow: 0,
     fleckHigh: 1,
+    fleckGain: 1,
     stampId: null,
     stampRot: 0,
     stampFlip: false,
@@ -536,6 +538,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const fleckRows = el('div', {},
     rangeRow('fleck low', 'fleckLow', [-1, 1]),
     rangeRow('fleck high', 'fleckHigh', [0, 2]),
+    slider('intensity', 'fleckGain', 0.05, 1.5, 0.01, 2),
     el('div', { class: 'buttons' }, button('fit fleck range', actions.fitFleckRange, 'set the fleck range from the field: from the 2nd to the 98th percentile of a, b and c together')));
   syncers.push(() => (fleckRows.style.display = s.palette === 5 || s.palette === 6 ? '' : 'none'));
   const viewTint = select('tint by', 'tint', () => [[-1, 'none'], ...reagentOptions()]);

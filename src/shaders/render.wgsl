@@ -28,7 +28,7 @@ struct View {
   paramMax: vec4<f32>,
   paramBase: vec4<f32>,   // unpainted value of each (outlines mode); for a wall distance field, the wall growth
   paramKind: vec4<u32>,   // 1 = a wall distance field (signed distance in cells, negative inside)
-  fleck: vec4<f32>,       // fleck palettes: the range (low, high) a, b and c are mapped through first
+  fleck: vec4<f32>,       // fleck palettes: the range (low, high) a, b and c are mapped through first; z, the intensity lightness and chroma are scaled by
 };
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -218,7 +218,10 @@ fn fleck(g: vec2<f32>) -> vec3<f32> {
   // by b and decays (b_to_c 0.05, c_damp 0.0055), so c → 9.1·b, clamped to 1.
   let c = select(clamp(9.1 * b, 0.0, 1.0), sampleReagent(g, 2u), view.reagents > 2.5);
   let p = polarOf(view.palette, fleckRange(vec3<f32>(a, b, c)));
-  return clamp(vec3<f32>(p.x, p.y, hueChannel(p.z, p.y)), vec3<f32>(0.0), vec3<f32>(1.0));
+  // intensity: lightness and chroma (V and S for HSV) scaled, so whites and clipped chroma come
+  // down; hue as it was (it fades by the unscaled chroma)
+  let k = view.fleck.z;
+  return clamp(vec3<f32>(p.x * k, p.y * k, hueChannel(p.z, p.y)), vec3<f32>(0.0), vec3<f32>(1.0));
 }
 
 fn norm(v: f32, lo: f32, hi: f32) -> f32 {

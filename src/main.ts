@@ -137,7 +137,7 @@ async function init() {
   }
 
   // the view and painting settings a saved scene keeps
-  const SAVED_VIEW = ['reagent', 'low', 'high', 'tint', 'tintLow', 'tintHigh', 'tintStrength', 'palette', 'hueShape', 'hueOffset', 'fleckLow', 'fleckHigh', 'viewMode', 'stepsPerFrame', 'paint'] as const;
+  const SAVED_VIEW = ['reagent', 'low', 'high', 'tint', 'tintLow', 'tintHigh', 'tintStrength', 'palette', 'hueShape', 'hueOffset', 'fleckLow', 'fleckHigh', 'fleckGain', 'viewMode', 'stepsPerFrame', 'paint'] as const;
 
   /** Save the whole field (rule, params, walls, chemistry, probes) and view as a scene in this browser. */
   async function saveScene() {
@@ -200,7 +200,7 @@ async function init() {
         ...rule.view,
         reagent: rule.reagents[s.reagent], low: s.low, high: s.high,
         tint: s.tint >= 0 ? rule.reagents[s.tint] : undefined,
-        stepsPerFrame: s.stepsPerFrame, palette: s.palette, hueShape: s.hueShape, hueOffset: s.hueOffset, fleckLow: s.fleckLow, fleckHigh: s.fleckHigh,
+        stepsPerFrame: s.stepsPerFrame, palette: s.palette, hueShape: s.hueShape, hueOffset: s.hueOffset, fleckLow: s.fleckLow, fleckHigh: s.fleckHigh, fleckGain: s.fleckGain,
       },
       size: { ...full },
     };
@@ -407,6 +407,7 @@ async function init() {
       // look as it was), else the rule's display range (Ready patterns' values go well past 0 to 1)
       s.fleckLow = rule.view.fleckLow ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 0 : Math.min(rule.view.low, 0));
       s.fleckHigh = rule.view.fleckHigh ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 1 : Math.max(rule.view.high, s.fleckLow + 1e-3));
+      s.fleckGain = rule.view.fleckGain ?? 1;
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
@@ -1059,6 +1060,7 @@ async function init() {
       hueOffset: s.hueOffset,
       fleckLow: s.fleckLow,
       fleckHigh: s.fleckHigh,
+      fleckGain: s.fleckGain,
       // param map / outline colours go red, green, blue, orange in this order: absorbing walls red, reflecting
       // walls green, potential V blue, damping gamma (or traps, once drawn) orange, whatever order a scene lists them in
       paramSlots: [...rule.paintable].sort((a, b) => colourRank(a) - colourRank(b)).slice(0, 4).map((n) => {

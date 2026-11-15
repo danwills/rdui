@@ -68,6 +68,8 @@ export interface ViewOptions {
   /** Fleck palettes: the range a, b and c are mapped through (default 0 to 1). */
   fleckLow?: number;
   fleckHigh?: number;
+  /** Fleck palettes: what lightness and chroma (V and S) are scaled by (below 1: less white in HSV, less flat in OKLCH). */
+  fleckGain?: number;
   /** Up to three flat param slots (>0) with their display ranges. */
   /** Painted params to show: flat slot, range, and base (unpainted) value. */
   paramSlots: { slot: number; min: number; max: number; base: number; distance?: boolean }[];
@@ -377,7 +379,7 @@ export class Simulation {
       f[28 + k] = p.base;
       u[32 + k] = p.distance ? 1 : 0;
     });
-    f[36] = v.fleckLow ?? 0; f[37] = v.fleckHigh ?? 1;
+    f[36] = v.fleckLow ?? 0; f[37] = v.fleckHigh ?? 1; f[38] = v.fleckGain ?? 1;
     this.device.queue.writeBuffer(this.viewUniform, 0, buf);
 
     const pass = enc.beginRenderPass({
