@@ -1,0 +1,124 @@
+{
+  "name": "Schrödinger ring track (128)",
+  "description": "Saturable nonlinear Schrödinger equation with a painted potential V: a ring-shaped channel of low V (a circular optical waveguide, depth 0.6, 16 cells wide, radius 44 cells in a 128×128 field) guides solitons round and round. Two solitons chase each other clockwise, half a lap apart. In the lab they ran 10 laps in 60k steps without leaving the track. No absorbing border: the field wraps round, so the little light the solitons shed stays in play. (Sent head-on at this speed they don't pass cleanly: a collision can split off a third soliton.) Things to try: paint V (the params brush) to add tracks: negative V is a channel, positive V a wall that bounces solitons; paint a blob of positive V across the ring to make a reflector, or a gap to see one escape; the seed brush adds light, and a slow blob dropped on the track gets caught by it.",
+  "rule": "builtin:8",
+  "size": 128,
+  "start": "initial",
+  "stepsPerFrame": 24,
+  "paintable": [
+    "V",
+    "gamma"
+  ],
+  "initial": [
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": -0.6,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.5,
+        "r": 0.40625
+      }
+    },
+    {
+      "chem": "V",
+      "op": "add",
+      "fill": {
+        "type": "bump",
+        "value": 0.6,
+        "edge": 2
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.5,
+        "cy": 0.5,
+        "r": 0.28125
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0,
+        "ky": 0.2,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.84375,
+        "cy": 0.5,
+        "r": 0.1875
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0,
+        "ky": 0.2,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.84375,
+        "cy": 0.5,
+        "r": 0.1875
+      }
+    },
+    {
+      "chem": "p",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0,
+        "ky": -0.2,
+        "part": "cos"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.15625,
+        "cy": 0.5,
+        "r": 0.1875
+      }
+    },
+    {
+      "chem": "q",
+      "op": "add",
+      "fill": {
+        "type": "packet",
+        "amp": 2.2,
+        "sigma": 7,
+        "kx": 0,
+        "ky": -0.2,
+        "part": "sin"
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.15625,
+        "cy": 0.5,
+        "r": 0.1875
+      }
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 5,
+    "tint": "p",
+    "tintLow": -2.5,
+    "tintHigh": 2.5
+  }
+}
