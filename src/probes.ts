@@ -22,6 +22,8 @@ export interface Probe extends Rect {
   /** Hold: show the highest mean seen (since it was added or reset) instead of the latest, so a passing soliton stays read. */
   hold: boolean;
   held: Float32Array;
+  /** Round: measures (and is drawn as) the disc or ellipse inscribed in its rect. */
+  round: boolean;
   /** Ring buffer of per-reagent means, HISTORY × 8, newest at `head - 1`. */
   history: Float32Array;
   head: number;
@@ -51,17 +53,17 @@ export class ProbeSet {
   constructor(device: GPUDevice) {
     this.device = device;
     this.info = device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-    this.regions = device.createBuffer({ size: MAX_PROBES * 16, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+    this.regions = device.createBuffer({ size: MAX_PROBES * 32, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
     this.out = device.createBuffer({ size: MAX_PROBES * OUT_BYTES, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
     this.staging = device.createBuffer({ size: MAX_PROBES * OUT_BYTES, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
   }
 
-  add(r: Rect, name?: string, hold = false): Probe | null {
+  add(r: Rect, name?: string, hold = false, round = false): Probe | null {
     if (this.probes.length >= MAX_PROBES || r.w < 1 || r.h < 1) return null;
     const id = this.nextId++;
     const p: Probe = {
       ...r, id, name: name ?? `p${id}`,
-      mean: new Float32Array(8), max: new Float32Array(8), hold, held: new Float32Array(8).fill(-Infinity),
+      mean: new Float32Array(8), max: new Float32Array(8), hold, held: new Float32Array(8).fill(-Infinity), round,
       history: new Float32Array(HISTORY * 8), head: 0, filled: 0,
     };
     this.probes.push(p);
@@ -124,8 +126,8 @@ export class ProbeSet {
     const q = this.device.queue;
     q.writeBuffer(this.info, 0, new Uint32Array([sim.width, sim.height, 0, 0]));
     if (this.dirty) {
-      const r = new Int32Array(n * 4);
-      this.probes.forEach((p, i) => r.set([p.x, p.y, p.w, p.h], i * 4));
+      const r = new Int32Array(n * 8);
+      this.probes.forEach((p, i) => r.set([p.x, p.y, p.w, p.h, p.round ? 1 : 0], i * 8));
       q.writeBuffer(this.regions, 0, r);
       this.dirty = false;
     }
@@ -171,11 +173,11 @@ export class ProbeSet {
 
   /** Plain-data form for snapshots. */
   toJSON() {
-    return this.probes.map(({ name, x, y, w, h, hold }) => ({ name, x, y, w, h, ...(hold ? { hold } : {}) }));
+    return this.probes.map(({ name, x, y, w, h, hold, round }) => ({ name, x, y, w, h, ...(hold ? { hold } : {}), ...(round ? { round } : {}) }));
   }
 
-  load(list: (Rect & { name: string; hold?: boolean })[]) {
+  load(list: (Rect & { name: string; hold?: boolean; round?: boolean })[]) {
     this.clear();
-    for (const r of list) this.add(r, r.name, r.hold ?? false);
+    for (const r of list) this.add(r, r.name, r.hold ?? false, r.round ?? false);
   }
 }

@@ -44,7 +44,7 @@ def gate(qx, qy, a, b):
     st.append({'stamp': 'nls-soliton-0-still', 'x': round(p2[0] - DC * math.cos(CHEAD), 2), 'y': round(p2[1] + DC * math.sin(CHEAD), 2), 'boost': boost(CHEAD, KC)})
     ox = p2[0] + vc * (EARLY + TAIL) * math.cos(CHEAD)
     oy = p2[1] - vc * (EARLY + TAIL) * math.sin(CHEAD)
-    probe = {'name': f'A={a} B={b} → {0 if a and b else 1}', 'x': round(ox - 14), 'y': round(oy - 14), 'w': 28, 'h': 28, 'hold': True}
+    probe = {'name': f'A={a} B={b} → {0 if a and b else 1}', 'x': round(ox - 14), 'y': round(oy - 14), 'w': 28, 'h': 28, 'hold': True, 'round': True}
     # a trap in the box (the rule's trap_d) parks the output soliton there and sets it to the standard power
     eat = [{'field': 'trap_d', 'x': round(ox % N, 1), 'y': round(oy % N, 1), 'r': 14}]
     # eaters (absorbing discs) on the spare solitons' paths, reached only after the outputs are read:

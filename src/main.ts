@@ -845,7 +845,8 @@ async function init() {
     rectDrag = null;
     if (!r) return;
     if (s.tool === 'probe') {
-      if (probes.add(r)) probePanel.render();
+      // with the circle shape, a round probe (the disc inscribed in the dragged rect)
+      if (probes.add(r, undefined, false, s.brushShape === 'circle')) probePanel.render();
     } else if (s.tool === 'capture' && r.w >= 2 && r.h >= 2) {
       captureStamp(r);
     }

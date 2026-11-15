@@ -12,6 +12,10 @@ struct Region {
   y: i32,
   w: i32,
   h: i32,
+  round: i32, // 1: only the ellipse inscribed in the rect
+  _p0: i32,
+  _p1: i32,
+  _p2: i32,
 };
 
 struct Info {
@@ -49,10 +53,14 @@ fn main(@builtin(workgroup_id) wg: vec3<u32>, @builtin(local_invocation_index) l
   var mb = vec4<f32>(LOW);
   var c = 0.0;
   for (var k = li; k < n; k += WG) {
-    let x = (r.x + i32(k % u32(r.w)) + w) % w;
-    let y = (r.y + i32(k / u32(r.w)) + h) % h;
+    let lx = i32(k % u32(r.w));
+    let ly = i32(k / u32(r.w));
+    let x = (r.x + lx + w) % w;
+    let y = (r.y + ly + h) % h;
     let i = u32(y * w + x);
-    if (params[i * P].x < 0.5) {
+    let e = (vec2<f32>(f32(lx), f32(ly)) + 0.5) / vec2<f32>(f32(r.w), f32(r.h)) - 0.5;
+    let inside = r.round == 0 || dot(e, e) <= 0.25;
+    if (inside && params[i * P].x < 0.5) {
       let a = state[i * S];
       sa += a;
       ma = max(ma, a);

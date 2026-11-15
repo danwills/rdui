@@ -58,7 +58,11 @@ export class Overlay {
     for (const p of probes) {
       const c = probeColor(p);
       ctx.strokeStyle = c;
-      ctx.strokeRect(p.x * sx + 0.5, p.y * sy + 0.5, p.w * sx, p.h * sy);
+      if (p.round) {
+        ctx.beginPath();
+        ctx.ellipse((p.x + p.w / 2) * sx, (p.y + p.h / 2) * sy, (p.w / 2) * sx, (p.h / 2) * sy, 0, 0, 2 * Math.PI);
+        ctx.stroke();
+      } else ctx.strokeRect(p.x * sx + 0.5, p.y * sy + 0.5, p.w * sx, p.h * sy);
       const label = `${p.name} ${p.hold ? 'held ' : ''}${ProbeSet.reading(p, reagent).toFixed(3)}`;
       const tw = ctx.measureText(label).width;
       const ly = p.y * sy > 14 * dpr ? p.y * sy - 2 * dpr : (p.y + p.h) * sy + 13 * dpr;
