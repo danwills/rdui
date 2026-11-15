@@ -243,7 +243,7 @@ scene('schrodinger-phase-collider', 'Schrödinger soliton phase collider',
       'the fields cancel in the middle: a dark node keeps them about 19 cells apart, and they bounce back with equal power. At 90° '
       'they trade power, ending about 890 against 520 (out of 2 × 700), and the weaker one is flung out fast; 270° is the mirror '
       'image, the other one winning. Faster solitons pass through whatever the phase. The border absorbs. Try: Display → mode → '
-      'reagent + param outlines to see the channels; the soliton stamps (four phases, still or moving) to stage your own '
+      'reagent + param outlines to see the channels; the soliton stamps (four phases; still, slow in 8 headings, fast in 4) to stage your own '
       'collisions.',
       {}, col, absorb(), {'reagent': 'n', 'low': 0, 'high': 5, 'tint': 'p', 'tintLow': -2.5, 'tintHigh': 2.5}, steps=4)
 
