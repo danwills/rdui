@@ -724,6 +724,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     customBox.replaceChildren(
       el('div', { class: 'buttons' },
         button('🎲 randomise', actions.randomiseCustom, 'new colours and powers for the reagents switched on: hues spread round the wheel, powers from each reagent\'s spread in the field'),
+        button('enable all', () => { s.custom.slice(0, names.length).forEach((c) => c && (c.on = true)); customRefresh(); }, 'switch every reagent on'),
         button('fit all', () => actions.fitCustom(), "set every reagent's low and high from the field: its 1st to 99th percentile")),
       ...rows);
     customRefresh = () => refreshers.forEach((f) => f());
