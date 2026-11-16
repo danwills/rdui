@@ -4,6 +4,7 @@ import type { RuleDef } from './rule';
 import type { CustomChannel } from './sim';
 import { PALETTES, paletteCss } from './palettes';
 import { ladder, onLadderClaim } from './ladder';
+import { openColourPicker } from './colourpick';
 
 export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'capture' | 'stamp' | 'probe';
 
@@ -136,7 +137,7 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
 export function defaultSettings(): Settings {
   return {
     tool: 'seed',
-    radius: 8,
+    radius: 42,
     strength: 1,
     hardness: 0.6,
     paint: {},
@@ -677,30 +678,18 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     hueRows.style.display = fleck ? '' : 'none';
   });
 
-  // The sim pauses while a colour picker is open (so its eyedropper catches a still field), and
-  // never stays paused: it carries on when a colour is chosen, the picker loses focus, Esc, a press
-  // anywhere else, the tab hiding, or (checked twice a second) focus moving off the picker.
-  let picking: { input: HTMLInputElement; timer: number } | null = null;
-  const stopPicking = () => {
-    if (!picking) return;
-    clearInterval(picking.timer);
-    picking = null;
-    if (!s.running) s.running = true;
+  // the custom palette's eyedropper pauses the sim while it's picking (and only then)
+  let heldForDropper = false;
+  const holdForDropper = (on: boolean) => {
+    if (on && s.running) {
+      heldForDropper = true;
+      s.running = false;
+    } else if (!on && heldForDropper) {
+      heldForDropper = false;
+      s.running = true;
+    }
     sync();
   };
-  const holdWhilePicking = (input: HTMLInputElement) => {
-    input.addEventListener('click', () => {
-      if (picking || !s.running) return;
-      s.running = false;
-      sync();
-      picking = { input, timer: window.setInterval(() => { if (document.activeElement !== input) stopPicking(); }, 500) };
-    });
-    input.addEventListener('change', stopPicking);
-    input.addEventListener('blur', stopPicking);
-  };
-  document.addEventListener('pointerdown', (e) => { if (picking && e.target !== picking.input) stopPicking(); }, true);
-  document.addEventListener('keydown', (e) => { if (picking && e.key === 'Escape') stopPicking(); }, true);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) stopPicking(); });
 
   // custom palette only: per reagent, on/off, colour, low, high, power (rebuilt for each rule)
   const customBox = el('div', {});
@@ -718,24 +707,24 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       if (!ch()) return;
       const on = el('input', { type: 'checkbox' });
       on.addEventListener('change', () => (ch().on = on.checked));
-      const colour = el('input', { type: 'color', class: 'swatch', title: `${name}'s colour (its contribution at full strength); the sim pauses while the picker is open` });
-      holdWhilePicking(colour);
-      colour.addEventListener('input', () => {
-        const h = colour.value;
-        ch().color = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255) as [number, number, number];
-      });
+      const colour = el('button', { class: 'swatch', title: `${name}'s colour (its contribution at full strength)` });
+      colour.addEventListener('click', () => openColourPicker(colour, ch().color, (c) => {
+        ch().color = c;
+        colour.style.background = toHex(c);
+      }, holdForDropper));
       const lo = valueRow('low', () => ch().low, (v) => (ch().low = v), [-1, 1]);
       const hi = valueRow('high', () => ch().high, (v) => (ch().high = v), [0, 2]);
       const pw = valueRow('power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4]);
-      refreshers.push(() => { on.checked = ch().on; colour.value = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
+      refreshers.push(() => { on.checked = ch().on; colour.style.background = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
       const fit = button('fit', () => actions.fitCustom(r), `fit ${name}'s low and high to the field (1st to 99th percentile)`);
       fit.classList.add('mini');
       rows.push(el('div', { class: 'custom-channel' }, el('label', { class: 'check' }, on, name), el('span', { class: 'custom-tools' }, fit, colour)), lo.row, hi.row, pw.row);
     });
-    customBox.replaceChildren(...rows,
+    customBox.replaceChildren(
       el('div', { class: 'buttons' },
-        button('fit all', () => actions.fitCustom(), "set every reagent's low and high from the field: its 1st to 99th percentile"),
-        button('🎲 randomise', actions.randomiseCustom, 'new colours and powers for the reagents switched on: hues spread round the wheel, powers from each reagent\'s spread in the field')));
+        button('🎲 randomise', actions.randomiseCustom, 'new colours and powers for the reagents switched on: hues spread round the wheel, powers from each reagent\'s spread in the field'),
+        button('fit all', () => actions.fitCustom(), "set every reagent's low and high from the field: its 1st to 99th percentile")),
+      ...rows);
     customRefresh = () => refreshers.forEach((f) => f());
   };
   let customRefresh = () => {};

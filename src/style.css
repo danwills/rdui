@@ -279,3 +279,8 @@ header button.narrow span { display: inline-block; transform: scaleX(0.5); margi
 .tabs button.active { border-color: var(--accent); color: var(--accent); }
 section > h2 { display: none; }
 .rec-progress { width: 100%; height: 8px; accent-color: var(--accent); }
+.cp { position: fixed; z-index: 70; padding: 8px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; gap: 6px; }
+.cp canvas { display: block; border-radius: 3px; cursor: crosshair; }
+.cp-row { display: flex; align-items: center; gap: 6px; }
+.cp-row .num { width: 84px; flex: 1; }
+.cp-swatch { width: 26px; height: 22px; border-radius: 4px; border: 1px solid var(--line); flex: none; }
