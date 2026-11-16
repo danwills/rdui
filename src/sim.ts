@@ -1,4 +1,5 @@
 import brushWGSL from './shaders/brush.wgsl?raw';
+import smoothWGSL from './shaders/smooth.wgsl?raw';
 import { COLORMAP_RGB } from './colormaps';
 import renderWGSL from './shaders/render.wgsl?raw';
 import type { CompiledRule, Layout } from './rule';
@@ -21,6 +22,8 @@ export const BrushMode = {
   SetParam: 5,
   /** Add a stroke to a wall distance field (slot; base > 0), or cut it out (base < 0). */
   Sdf: 6,
+  /** Round off walls and blur painted params (and the chemistry too, with clear): see smooth.wgsl. */
+  Smooth: 7,
 } as const;
 export type BrushMode = (typeof BrushMode)[keyof typeof BrushMode];
 
@@ -35,7 +38,8 @@ export interface BrushStroke {
   hardness: number;
   /** Values for the paintable params, in layout order (excluding wall). */
   paint: number[];
-  /** SetParam: the flat param slot to set (1..), and whether to reset the chemistry there to rest. */
+  /** SetParam: the flat param slot to set (1..), and whether to reset the chemistry there to rest.
+   *  Smooth: clear blurs the chemistry as well. */
   slot?: number;
   clear?: boolean;
   /** SetParam: the param's unpainted value (strokes raise or lower towards paint from it, never past it). */
@@ -128,6 +132,10 @@ export class Simulation {
 
   private stepPipeline: GPUComputePipeline;
   private brushPipeline: GPUComputePipeline;
+  /** The Smooth brush, and the copy of the field it reads (made on its first stroke). */
+  private smoothPipeline?: GPUComputePipeline;
+  private smoothGroups?: [GPUBindGroup, GPUBindGroup];
+  private smoothSrc?: { state: GPUBuffer; params: GPUBuffer };
   private renderPipeline: GPURenderPipeline;
   private colormaps: GPUBuffer;
 
@@ -349,16 +357,57 @@ export class Simulation {
       f[36 + r] = rule.seedNoise[r] ?? 0;
       f[48 + r] = rule.rest[r] ?? 0;
     });
-    b.paint.forEach((v, i) => (f[60 + 1 + i] = v));
+    if (b.mode === BrushMode.Smooth) {
+      // which param slots to blur: all but the wall flag and a membrane's compartment ids
+      const names = this.layout.paramNames;
+      names.forEach((n, i) => (f[60 + i] = i > 0 && n !== rule.membrane?.param ? 1 : 0));
+    } else b.paint.forEach((v, i) => (f[60 + 1 + i] = v));
     this.device.queue.writeBuffer(this.brushUniform, 0, buf);
 
     const enc = this.device.createCommandEncoder();
+    if (b.mode === BrushMode.Smooth) {
+      const src = this.smoothBuffers();
+      enc.copyBufferToBuffer(this.state[this.current], 0, src.state, 0, src.state.size);
+      enc.copyBufferToBuffer(this.params, 0, src.params, 0, src.params.size);
+    }
     const pass = enc.beginComputePass();
-    pass.setPipeline(this.brushPipeline);
-    pass.setBindGroup(0, this.brushGroups[this.current]);
+    pass.setPipeline(b.mode === BrushMode.Smooth ? this.smoothPipeline! : this.brushPipeline);
+    pass.setBindGroup(0, b.mode === BrushMode.Smooth ? this.smoothGroups![this.current] : this.brushGroups[this.current]);
     pass.dispatchWorkgroups(Math.ceil(this.width / WG), Math.ceil(this.height / WG));
     pass.end();
     this.device.queue.submit([enc.finish()]);
+  }
+
+  private smoothBuffers() {
+    if (!this.smoothSrc) {
+      const { S, P } = this.layout;
+      const usage = GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST;
+      const cells = this.width * this.height;
+      const src = {
+        state: this.device.createBuffer({ size: cells * S * 16, usage, label: 'smoothState' }),
+        params: this.device.createBuffer({ size: cells * P * 16, usage, label: 'smoothParams' }),
+      };
+      const pipeline = this.device.createComputePipeline({
+        layout: 'auto',
+        compute: { module: this.device.createShaderModule({ code: smoothWGSL, label: 'smooth' }), entryPoint: 'main', constants: { S, P } },
+      });
+      const group = (cur: number) =>
+        this.device.createBindGroup({
+          layout: pipeline.getBindGroupLayout(0),
+          entries: [
+            { binding: 0, resource: { buffer: this.brushUniform } },
+            { binding: 1, resource: { buffer: this.infoUniform } },
+            { binding: 2, resource: { buffer: this.params } },
+            { binding: 3, resource: { buffer: this.state[cur] } },
+            { binding: 4, resource: { buffer: src.params } },
+            { binding: 5, resource: { buffer: src.state } },
+          ],
+        });
+      this.smoothSrc = src;
+      this.smoothPipeline = pipeline;
+      this.smoothGroups = [group(0), group(1)];
+    }
+    return this.smoothSrc;
   }
 
   /** Encode `n` simulation steps into the given encoder. */
@@ -524,6 +573,8 @@ export class Simulation {
   }
 
   destroy() {
+    this.smoothSrc?.state.destroy();
+    this.smoothSrc?.params.destroy();
     for (const b of [...this.state, this.params, this.infoUniform, this.globalsUniform, this.brushUniform, this.viewUniform, this.probeBuffer]) {
       b.destroy();
     }

@@ -6,7 +6,7 @@ import { PALETTES, paletteCss } from './palettes';
 import { ladder, onLadderClaim } from './ladder';
 import { openColourPicker } from './colourpick';
 
-export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'capture' | 'stamp' | 'probe';
+export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'smooth' | 'capture' | 'stamp' | 'probe';
 
 /** Fleck palettes' default hue shape and offset (Dan's picks), the offset per palette: HSV fleck (5), OKLCH fleck (6). */
 export const HUE_DEFAULTS = { shape: 1.2, offset: 0.6, offsets: { 5: 0.48, 6: 0.6 } as Record<number, number> };
@@ -129,6 +129,7 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'params', label: 'Params', key: '3', hint: 'paint the paintable parameters · right-click samples' },
   { id: 'wall', label: 'Wall', key: '4', hint: 'no-flux barrier · right-drag removes' },
   { id: 'unwall', label: 'Unwall', key: '8', hint: 'remove walls (e.g. open a door)' },
+  { id: 'smooth', label: 'Smooth', key: '9', hint: 'round off walls and blur painted params · right-drag blurs the pattern too · walls thinner than about a sixth of the brush go' },
   { id: 'capture', label: 'Capture', key: '5', hint: 'drag a rectangle to capture it as a stamp' },
   { id: 'stamp', label: 'Stamp', key: '6', hint: 'click to place the selected stamp · Q/E rotate · X mirror' },
   { id: 'probe', label: 'Probe', key: '7', hint: 'drag a rectangle to measure it · right-click a probe removes it' },

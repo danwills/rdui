@@ -350,12 +350,13 @@ async function init() {
       // Paint mode: the current tool's stroke into an explore sim (tools that need the main sim's
       // param layout, or aren't strokes, seed instead)
       brush: (target, ax, ay, bx, by, alt) => {
-        const tool = s.tool === 'erase' || s.tool === 'wall' || s.tool === 'unwall' ? s.tool : 'seed';
+        const tool = s.tool === 'erase' || s.tool === 'wall' || s.tool === 'unwall' || s.tool === 'smooth' ? s.tool : 'seed';
         const mode = tool === 'erase' ? BrushMode.Erase : tool === 'wall' ? (alt ? BrushMode.Unwall : BrushMode.Wall)
-          : tool === 'unwall' ? (alt ? BrushMode.Wall : BrushMode.Unwall) : alt ? BrushMode.Erase : BrushMode.Seed;
+          : tool === 'unwall' ? (alt ? BrushMode.Wall : BrushMode.Unwall) : tool === 'smooth' ? BrushMode.Smooth
+          : alt ? BrushMode.Erase : BrushMode.Seed;
         const fft = rule.laplacian === 'spectral' || rule.laplacian === 'spectral-exact';
         target.brush({ ax, ay, bx, by, mode, radius: s.radius / cellScale, strength: s.strength, hardness: s.hardness, paint: [],
-          ...(mode === BrushMode.Wall ? { base: s.wallsFeed || fft ? 2 : 1 } : {}) });
+          ...(mode === BrushMode.Wall ? { base: s.wallsFeed || fft ? 2 : 1 } : {}), ...(mode === BrushMode.Smooth ? { clear: alt } : {}) });
       },
       view: viewOptions,
       stepsPerFrame: () => s.stepsPerFrame,
@@ -1083,6 +1084,7 @@ async function init() {
       case 'params': mode = BrushMode.Params; break;
       case 'wall': mode = alt ? BrushMode.Unwall : BrushMode.Wall; break;
       case 'unwall': mode = alt ? BrushMode.Wall : BrushMode.Unwall; break;
+      case 'smooth': mode = BrushMode.Smooth; break;
       default: mode = alt ? BrushMode.Erase : BrushMode.Seed; break;
     }
     // wave media: the Wall tool draws reflecting or absorbing walls into the rule's wall distance fields
@@ -1107,6 +1109,7 @@ async function init() {
       radius: s.radius / cellScale, strength: s.strength, hardness: s.hardness,
       paint: paintValues(),
       ...(mode === BrushMode.Wall ? { base: s.wallsFeed || fft ? 2 : 1 } : {}),
+      ...(mode === BrushMode.Smooth ? { clear: alt } : {}),
     }];
   }
 
