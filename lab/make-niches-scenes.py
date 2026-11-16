@@ -68,3 +68,11 @@ scene('niches-strong-worms.json', 'Gray-Scott Niches: worms fight back',
       'walled layout). A guess not yet tried in this layout: it may tip the other way. Each circle is walled; open doors with the '
       'Unwall tool (key 8). Tint = local mean feed; view b1…b4 to see one species alone.',
       [(*SPOTS, 0.27, 0.27), (*STRONG_WORMS, 0.73, 0.27), (*DOTS, 0.27, 0.73), (*DASHES, 0.73, 0.73)])
+
+scene('niches-worm-battle.json', 'Gray-Scott Niches: worm battle',
+      'Four kinds of worm in the open, no walls, one in each corner: F 0.046 k 0.0655 (top left: worms broken into dots), 0.05 0.065 '
+      '(top right), 0.054 0.0655 (bottom left) and 0.058 0.0645 (bottom right: the hungry worms of "worms fight back"). Picked '
+      'from duels in the open field against spots and worms, where each held 44-68%; not yet run against each other, a guess. '
+      'Tint = local mean feed (from blue-ish F 0.046 to F 0.058); view b1…b4 to see one kind alone.',
+      [('worms .046', 0.046, 0.0655, 0.27, 0.27), ('worms .05', 0.05, 0.065, 0.73, 0.27),
+       ('worms .054', 0.054, 0.0655, 0.27, 0.73), ('worms .058', 0.058, 0.0645, 0.73, 0.73)], walls=False)
