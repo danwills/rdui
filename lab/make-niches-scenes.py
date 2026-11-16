@@ -59,3 +59,12 @@ scene('niches-balanced.json', 'Gray-Scott Niches: balanced four',
       'four ended between 45% and 59% of the ground after 60k steps. Each circle is walled; open doors with the Unwall tool (key 8) and '
       'watch the borders. Tint = local mean feed, which tells the species apart; view b1…b4 to see one alone.',
       [(*SPOTS, 0.27, 0.27), (*WORMS, 0.73, 0.27), (*DOTS, 0.27, 0.73), (*DASHES, 0.73, 0.73)])
+
+STRONG_WORMS = ('worms', 0.058, 0.0645)
+scene('niches-strong-worms.json', 'Gray-Scott Niches: worms fight back',
+      'Balanced four with hungrier worms: k 0.0645 instead of 0.065 (top right, F 0.058), so worms no longer lose ground to the rest. '
+      'In open-field duels they took 63-68% of the ground from each of spots (top left, F 0.0367 k 0.0649), small dots (bottom left, '
+      '0.026 0.061) and dashes (bottom right, 0.025 0.06) after 60k steps (the old worms held 46-56% against them and lost in the '
+      'walled layout). A guess not yet tried in this layout: it may tip the other way. Each circle is walled; open doors with the '
+      'Unwall tool (key 8). Tint = local mean feed; view b1…b4 to see one species alone.',
+      [(*SPOTS, 0.27, 0.27), (*STRONG_WORMS, 0.73, 0.27), (*DOTS, 0.27, 0.73), (*DASHES, 0.73, 0.73)])
