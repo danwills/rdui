@@ -30,6 +30,7 @@ struct View {
   paramKind: vec4<u32>,   // 1 = a wall distance field (signed distance in cells, negative inside)
   fleck: vec4<f32>,       // fleck palettes: the range (low, high) a, b and c are mapped through first; z, the intensity lightness and chroma are scaled by
   custom: array<vec4<f32>, 24>, // custom palette, per reagent: (low, high, power, on), (r, g, b, -)
+  customGrade: vec4<f32>,       // custom palette: contrast, saturation applied to the sum
 };
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -128,7 +129,7 @@ fn colormap(m: u32, t: f32) -> vec3<f32> {
 }
 
 // custom palette: each reagent switched on, fitted (low → 0, high → 1), raised to its power and
-// multiplied by its colour; the colours summed
+// multiplied by its colour; the colours summed, then contrast (about mid-grey) and saturation
 fn customColor(g: vec2<f32>) -> vec3<f32> {
   var c = vec3<f32>(0.0);
   let n = min(u32(view.reagents), 12u);
@@ -139,6 +140,10 @@ fn customColor(g: vec2<f32>) -> vec3<f32> {
       c += pow(t, max(a.z, 1e-3)) * view.custom[2u * r + 1u].rgb;
     }
   }
+  c = clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+  c = (c - 0.5) * view.customGrade.x + 0.5;
+  let luma = dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
+  c = mix(vec3<f32>(luma), c, view.customGrade.y);
   return clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
 }
 

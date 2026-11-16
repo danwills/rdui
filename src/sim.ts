@@ -93,6 +93,9 @@ export interface ViewOptions {
   fleckGain?: number;
   /** Custom palette (7), per reagent: fitted from low to high, raised to power, times colour (0-1 RGB), summed. */
   custom?: CustomChannel[];
+  /** Custom palette: contrast (about mid-grey) and saturation applied to the summed colour (1 = as is). */
+  customContrast?: number;
+  customSaturation?: number;
   /** Up to three flat param slots (>0) with their display ranges. */
   /** Painted params to show: flat slot, range, and base (unpainted) value. */
   paramSlots: { slot: number; min: number; max: number; base: number; distance?: boolean }[];
@@ -169,7 +172,7 @@ export class Simulation {
     this.infoUniform = device.createBuffer({ size: 16, usage: uniform });
     this.globalsUniform = device.createBuffer({ size: compiled.globalVec4s * 16, usage: uniform });
     this.brushUniform = device.createBuffer({ size: 272, usage: uniform });
-    this.viewUniform = device.createBuffer({ size: 544, usage: uniform });
+    this.viewUniform = device.createBuffer({ size: 560, usage: uniform });
     this.colormaps = colormapBuffer(device);
     this.writeInfo();
     this.globals = new Float32Array(compiled.globalVec4s * 4);
@@ -431,7 +434,7 @@ export class Simulation {
   }
 
   render(enc: GPUCommandEncoder, target: GPUTextureView, canvasW: number, canvasH: number, v: ViewOptions) {
-    const buf = new ArrayBuffer(544);
+    const buf = new ArrayBuffer(560);
     const u = new Uint32Array(buf);
     const f = new Float32Array(buf);
     u[0] = this.width; u[1] = this.height;
@@ -454,6 +457,7 @@ export class Simulation {
     v.custom?.slice(0, 12).forEach((c, r) => {
       f.set([c.low, c.high, c.power, c.on ? 1 : 0, ...c.color, 0], 40 + 8 * r);
     });
+    f[136] = v.customContrast ?? 1; f[137] = v.customSaturation ?? 1;
     this.device.queue.writeBuffer(this.viewUniform, 0, buf);
 
     const pass = enc.beginRenderPass({
