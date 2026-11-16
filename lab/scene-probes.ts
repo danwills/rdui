@@ -6,7 +6,7 @@ import type { Scene } from '../src/scenes';
 import { makeLab, log, saveFrame } from './lab';
 import { BrushMode } from '../src/sim';
 
-export default async function (cfg: { scene: string; at: number[]; frames?: boolean; list?: boolean; digits?: number }) {
+export default async function (cfg: { scene: string; at: number[]; frames?: boolean; list?: boolean; digits?: number; phase?: boolean }) {
   const sc: Scene = await (await fetch(`/scenes/${cfg.scene}.json`)).json();
   const base = R.BUILTIN_RULES[+sc.rule.split(':')[1]];
   const lab = await makeLab(sc.initial ? { ...base, initial: sc.initial } : base, sc.size!, sc.globals ?? {}, sc.start === 'initial' ? 'initial' : 'rest');
@@ -28,7 +28,7 @@ export default async function (cfg: { scene: string; at: number[]; frames?: bool
     for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
       const v = I(st, x, y); if (v < 1) continue;
       let m = true; for (let dy = -4; dy <= 4 && m; dy++) for (let dx = -4; dx <= 4; dx++) if ((dx || dy) && I(st, x + dx, y + dy) > v) { m = false; break; }
-      if (m) { let p = 0; for (let dy = -12; dy <= 12; dy++) for (let dx = -12; dx <= 12; dx++) if (dx * dx + dy * dy <= 144) p += I(st, x + dx, y + dy); left.push(`(${x},${y}) ${p.toFixed(0)}`); }
+      if (m) { let p = 0; for (let dy = -12; dy <= 12; dy++) for (let dx = -12; dx <= 12; dx++) if (dx * dx + dy * dy <= 144) p += I(st, x + dx, y + dy); const j = ((y * N + x) * S4); left.push(`(${x},${y}) ${p.toFixed(0)}${cfg.phase ? ` φ${((Math.atan2(st[j + 1], st[j]) * 180) / Math.PI).toFixed(0)}°` : ''}`); }
     }
     return left.join('  ');
   };

@@ -1,0 +1,638 @@
+{
+  "name": "Schrödinger phase NOT",
+  "description": "A NOT gate for bits stored in phase (0 is phase 0, 1 is phase π; the colour shows phase): a phase plate. In each half, an input A (from the left; top A=0, bottom A=1) crosses a reference soliton R (from the upper left, always 0) as in the phase XOR scene, where different phases pass straight through each other and fill both boxes, so both boxes full reads 1. But first A crosses the faint strip across its path: a shallow well in the potential (V -0.038, 60 cells), where a soliton's phase turns faster than outside. It is just deep enough to add half a turn, π: 0 becomes 1 and 1 becomes 0, so the top half (A=0) fills both boxes and the bottom (A=1) does not. Nothing else changes: measured in the lab, the soliton keeps all its power and comes out 17.5 cells ahead (it speeds up in the well), so it starts that much further back. It is the optical phase plate, using nothing but how the Schrödinger equation's phase answers to the potential. The plate ends 60 cells before the crossing so R's path clears it. Answers by about step 10878 (23 s at 8 steps per frame); the traps (orange) keep only what arrives near full strength. Try: erase the plate (paint V back to 0) and the answers swap.",
+  "rule": "builtin:8",
+  "size": 512,
+  "start": "rest",
+  "stepsPerFrame": 8,
+  "globals": {
+    "trap_loss": 0.08
+  },
+  "paint": [
+    {
+      "rect": [
+        0,
+        0,
+        512,
+        512
+      ],
+      "values": {
+        "absorb_d": -50
+      }
+    },
+    {
+      "rect": [
+        64,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.00237
+      }
+    },
+    {
+      "rect": [
+        139,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.00237
+      }
+    },
+    {
+      "rect": [
+        65,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.00712
+      }
+    },
+    {
+      "rect": [
+        138,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.00712
+      }
+    },
+    {
+      "rect": [
+        66,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.01188
+      }
+    },
+    {
+      "rect": [
+        137,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.01188
+      }
+    },
+    {
+      "rect": [
+        67,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.01663
+      }
+    },
+    {
+      "rect": [
+        136,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.01663
+      }
+    },
+    {
+      "rect": [
+        68,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.02137
+      }
+    },
+    {
+      "rect": [
+        135,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.02137
+      }
+    },
+    {
+      "rect": [
+        69,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.02612
+      }
+    },
+    {
+      "rect": [
+        134,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.02612
+      }
+    },
+    {
+      "rect": [
+        70,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.03087
+      }
+    },
+    {
+      "rect": [
+        133,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.03087
+      }
+    },
+    {
+      "rect": [
+        71,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.03562
+      }
+    },
+    {
+      "rect": [
+        132,
+        118,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.03562
+      }
+    },
+    {
+      "rect": [
+        72,
+        118,
+        60,
+        44
+      ],
+      "values": {
+        "V": -0.038
+      }
+    },
+    {
+      "rect": [
+        64,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.00237
+      }
+    },
+    {
+      "rect": [
+        139,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.00237
+      }
+    },
+    {
+      "rect": [
+        65,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.00712
+      }
+    },
+    {
+      "rect": [
+        138,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.00712
+      }
+    },
+    {
+      "rect": [
+        66,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.01188
+      }
+    },
+    {
+      "rect": [
+        137,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.01188
+      }
+    },
+    {
+      "rect": [
+        67,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.01663
+      }
+    },
+    {
+      "rect": [
+        136,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.01663
+      }
+    },
+    {
+      "rect": [
+        68,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.02137
+      }
+    },
+    {
+      "rect": [
+        135,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.02137
+      }
+    },
+    {
+      "rect": [
+        69,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.02612
+      }
+    },
+    {
+      "rect": [
+        134,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.02612
+      }
+    },
+    {
+      "rect": [
+        70,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.03087
+      }
+    },
+    {
+      "rect": [
+        133,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.03087
+      }
+    },
+    {
+      "rect": [
+        71,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.03562
+      }
+    },
+    {
+      "rect": [
+        132,
+        374,
+        1,
+        44
+      ],
+      "values": {
+        "V": -0.03562
+      }
+    },
+    {
+      "rect": [
+        72,
+        374,
+        60,
+        44
+      ],
+      "values": {
+        "V": -0.038
+      }
+    }
+  ],
+  "stamps": [
+    {
+      "stamp": "nls-soliton-0-still",
+      "x": 12.5,
+      "y": 140.0,
+      "boost": {
+        "kx": 0.08,
+        "ky": -0.0,
+        "phase": 0.0
+      }
+    },
+    {
+      "stamp": "nls-soliton-0-still",
+      "x": 79.79,
+      "y": 19.79,
+      "boost": {
+        "kx": 0.05657,
+        "ky": 0.05657,
+        "phase": 0.0
+      }
+    },
+    {
+      "stamp": "nls-soliton-0-still",
+      "x": 12.5,
+      "y": 396.0,
+      "boost": {
+        "kx": 0.08,
+        "ky": -0.0,
+        "phase": 3.141592653589793
+      }
+    },
+    {
+      "stamp": "nls-soliton-0-still",
+      "x": 79.79,
+      "y": 275.79,
+      "boost": {
+        "kx": 0.05657,
+        "ky": 0.05657,
+        "phase": 0.0
+      }
+    }
+  ],
+  "sdf": [
+    {
+      "field": "trap_d",
+      "x": 280.6,
+      "y": 140.0,
+      "r": 14
+    },
+    {
+      "field": "trap_d",
+      "x": 257.0,
+      "y": 197.0,
+      "r": 14
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 12.5,
+      "y": 140.0,
+      "x2": 200,
+      "y2": 140,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 79.8,
+      "y": 19.8,
+      "x2": 200,
+      "y2": 140,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 200,
+      "y": 140,
+      "x2": 280.6,
+      "y2": 140.0,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 200,
+      "y": 140,
+      "x2": 257.0,
+      "y2": 197.0,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 200,
+      "y": 140,
+      "x2": 267.2,
+      "y2": 173.3,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 280.6,
+      "y": 140.0,
+      "x2": 280.6,
+      "y2": 140.0,
+      "r": 30
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 257.0,
+      "y": 197.0,
+      "x2": 257.0,
+      "y2": 197.0,
+      "r": 30
+    },
+    {
+      "field": "trap_d",
+      "x": 280.6,
+      "y": 396.0,
+      "r": 14
+    },
+    {
+      "field": "trap_d",
+      "x": 257.0,
+      "y": 453.0,
+      "r": 14
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 12.5,
+      "y": 396.0,
+      "x2": 200,
+      "y2": 396,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 79.8,
+      "y": 275.8,
+      "x2": 200,
+      "y2": 396,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 200,
+      "y": 396,
+      "x2": 280.6,
+      "y2": 396.0,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 200,
+      "y": 396,
+      "x2": 257.0,
+      "y2": 453.0,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 200,
+      "y": 396,
+      "x2": 267.2,
+      "y2": 429.3,
+      "r": 24
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 280.6,
+      "y": 396.0,
+      "x2": 280.6,
+      "y2": 396.0,
+      "r": 30
+    },
+    {
+      "field": "absorb_d",
+      "cut": true,
+      "x": 257.0,
+      "y": 453.0,
+      "x2": 257.0,
+      "y2": 453.0,
+      "r": 30
+    }
+  ],
+  "probes": [
+    {
+      "name": "NOT A, A=0 → 1: both (A side)",
+      "x": 267,
+      "y": 126,
+      "w": 28,
+      "h": 28,
+      "hold": true,
+      "round": true
+    },
+    {
+      "name": "NOT A, A=0: R side",
+      "x": 243,
+      "y": 183,
+      "w": 28,
+      "h": 28,
+      "hold": true,
+      "round": true
+    },
+    {
+      "name": "NOT A, A=1 → 0: not both (A side)",
+      "x": 267,
+      "y": 382,
+      "w": 28,
+      "h": 28,
+      "hold": true,
+      "round": true
+    },
+    {
+      "name": "NOT A, A=1: R side",
+      "x": 243,
+      "y": 439,
+      "w": 28,
+      "h": 28,
+      "hold": true,
+      "round": true
+    }
+  ],
+  "view": {
+    "reagent": "n",
+    "low": 0,
+    "high": 6,
+    "tint": "p",
+    "tintLow": -3,
+    "tintHigh": 3
+  }
+}
