@@ -100,7 +100,9 @@ export interface Actions {
   /** Fleck palettes: set the fleck range from the field's values. */
   fitFleckRange(): void;
   /** Custom palette: fit each reagent's low and high to the field. */
-  fitCustom(): void;
+  fitCustom(only?: number): void;
+  /** Custom palette: new colours and powers that work together. */
+  randomiseCustom(): void;
 }
 
 /** What the panel needs to know about the current rule. */
@@ -403,7 +405,16 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       // tiles apply at once and the grid stays open: Enter, ✕ or a tap outside keep the choice,
       // Esc puts back what was there when it opened
       const was = { palette: s.palette, hueOffset: s.hueOffset, tint: s.tint, tintStrength: s.tintStrength, custom: structuredClone(s.custom) };
-      const close = () => { sheet.remove(); document.removeEventListener('keydown', onKey, true); };
+      // Back closes it too (keeping the choice): it has a history entry while open
+      const close = (popped = false) => {
+        sheet.remove();
+        document.removeEventListener('keydown', onKey, true);
+        window.removeEventListener('popstate', onPop);
+        if (!popped && history.state?.rduiPalette) history.back();
+      };
+      const onPop = () => close(true);
+      history.pushState({ rduiPalette: true }, '');
+      window.addEventListener('popstate', onPop);
       const onKey = (e: KeyboardEvent) => {
         if (e.key === 'Escape') {
           Object.assign(s, structuredClone(was));
@@ -430,7 +441,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       ]));
       const sheet = el('div', { class: 'pal-sheet' }, el('div', { class: 'pal-panel' },
         el('div', { class: 'pal-head' }, el('span', {}, 'Palette'), el('span', { class: 'pal-hint' }, 'Enter keeps · Esc cancels'),
-          (() => { const x = el('button', { title: 'done: keep the chosen palette' }, '✕'); x.addEventListener('click', close); return x; })()), grid));
+          (() => { const x = el('button', { title: 'done: keep the chosen palette' }, '✕'); x.addEventListener('click', () => close()); return x; })()), grid));
       sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
       document.addEventListener('keydown', onKey, true);
       document.body.append(sheet);
@@ -647,6 +658,22 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     el('div', { class: 'buttons' }, button('fit fleck range', actions.fitFleckRange, 'set the fleck range from the field: from the 2nd to the 98th percentile of a, b and c together')));
   syncers.push(() => (fleckRows.style.display = s.palette === 5 || s.palette === 6 ? '' : 'none'));
 
+  const viewTint = select('tint by', 'tint', () => [[-1, 'none'], ...reagentOptions()]);
+  // only shown where they do something: tint for the one-reagent palettes (not fleck or custom),
+  // hue shape and offset for the fleck palettes
+  const tintRows = el('div', {}, viewTint.row,
+    rangeRow('tint low', 'tintLow', [-1, 1]),
+    rangeRow('tint high', 'tintHigh', [-1, 2]),
+    slider('tint mix', 'tintStrength', 0, 1, 0.01, 2));
+  const hueRows = el('div', {},
+    slider('hue shape', 'hueShape', 0.1, 4, 0.01, 2),
+    slider('hue offset', 'hueOffset', 0, 1, 0.01, 2));
+  syncers.push(() => {
+    const fleck = s.palette === 5 || s.palette === 6;
+    tintRows.style.display = fleck || s.palette === 7 ? 'none' : '';
+    hueRows.style.display = fleck ? '' : 'none';
+  });
+
   // custom palette only: per reagent, on/off, colour, low, high, power (rebuilt for each rule)
   const customBox = el('div', {});
   let customKey = '';
@@ -672,10 +699,14 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       const hi = valueRow('high', () => ch().high, (v) => (ch().high = v), [0, 2]);
       const pw = valueRow('power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4]);
       refreshers.push(() => { on.checked = ch().on; colour.value = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
-      rows.push(el('div', { class: 'custom-channel' }, el('label', { class: 'check' }, on, name), colour), lo.row, hi.row, pw.row);
+      const fit = button('fit', () => actions.fitCustom(r), `fit ${name}'s low and high to the field (1st to 99th percentile)`);
+      fit.classList.add('mini');
+      rows.push(el('div', { class: 'custom-channel' }, el('label', { class: 'check' }, on, name), el('span', { class: 'custom-tools' }, fit, colour)), lo.row, hi.row, pw.row);
     });
     customBox.replaceChildren(...rows,
-      el('div', { class: 'buttons' }, button('fit ranges', actions.fitCustom, "set each reagent's low and high from the field: its 1st to 99th percentile")));
+      el('div', { class: 'buttons' },
+        button('fit all', () => actions.fitCustom(), "set every reagent's low and high from the field: its 1st to 99th percentile"),
+        button('🎲 randomise', actions.randomiseCustom, 'new colours and powers for the reagents switched on: hues spread round the wheel, powers from each reagent\'s spread in the field')));
     customRefresh = () => refreshers.forEach((f) => f());
   };
   let customRefresh = () => {};
@@ -685,7 +716,6 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     fillCustom();
     customRefresh();
   });
-  const viewTint = select('tint by', 'tint', () => [[-1, 'none'], ...reagentOptions()]);
 
   const importBtn = button('Import…', actions.importRule, 'load a Ready formula pattern (.vti) or a saved rdui rule (.json)');
   // feature size: ¼–1 for any rule, up to 4 where the rule's diffusion is exact (stable at any size)
@@ -729,12 +759,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       viewReagent.row,
       rangeRow('low', 'low', [-1, 1]),
       rangeRow('high', 'high', [-1, 2]),
-      viewTint.row,
-      rangeRow('tint low', 'tintLow', [-1, 1]),
-      rangeRow('tint high', 'tintHigh', [-1, 2]),
-      slider('tint mix', 'tintStrength', 0, 1, 0.01, 2),
-      slider('hue shape', 'hueShape', 0.1, 4, 0.01, 2),
-      slider('hue offset', 'hueOffset', 0, 1, 0.01, 2),
+      tintRows,
+      hueRows,
       fleckRows,
       customBox,
       palettePicker(),

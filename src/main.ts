@@ -19,6 +19,16 @@ import { openCollection, presetImport } from './collection';
 import { startAnalysis } from './analysis';
 import { STARTER_STAMPS, boostStamp, compositeOnto, stampBackground } from './stamps';
 
+/** An OKLCH colour (lightness 0-1, chroma, hue in turns) as sRGB 0-1, scaled down to fit if it's out of gamut. */
+function oklchToRgb(L: number, C: number, h: number): [number, number, number] {
+  const a = C * Math.cos(2 * Math.PI * h), b = C * Math.sin(2 * Math.PI * h);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3, m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3, q = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const lin = [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * q, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * q, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * q];
+  const srgb = lin.map((x) => { x = Math.max(0, x); return x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055; });
+  const top = Math.max(1, ...srgb);
+  return srgb.map((x) => x / top) as [number, number, number];
+}
+
 /** The custom palette's starting point: the first three reagents on, in orange, cyan and green; the rest off. */
 function defaultCustom(n: number): CustomChannel[] {
   const colours: [number, number, number][] = [[1, 0.55, 0.2], [0.2, 0.75, 1], [0.6, 1, 0.3], [1, 0.3, 0.85], [1, 0.95, 0.4], [0.55, 0.45, 1]];
@@ -233,19 +243,54 @@ async function init() {
   }
 
   /** Custom palette: each reagent's low and high from its 1st to 99th percentile (a strided sample of the middle 512²). */
-  async function fitCustom() {
+  /** Each reagent's values, sorted (a strided sample of the middle 512²; non-finite ones left out). */
+  async function reagentSamples(): Promise<number[][]> {
     const w = Math.min(512, sim.width), h = Math.min(512, sim.height);
     const { state } = await sim.readRegion((sim.width - w) >> 1, (sim.height - h) >> 1, w, h);
     const S4 = sim.layout.S * 4;
-    s.custom.forEach((c, r) => {
+    return s.custom.map((_, r) => {
       const v: number[] = [];
       for (let i = 0; i < w * h; i += 7) if (Number.isFinite(state[i * S4 + r])) v.push(state[i * S4 + r]);
-      if (!v.length) return;
-      v.sort((p, q) => p - q);
-      const lo = v[Math.floor(v.length * 0.01)], hi = v[Math.floor(v.length * 0.99)];
-      if (!(hi - lo > 1e-6)) return; // (nearly) uniform: nothing to fit to
-      c.low = lo;
-      c.high = hi;
+      return v.sort((p, q) => p - q);
+    });
+  }
+  /** Fits a custom channel's low and high to its 1st-99th percentile; false if (nearly) uniform. */
+  function fitChannel(c: CustomChannel, v: number[]) {
+    if (!v.length) return false;
+    const lo = v[Math.floor(v.length * 0.01)], hi = v[Math.floor(v.length * 0.99)];
+    if (!(hi - lo > 1e-6)) return false;
+    c.low = lo;
+    c.high = hi;
+    return true;
+  }
+  /** Custom palette: fit every reagent's low and high to the field, or just reagent `only`. */
+  async function fitCustom(only?: number) {
+    const samples = await reagentSamples();
+    s.custom.forEach((c, r) => { if (only === undefined || r === only) fitChannel(c, samples[r]); });
+    ui.sync();
+  }
+  /**
+   * Custom palette: new colours and powers for the reagents switched on, chosen to work together.
+   * Colours: hues spread evenly round the wheel from a random start (a little jitter), at a fixed
+   * perceptual lightness and chroma (OKLCH), dimmed by how many are summed so they don't burn out
+   * to white. Powers: from each reagent's own spread in the field, so its median cell lands at a
+   * random 20-45% of its colour (sparse reagents don't vanish, dense ones don't flood), jittered.
+   */
+  async function randomiseCustom() {
+    const samples = await reagentSamples();
+    if (!s.custom.some((c) => c.on)) s.custom.forEach((c, r) => (c.on = r < 3));
+    const on = s.custom.map((c, r) => [c, r] as const).filter(([c]) => c.on);
+    const n = on.length, h0 = Math.random(), dim = Math.min(1, 2.2 / n);
+    const order = on.map((_, i) => i).sort(() => Math.random() - 0.5);
+    on.forEach(([c, r], i) => {
+      const v = samples[r];
+      if (c.low === 0 && c.high === 1) fitChannel(c, v);
+      const hue = h0 + order[i] / n + (Math.random() - 0.5) * (0.12 / n);
+      c.color = oklchToRgb(0.72 + (Math.random() - 0.5) * 0.12, 0.15, hue).map((x) => x * dim) as [number, number, number];
+      const tMed = v.length ? Math.min(1, Math.max(0, (v[v.length >> 1] - c.low) / (c.high - c.low || 1))) : 0.5;
+      const target = 0.2 + Math.random() * 0.25;
+      const p = tMed > 0.01 && tMed < 0.99 ? Math.log(target) / Math.log(tMed) : Math.exp((Math.random() - 0.5) * 1.6);
+      c.power = Math.min(4, Math.max(0.25, p * Math.exp((Math.random() - 0.5) * 0.5)));
     });
     ui.sync();
   }
@@ -657,7 +702,8 @@ async function init() {
     explore: () => void openExplorer(),
     collection: () => void openCollectionPanel(),
     fitFleckRange: () => void fitFleckRange(),
-    fitCustom: () => void fitCustom(),
+    fitCustom: (only?: number) => void fitCustom(only),
+    randomiseCustom: () => void randomiseCustom(),
     setGlobal: (name, v) => {
       globals[name] = v;
       sim.setGlobal(name, v);

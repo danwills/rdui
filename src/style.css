@@ -273,3 +273,4 @@ header button.narrow span { display: inline-block; transform: scaleX(0.5); margi
 .row.strength { grid-template-columns: 76px 1fr 52px 72px; }
 .explore-spark { width: 72px; height: 18px; display: block; }
 .explore-over { right: auto; bottom: auto; }
+.custom-tools { display: flex; align-items: center; gap: 6px; }
