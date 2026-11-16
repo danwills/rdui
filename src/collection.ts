@@ -224,7 +224,8 @@ export interface CollectionEnv {
   format: GPUTextureFormat;
   view(): ViewOptions;
   /** The family the main sim is running (if it's from the collection), and a piece of its state to start previews from. */
-  current?: { famId: string; md5?: string; params?: Record<string, number>; section: { w: number; h: number; state: Float32Array } };
+  /** famId '' with `file`: a Ready file loaded some other way, found by its file name (no .vti). */
+  current?: { famId: string; md5?: string; file?: string; params?: Record<string, number>; section: { w: number; h: number; state: Float32Array } };
   /** Run the preview's preset (and values) in the main sim, filling the screen. */
   use(famId: string, md5: string, params: Record<string, number>): void;
   onClose(): void;
@@ -712,6 +713,21 @@ export function openCollection(env: CollectionEnv) {
     panX = -20 / zoom;
     panY = -ROW / 2;
     const cur = env.current;
+    if (cur && !cur.famId && cur.file) {
+      // which family has it: the families' lists (quick; clustering waits)
+      const lists = await Promise.all(fams.map((n) => loadFamily(n.famEntry!.id)));
+      // the same name (a _djw suffix aside), else the preset with the same parameters nearest in value
+      const base = (name: string) => name.split('/').pop()!.replace(/\.vti$/i, '').replace(/_djw$/, '').toLowerCase();
+      const want = base(cur.file), keys = Object.keys(cur.params ?? {}).sort().join();
+      const near = (p: Preset) => Object.entries(cur.params ?? {}).reduce((s, [k, v]) => s + Math.abs((p.params[k] ?? v) - v) / (Math.abs(v) + Math.abs(p.params[k] ?? v) + 1e-9), 0);
+      let best: [number, Preset] | null = null;
+      lists.forEach((f, i) => f.presets.forEach((p) => {
+        const score = base(p.path) === want ? -1 : Object.keys(p.params).sort().join() === keys ? near(p) : Infinity;
+        if (score < (best?.[0] ?? Infinity)) { best = [score, p]; cur.famId = fams[i].famEntry!.id; }
+      }));
+      if (best) cur.md5 = (best as [number, Preset])[1].md5;
+      if (closed) return;
+    }
     const fnode = cur && fams.find((n) => n.famEntry?.id === cur.famId);
     let anchor: Node | null = null, exact = false;
     if (fnode) {

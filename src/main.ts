@@ -302,9 +302,11 @@ async function init() {
     s.running = false;
     ui.sync();
     let current;
-    if (ruleId.startsWith('vti:')) {
+    // from the collection, or a Ready file (bundled or opened) the collection finds by its file name
+    const file = /^(pattern|file):/.test(ruleId) ? ruleId.replace(/^\w+:/, '').split('/').pop()!.replace(/\.vti$/i, '') : undefined;
+    if (ruleId.startsWith('vti:') || file) {
       const w = Math.min(256, sim.width), h = Math.min(256, sim.height);
-      current = { famId: ruleId.split(':')[1], md5: ruleId.split(':')[2], params: { ...globals }, section: { w, h, state: (await sim.readRegion(Math.floor((sim.width - w) / 2), Math.floor((sim.height - h) / 2), w, h)).state } };
+      current = { famId: file ? '' : ruleId.split(':')[1], md5: file ? undefined : ruleId.split(':')[2], file, params: { ...globals }, section: { w, h, state: (await sim.readRegion(Math.floor((sim.width - w) / 2), Math.floor((sim.height - h) / 2), w, h)).state } };
     }
     let reopened = false;
     openCollection({
