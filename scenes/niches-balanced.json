@@ -1,0 +1,856 @@
+{
+  "name": "Gray-Scott Niches: balanced four",
+  "description": "The heredity test of Gray-Scott Niches with four evenly matched species, so none simply takes over: spots (top left, F 0.0367 k 0.0649), worms (top right, 0.058 0.065), small hexagonal dots (bottom left, 0.026 0.061) and short dashes (bottom right, 0.025 0.06). In the first heredity scene maze and curly took nearly everything (in duels they hold 76-98% against spots or worms); these were picked from 16 Gray-Scott regimes by duels in the open field, each species seeded in one half: every pairing of these four ended between 45% and 59% of the ground after 60k steps. Each circle is walled; open doors with the Unwall tool (key 8) and watch the borders. Tint = local mean feed, which tells the species apart; view b1…b4 to see one alone.",
+  "rule": "builtin:16",
+  "size": 384,
+  "start": "initial",
+  "stepsPerFrame": 20,
+  "globals": {
+    "F1": 0.0367,
+    "k1": 0.0649,
+    "F2": 0.058,
+    "k2": 0.065,
+    "F3": 0.026,
+    "k3": 0.061,
+    "F4": 0.025,
+    "k4": 0.06
+  },
+  "initial": [
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.18200000000000002
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.17
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.34,
+        "cy": 0.29,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.34,
+        "cy": 0.29,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.21,
+        "cy": 0.32,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.21,
+        "cy": 0.32,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.24,
+        "cy": 0.2,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.24,
+        "cy": 0.2,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.31,
+        "cy": 0.21,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.31,
+        "cy": 0.21,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.29,
+        "cy": 0.36,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.29,
+        "cy": 0.36,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.18200000000000002
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.17
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8,
+        "cy": 0.29,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8,
+        "cy": 0.29,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.67,
+        "cy": 0.32,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.67,
+        "cy": 0.32,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.2,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.2,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.77,
+        "cy": 0.21,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.77,
+        "cy": 0.21,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.36,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.36,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.18200000000000002
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.17
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.34,
+        "cy": 0.75,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.34,
+        "cy": 0.75,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.21,
+        "cy": 0.78,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.21,
+        "cy": 0.78,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.24,
+        "cy": 0.66,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.24,
+        "cy": 0.66,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.31,
+        "cy": 0.67,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.31,
+        "cy": 0.67,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.29,
+        "cy": 0.82,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.29,
+        "cy": 0.82,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.18200000000000002
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.17
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8,
+        "cy": 0.75,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.8,
+        "cy": 0.75,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.67,
+        "cy": 0.78,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.67,
+        "cy": 0.78,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.66,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.66,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.77,
+        "cy": 0.67,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.77,
+        "cy": 0.67,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.82,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.75,
+        "cy": 0.82,
+        "r": 0.012
+      }
+    }
+  ],
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.5,
+    "tint": "P_F",
+    "tintLow": 0.015,
+    "tintHigh": 0.06
+  }
+}

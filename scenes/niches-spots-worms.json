@@ -1,0 +1,404 @@
+{
+  "name": "Gray-Scott Niches: spots meet worms",
+  "description": "Two species of Gray-Scott Niches in the open, no walls: spots (left, F 0.0367 k 0.0649) and worms (right, F 0.058 k 0.065), each seeded as a few small spots and each living on its own food, so they compete only for space (interfere 0.3: where they overlap, each raises the other's death rate). They are evenly matched (in the lab, by territory: spots 68% at 20k steps, then 52%, 48% by 60k), so rather than one taking over, their fronts meet and they intermingle: dividing spots push in between the worms and worms thread through the spots. Tint = local mean feed (spots and worms feed differently); view b1 or b2 to see one species alone.",
+  "rule": "builtin:16",
+  "size": 384,
+  "start": "initial",
+  "stepsPerFrame": 20,
+  "globals": {
+    "F1": 0.0367,
+    "k1": 0.0649,
+    "F2": 0.058,
+    "k2": 0.065
+  },
+  "initial": [
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.5,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.3,
+        "cy": 0.5,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.37,
+        "cy": 0.52,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.37,
+        "cy": 0.52,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.24,
+        "cy": 0.55,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.24,
+        "cy": 0.55,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.43,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.43,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.34,
+        "cy": 0.44,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.34,
+        "cy": 0.44,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.32,
+        "cy": 0.59,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.32,
+        "cy": 0.59,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.5,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.7,
+        "cy": 0.5,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.77,
+        "cy": 0.52,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.77,
+        "cy": 0.52,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.64,
+        "cy": 0.55,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.64,
+        "cy": 0.55,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.67,
+        "cy": 0.43,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.67,
+        "cy": 0.43,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.74,
+        "cy": 0.44,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.74,
+        "cy": 0.44,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.5
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.72,
+        "cy": 0.59,
+        "r": 0.012
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.3
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.72,
+        "cy": 0.59,
+        "r": 0.012
+      }
+    }
+  ],
+  "view": {
+    "reagent": "b",
+    "low": 0,
+    "high": 0.5,
+    "tint": "P_F",
+    "tintLow": 0.015,
+    "tintHigh": 0.06
+  }
+}
