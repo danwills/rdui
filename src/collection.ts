@@ -136,8 +136,19 @@ function mean(presets: Preset[]) {
  * the parameters (each scaled by its range in the family, logarithmically where it's positive
  * and spans more than 20×), merges of about the same height then flattened into one node.
  */
+/** One preset per set of parameter values (many differ only in their starting state): the first with a seed and a thumbnail, else the first. */
+function distinct(presets: Preset[]) {
+  const by = new Map<string, Preset>();
+  for (const p of presets) {
+    const key = Object.keys(p.params).sort().map((k) => `${k}=${Number(p.params[k].toPrecision(6))}`).join(',');
+    const had = by.get(key);
+    if (!had || (!(had.seed && had.thumb) && p.seed && p.thumb)) by.set(key, p);
+  }
+  return presets.filter((p) => [...by.values()].includes(p));
+}
+
 function clusterFamily(fam: Family): Node[] {
-  const ps = fam.presets;
+  const ps = distinct(fam.presets);
   const names = [...new Set(ps.flatMap((p) => Object.keys(p.params)))];
   const scale = names.map((k) => {
     const v = ps.map((p) => p.params[k]).filter((x) => x !== undefined);
@@ -683,6 +694,7 @@ export function openCollection(env: CollectionEnv) {
     // everything open from the start. The current family first, so the view goes straight to the
     // entry nearest the current rule; the rest load meanwhile and open round it (it stays put on screen)
     const fams = top.children.flatMap((n) => (n.famEntry ? [n] : n.children));
+    const leaves = (n: Node): Node[] => (n.preset ? [n] : n.children.flatMap(leaves));
     const openAll = (n: Node) => { if (n.children.length) { n.open = true; n.children.forEach(openAll); } };
     const fill = async (n: Node) => {
       if (n.children.length) return;
@@ -690,6 +702,7 @@ export function openCollection(env: CollectionEnv) {
       if (n.children.length) return;
       n.children = clusterFamily(fam);
       n.params = mean(fam.presets);
+      n.count = leaves(n).length;
       openAll(n);
     };
     for (const n of top.children) if (!n.famEntry) n.open = true;
@@ -700,16 +713,15 @@ export function openCollection(env: CollectionEnv) {
     panY = -ROW / 2;
     const cur = env.current;
     const fnode = cur && fams.find((n) => n.famEntry?.id === cur.famId);
-    let anchor: Node | null = null;
+    let anchor: Node | null = null, exact = false;
     if (fnode) {
       await fill(fnode);
       if (closed) return;
       // the preset itself, else the one with the nearest parameters (each difference relative to its size)
-      const leaves: Node[] = [];
-      const walk = (n: Node) => (n.preset ? leaves.push(n) : n.children.forEach(walk));
-      walk(fnode);
       const dist = (p: Preset) => Object.entries(cur.params ?? {}).reduce((s, [k, v]) => (p.params[k] === undefined ? s : s + Math.abs(p.params[k] - v) / (Math.abs(v) + Math.abs(p.params[k]) + 1e-9)), 0);
-      anchor = leaves.find((n) => n.preset!.md5 === cur.md5) ?? leaves.reduce<Node | null>((b, n) => (!b || dist(n.preset!) < dist(b.preset!) ? n : b), null) ?? fnode;
+      const ls = leaves(fnode);
+      anchor = ls.find((n) => n.preset!.md5 === cur.md5) ?? ls.reduce<Node | null>((b, n) => (!b || dist(n.preset!) < dist(b.preset!) ? n : b), null) ?? fnode;
+      exact = anchor.preset?.md5 === cur.md5 || (!!anchor.preset && dist(anchor.preset) < 1e-6);
       layout();
       panY = anchor.y - H / 2 / zoom;
       panX = Math.max(-20 / zoom, anchor.x - W * 0.55 / zoom);
@@ -720,6 +732,7 @@ export function openCollection(env: CollectionEnv) {
     readout.textContent = `Loading ${idx.families.length} rules…`;
     await Promise.all(fams.map(fill));
     if (closed) return;
+    for (const n of top.children) if (!n.famEntry) n.count = n.children.reduce((s, c) => s + c.count, 0);
     const before = anchor && toScreen(anchor.x, anchor.y);
     layout();
     if (anchor && before) {
@@ -727,6 +740,6 @@ export function openCollection(env: CollectionEnv) {
       panY = anchor.y - before[1] / zoom;
     }
     draw();
-    readout.textContent = `${anchor ? `▶ Running: ${describe(anchor)}${anchor.preset?.md5 === cur?.md5 ? '' : ' (nearest)'}\n` : ''}${idx.families.length} rules, ${idx.families.reduce((s: number, f: FamilyEntry) => s + f.count, 0)} presets from Dan's Ready patterns. Tap to open; pinch or scroll to zoom; drag empty space to move.`;
+    readout.textContent = `${anchor ? `▶ Running: ${describe(anchor)}${exact ? '' : ' (nearest)'}\n` : ''}${idx.families.length} rules, ${fams.reduce((s, n) => s + n.count, 0)} distinct presets from Dan's Ready patterns (repeats that differ only in their starting state left out). Tap to open; pinch or scroll to zoom; drag empty space to move.`;
   });
 }
