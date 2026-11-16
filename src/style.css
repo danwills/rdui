@@ -261,3 +261,10 @@ header button.narrow span { display: inline-block; transform: scaleX(0.5); margi
 .pal-tile.active { border-color: var(--accent); color: var(--accent); }
 .pal-hint { flex: 1; font-size: 11px; color: var(--muted); }
 @media (hover: none) { .pal-hint { display: none; } }
+.ladder { position: fixed; z-index: 80; width: 150px; background: rgba(14, 15, 20, 0.94); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); font: 12px ui-monospace, monospace; user-select: none; touch-action: none; pointer-events: none; }
+.ladder-head { padding: 4px 8px; color: var(--accent); border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ladder-row { display: flex; justify-content: space-between; align-items: center; height: 26px; padding: 0 8px; color: var(--muted); }
+.ladder.touch .ladder-row { height: 40px; }
+.ladder-row.active { background: rgba(255, 200, 90, 0.16); color: var(--fg, #ddd); }
+.ladder-value { color: var(--accent); }
+.row.param, .row { -webkit-touch-callout: none; }

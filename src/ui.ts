@@ -3,6 +3,7 @@ import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoad
 import type { RuleDef } from './rule';
 import type { CustomChannel } from './sim';
 import { PALETTES, paletteCss } from './palettes';
+import { ladder, onLadderClaim } from './ladder';
 
 export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'capture' | 'stamp' | 'probe';
 
@@ -227,6 +228,7 @@ function valueRow(label: string, get: () => number, set: (v: number) => void, ra
   refresh();
   const row = el('label', { class: 'row param', title: label }, el('span', {}, label), input, num);
   if (extra) row.append(extra);
+  ladder(row, { get, set: (v) => { set(v); refresh(); }, range });
   return { row, refresh };
 }
 
@@ -243,6 +245,7 @@ export function guardSliders() {
   if (guarded) return;
   guarded = true;
   let touch: { el: HTMLInputElement; value: string; x: number; y: number; ok: boolean; far: boolean; wanted?: string } | null = null;
+  onLadderClaim(() => (touch = null)); // the value ladder has the gesture: not a tap, nothing to undo
   const isRange = (t: EventTarget | null): t is HTMLInputElement => t instanceof HTMLInputElement && t.type === 'range';
   const undo = () => {
     if (touch && !touch.ok && touch.el.value !== touch.value) touch.el.value = touch.value;
@@ -304,7 +307,13 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       input.value = String(s[key]);
       out.textContent = (s[key] as number).toFixed(digits);
     });
-    return el('label', { class: 'row' }, el('span', {}, label), input, out);
+    const row = el('label', { class: 'row' }, el('span', {}, label), input, out);
+    ladder(row, {
+      get: () => s[key] as number,
+      set: (v) => { (s[key] as number) = v; onChange?.(); sync(); },
+      range: [min, max], clamp: [min, max],
+    });
+    return row;
   }
 
   /**
@@ -731,7 +740,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       palettePicker(),
     ),
     el('footer', {}, el('p', { class: 'hint' },
-      '1–7 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle reagent · T cycle tint · H hide panel · right-click alt action · Esc cancel')),
+      '1–7 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle reagent · T cycle tint · H hide panel · right-click alt action · Esc cancel · hold the middle button on a slider (or long-press it) for a value ladder: up/down picks the step, left/right drags')),
   );
 
   rebuildRule();
