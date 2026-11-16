@@ -1,4 +1,5 @@
 import './style.css';
+import { recordSection } from './record';
 import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type CustomChannel, type ViewOptions } from './sim';
 import { buildPanel, defaultSettings, fmt, HUE_DEFAULTS, hueOffsetFor, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
@@ -638,6 +639,18 @@ async function init() {
     stampPanel.render(); // also moves the selection off deleted or unlisted stamps
   };
 
+  // recording: the recorder steps the sim itself, so the main loop holds still meanwhile
+  let heldRunning = false;
+  const recordPanel = recordSection({
+    device, sim: () => sim, view: viewOptions, stepsPerFrame: () => s.stepsPerFrame, name: () => rule.name,
+    hold: (on) => {
+      if (on) {
+        heldRunning = s.running;
+        s.running = false;
+      } else if (heldRunning) s.running = true;
+      ui.sync();
+    },
+  });
   const probePanel = probeSection(probes, () => ({ index: s.reagent, name: rule.reagents[s.reagent] }));
   probes.onSample = probePanel.update;
 
@@ -731,7 +744,7 @@ async function init() {
     warnings: () => warnings,
     note: () => note,
     bigFeatures: () => stableAtAnySpacing(compiled),
-  }, [stampPanel.node, probePanel.node]);
+  }, [stampPanel.node, probePanel.node, recordPanel.node]);
 
   if (import.meta.env.DEV) {
     Object.assign(window, {

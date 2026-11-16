@@ -668,11 +668,39 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const hueRows = el('div', {},
     slider('hue shape', 'hueShape', 0.1, 4, 0.01, 2),
     slider('hue offset', 'hueOffset', 0, 1, 0.01, 2));
+  // the shown reagent and its range: not for custom (each reagent has its own there)
+  const showRows = el('div', {}, viewReagent.row, rangeRow('low', 'low', [-1, 1]), rangeRow('high', 'high', [-1, 2]));
   syncers.push(() => {
+    showRows.style.display = s.palette === 7 ? 'none' : '';
     const fleck = s.palette === 5 || s.palette === 6;
     tintRows.style.display = fleck || s.palette === 7 ? 'none' : '';
     hueRows.style.display = fleck ? '' : 'none';
   });
+
+  // The sim pauses while a colour picker is open (so its eyedropper catches a still field), and
+  // never stays paused: it carries on when a colour is chosen, the picker loses focus, Esc, a press
+  // anywhere else, the tab hiding, or (checked twice a second) focus moving off the picker.
+  let picking: { input: HTMLInputElement; timer: number } | null = null;
+  const stopPicking = () => {
+    if (!picking) return;
+    clearInterval(picking.timer);
+    picking = null;
+    if (!s.running) s.running = true;
+    sync();
+  };
+  const holdWhilePicking = (input: HTMLInputElement) => {
+    input.addEventListener('click', () => {
+      if (picking || !s.running) return;
+      s.running = false;
+      sync();
+      picking = { input, timer: window.setInterval(() => { if (document.activeElement !== input) stopPicking(); }, 500) };
+    });
+    input.addEventListener('change', stopPicking);
+    input.addEventListener('blur', stopPicking);
+  };
+  document.addEventListener('pointerdown', (e) => { if (picking && e.target !== picking.input) stopPicking(); }, true);
+  document.addEventListener('keydown', (e) => { if (picking && e.key === 'Escape') stopPicking(); }, true);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopPicking(); });
 
   // custom palette only: per reagent, on/off, colour, low, high, power (rebuilt for each rule)
   const customBox = el('div', {});
@@ -690,7 +718,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       if (!ch()) return;
       const on = el('input', { type: 'checkbox' });
       on.addEventListener('change', () => (ch().on = on.checked));
-      const colour = el('input', { type: 'color', class: 'swatch', title: `${name}'s colour (its contribution at full strength)` });
+      const colour = el('input', { type: 'color', class: 'swatch', title: `${name}'s colour (its contribution at full strength); the sim pauses while the picker is open` });
+      holdWhilePicking(colour);
       colour.addEventListener('input', () => {
         const h = colour.value;
         ch().color = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255) as [number, number, number];
@@ -753,21 +782,37 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         deleteSceneBtn,
       ),
     ),
-    ...extraSections,
     section('View',
       select('mode', 'viewMode', () => [['reagent', 'reagent'], ['outlines', 'reagent + param outlines'], ['params', 'parameter map']]).row,
-      viewReagent.row,
-      rangeRow('low', 'low', [-1, 1]),
-      rangeRow('high', 'high', [-1, 2]),
+      showRows,
       tintRows,
       hueRows,
       fleckRows,
       customBox,
       palettePicker(),
     ),
+    ...extraSections,
     el('footer', {}, el('p', { class: 'hint' },
       '1–7 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle reagent · T cycle tint · H hide panel · right-click alt action · Esc cancel · hold the middle button on a slider (or long-press it) for a value ladder: up/down picks the step, left/right drags')),
   );
+
+  // the sections as tabs under the header: one at a time, the last one chosen remembered
+  const TAB_KEY = 'rdui.panelTab';
+  const sections = [...root.querySelectorAll<HTMLElement>(':scope > section')];
+  const names = sections.map((sec) => sec.querySelector('h2')?.textContent ?? '');
+  let current = names[0];
+  try { const t = localStorage.getItem(TAB_KEY); if (t && names.includes(t)) current = t; } catch { /* no storage */ }
+  const tabButtons = names.map((n) => button(n, () => showTab(n), `show ${n}`));
+  const tabBar = el('nav', { class: 'tabs' }, ...tabButtons);
+  root.querySelector(':scope > header')?.after(tabBar);
+  function showTab(n: string) {
+    current = n;
+    try { localStorage.setItem(TAB_KEY, n); } catch { /* no storage */ }
+    sections.forEach((sec, i) => (sec.style.display = names[i] === n ? '' : 'none'));
+    tabButtons.forEach((b, i) => b.classList.toggle('active', names[i] === n));
+    root.scrollTop = 0;
+  }
+  showTab(current);
 
   rebuildRule();
   return { sync, rebuildRule };
