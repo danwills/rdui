@@ -213,7 +213,7 @@ export interface CollectionEnv {
   format: GPUTextureFormat;
   view(): ViewOptions;
   /** The family the main sim is running (if it's from the collection), and a piece of its state to start previews from. */
-  current?: { famId: string; section: { w: number; h: number; state: Float32Array } };
+  current?: { famId: string; md5?: string; params?: Record<string, number>; section: { w: number; h: number; state: Float32Array } };
   /** Run the preview's preset (and values) in the main sim, filling the screen. */
   use(famId: string, md5: string, params: Record<string, number>): void;
   onClose(): void;
@@ -680,29 +680,53 @@ export function openCollection(env: CollectionEnv) {
           ? { ...kids[0], label: `${name}: ${kids[0].label}` }
           : node(name, { children: kids, count: kids.reduce((s, k) => s + k.count, 0), thumb: fs[0].thumb });
       });
-    // everything open from the start: every family loaded and clustered
-    readout.textContent = `Loading ${idx.families.length} rules…`;
+    // everything open from the start. The current family first, so the view goes straight to the
+    // entry nearest the current rule; the rest load meanwhile and open round it (it stays put on screen)
     const fams = top.children.flatMap((n) => (n.famEntry ? [n] : n.children));
-    await Promise.all(fams.map(async (n) => {
+    const openAll = (n: Node) => { if (n.children.length) { n.open = true; n.children.forEach(openAll); } };
+    const fill = async (n: Node) => {
+      if (n.children.length) return;
       const fam = await loadFamily(n.famEntry!.id);
+      if (n.children.length) return;
       n.children = clusterFamily(fam);
       n.params = mean(fam.presets);
-    }));
-    if (closed) return;
-    const openAll = (n: Node) => { if (n.children.length) { n.open = true; n.children.forEach(openAll); } };
-    openAll(top);
-    layout();
-    // readable: the tree's width across the screen, from the top (or round the current family)
+      openAll(n);
+    };
+    for (const n of top.children) if (!n.famEntry) n.open = true;
+    top.open = true;
     const W = canvas.clientWidth, H = canvas.clientHeight;
-    zoom = Math.min(1, Math.max(0.6, W / (Math.max(...visible.map((n) => n.x)) + COL + 20)));
+    zoom = 0.8;
     panX = -20 / zoom;
     panY = -ROW / 2;
-    draw();
-    readout.textContent = `${idx.families.length} rules, ${idx.families.reduce((s: number, f: FamilyEntry) => s + f.count, 0)} presets from Dan's Ready patterns. Tap to open; pinch or scroll to zoom; drag empty space to move.`;
-    const fnode = env.current && fams.find((n) => n.famEntry?.id === env.current!.famId);
+    const cur = env.current;
+    const fnode = cur && fams.find((n) => n.famEntry?.id === cur.famId);
+    let anchor: Node | null = null;
     if (fnode) {
-      panY = fnode.y - H / 2 / zoom;
-      draw();
+      await fill(fnode);
+      if (closed) return;
+      // the preset itself, else the one with the nearest parameters (each difference relative to its size)
+      const leaves: Node[] = [];
+      const walk = (n: Node) => (n.preset ? leaves.push(n) : n.children.forEach(walk));
+      walk(fnode);
+      const dist = (p: Preset) => Object.entries(cur.params ?? {}).reduce((s, [k, v]) => (p.params[k] === undefined ? s : s + Math.abs(p.params[k] - v) / (Math.abs(v) + Math.abs(p.params[k]) + 1e-9)), 0);
+      anchor = leaves.find((n) => n.preset!.md5 === cur.md5) ?? leaves.reduce<Node | null>((b, n) => (!b || dist(n.preset!) < dist(b.preset!) ? n : b), null) ?? fnode;
+      layout();
+      panY = anchor.y - H / 2 / zoom;
+      panX = Math.max(-20 / zoom, anchor.x - W * 0.55 / zoom);
+      selected = anchor;
+      if (cur.params && anchor.preset) void preview(cur.famId, anchor.preset.md5, cur.params);
+    } else layout();
+    draw();
+    readout.textContent = `Loading ${idx.families.length} rules…`;
+    await Promise.all(fams.map(fill));
+    if (closed) return;
+    const before = anchor && toScreen(anchor.x, anchor.y);
+    layout();
+    if (anchor && before) {
+      panX = anchor.x - before[0] / zoom;
+      panY = anchor.y - before[1] / zoom;
     }
+    draw();
+    readout.textContent = `${anchor ? `▶ Running: ${describe(anchor)}${anchor.preset?.md5 === cur?.md5 ? '' : ' (nearest)'}\n` : ''}${idx.families.length} rules, ${idx.families.reduce((s: number, f: FamilyEntry) => s + f.count, 0)} presets from Dan's Ready patterns. Tap to open; pinch or scroll to zoom; drag empty space to move.`;
   });
 }

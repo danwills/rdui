@@ -304,7 +304,7 @@ async function init() {
     let current;
     if (ruleId.startsWith('vti:')) {
       const w = Math.min(256, sim.width), h = Math.min(256, sim.height);
-      current = { famId: ruleId.split(':')[1], section: { w, h, state: (await sim.readRegion(Math.floor((sim.width - w) / 2), Math.floor((sim.height - h) / 2), w, h)).state } };
+      current = { famId: ruleId.split(':')[1], md5: ruleId.split(':')[2], params: { ...globals }, section: { w, h, state: (await sim.readRegion(Math.floor((sim.width - w) / 2), Math.floor((sim.height - h) / 2), w, h)).state } };
     }
     let reopened = false;
     openCollection({
