@@ -100,6 +100,19 @@ interface Node {
 
 const node = (label: string, extra: Partial<Node> = {}): Node => ({ label, children: [], count: 1, open: false, x: 0, y: 0, ...extra });
 
+/** `text` cut to `maxW` pixels with the ellipsis in the middle (names often differ only at the end). */
+function midEllipsis(g: CanvasRenderingContext2D, text: string, maxW: number) {
+  if (g.measureText(text).width <= maxW) return text;
+  let lo = 0, hi = text.length;
+  while (lo < hi) {
+    const k = (lo + hi + 1) >> 1, a = Math.ceil(k / 2);
+    if (g.measureText(`${text.slice(0, a)}…${text.slice(text.length - (k - a))}`).width <= maxW) lo = k;
+    else hi = k - 1;
+  }
+  const a = Math.ceil(lo / 2);
+  return `${text.slice(0, a)}…${text.slice(text.length - (lo - a))}`;
+}
+
 /** Longest common prefix, trimmed back to a word boundary. */
 function commonName(names: string[]) {
   let p = names[0] ?? '';
@@ -287,6 +300,8 @@ export function openCollection(env: CollectionEnv) {
   // --- blending state
   let previewKey: { famId: string; md5: string; params: Record<string, number> } | null = null;
   let blend: { a: Node; b: Node | null; t: number; px: number; py: number } | null = null;
+  // selected: what the preview is running; hover: what a click would pick (outlined, its name shown)
+  let selected: Node | null = null, hover: Node | null = null;
 
   function draw() {
     const W = canvas.clientWidth, H = canvas.clientHeight;
@@ -344,17 +359,58 @@ export function openCollection(env: CollectionEnv) {
         g.lineWidth = 2;
         g.strokeRect(x - 2, y - (tw || 8) / 2 - 2, (tw || 8) + 4, (tw || 8) + 4);
       }
-      if (zoom > 0.18 || !leafish) {
-        const label = n.preset ? n.label : `${n.label}${n.count > 1 ? `  (${n.count})` : ''}${!n.children.length && !n.famEntry ? '' : n.open ? '' : ' ▸'}`;
-        g.fillStyle = n.preset ? 'rgba(255,255,255,0.8)' : '#9fd8ff';
-        const maxW = COL * zoom - tw - 14;
-        let t = label;
-        if (g.measureText(t).width > maxW) {
-          while (t.length > 4 && g.measureText(`${t}…`).width > maxW) t = t.slice(0, -1);
-          t += '…';
+      const maxW = COL * zoom - tw - 14;
+      const label = n.preset ? n.label : `${n.label}${n.count > 1 ? `  (${n.count})` : ''}${!n.children.length && !n.famEntry ? '' : n.open ? '' : ' ▸'}`;
+      const t = maxW > 20 && (zoom > 0.18 || !leafish || n === selected) ? midEllipsis(g, label, maxW) : '';
+      if (n === selected || n === hover) {
+        // a box round the thumbnail and label: filled and bright for the one running, an outline for the one under the pointer
+        const bh = Math.max(tw || 8, font) + 8, bw = (tw || 8) + (t ? 12 + g.measureText(t).width : 0) + 8;
+        g.beginPath();
+        g.roundRect(x - 4, y - bh / 2, bw, bh, 5);
+        if (n === selected) {
+          g.fillStyle = 'rgba(255,204,102,0.22)';
+          g.fill();
+          g.strokeStyle = '#ffcc66';
+          g.lineWidth = 2.5;
+        } else {
+          g.strokeStyle = 'rgba(255,255,255,0.85)';
+          g.lineWidth = 1.5;
         }
-        if (maxW > 20) g.fillText(t, x + (tw || 8) + 6, y);
+        g.stroke();
       }
+      if (t) {
+        g.fillStyle = n === selected ? '#ffe2a8' : n.preset ? 'rgba(255,255,255,0.8)' : '#9fd8ff';
+        g.fillText(t, x + (tw || 8) + 6, y);
+      }
+      if (n === selected) {
+        // a ▶ tag before it: this is running
+        g.fillStyle = '#ffcc66';
+        g.beginPath();
+        g.moveTo(x - 16, y - 7);
+        g.lineTo(x - 7, y);
+        g.lineTo(x - 16, y + 7);
+        g.fill();
+      }
+    }
+    if (hover && !blend) {
+      // what a click would do, and the full name (middle-ellipsised to fit the screen), above the entry
+      const [x, y] = toScreen(hover.x, hover.y);
+      const branch = hover.children.length || hover.famEntry;
+      const action = hover === selected || !hover.params ? (branch ? (hover.open ? 'collapse' : 'open') : 'running') : 'preview';
+      const name = hover.preset ? hover.preset.path : hover.label;
+      g.font = `12px ui-monospace, monospace`;
+      const txt = `${midEllipsis(g, name, Math.min(560, W - 40) - g.measureText(`  ${action}`).width)}  ${action}`;
+      const w = g.measureText(txt).width + 14, h = 22;
+      const bx = Math.max(6, Math.min(W - w - 6, x - 4)), by = y - (hover.thumb && zoom > 0.25 ? (THUMB * s) / 2 : 8) - h - 8;
+      g.fillStyle = 'rgba(20,22,30,0.95)';
+      g.strokeStyle = 'rgba(255,255,255,0.85)';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.roundRect(bx, by < 4 ? y + 18 : by, w, h, 4);
+      g.fill();
+      g.stroke();
+      g.fillStyle = '#fff';
+      g.fillText(txt, bx + 7, (by < 4 ? y + 18 : by) + h / 2);
     }
     if (blend) {
       const [ax, ay] = toScreen(blend.a.x, blend.a.y);
@@ -458,7 +514,9 @@ export function openCollection(env: CollectionEnv) {
     const md5 = n.preset?.md5 ?? firstPreset(n)?.md5;
     if (!md5) return;
     void preview(n.famId, md5, n.params);
-    readout.textContent = `${describe(n)}\nTap to open a branch; drag from one entry to another in the same family to blend them.`;
+    selected = n;
+    draw();
+    readout.textContent = `▶ Running in the preview: ${describe(n)}\n✕ Close (or Esc) runs it in the main sim. Tap again to collapse or open a branch; drag from one entry to another in the same family to blend them.`;
   }
   const firstPreset = (n: Node): Preset | undefined => n.preset ?? n.children.map(firstPreset).find(Boolean);
   const famOf = (n: Node) => n.famId ?? n.famEntry?.id;
@@ -474,7 +532,7 @@ export function openCollection(env: CollectionEnv) {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
   function hit(x: number, y: number) {
-    let best: Node | null = null, bd = 30;
+    let best: Node | null = null, bd = Math.max(10, Math.min(30, (ROW * zoom) / 2));
     for (const n of visible) {
       const [sx, sy] = toScreen(n.x, n.y);
       const tw = (!n.open || !n.children.length) && n.thumb && zoom > 0.25 ? THUMB * Math.min(1.6, zoom) : 8;
@@ -497,9 +555,20 @@ export function openCollection(env: CollectionEnv) {
       return;
     }
     press = { id: e.pointerId, x: p.x, y: p.y, n: hit(p.x, p.y), moved: false };
+    setHover(press.n); // a touch shows what it will pick while it's down
   });
+  const setHover = (n: Node | null) => {
+    if (n === hover) return;
+    hover = n;
+    canvas.style.cursor = n ? 'pointer' : '';
+    draw();
+  };
+  canvas.addEventListener('pointerleave', () => setHover(null));
   canvas.addEventListener('pointermove', (e) => {
-    if (!pts.has(e.pointerId)) return;
+    if (!pts.has(e.pointerId)) {
+      if (e.pointerType === 'mouse') { const p = local(e); setHover(hit(p.x, p.y)); }
+      return;
+    }
     const p = local(e);
     const last = pts.get(e.pointerId)!;
     pts.set(e.pointerId, p);
@@ -515,6 +584,7 @@ export function openCollection(env: CollectionEnv) {
     if (!press || press.id !== e.pointerId) return;
     if (!press.moved && Math.hypot(p.x - press.x, p.y - press.y) < 6) return;
     press.moved = true;
+    setHover(null);
     const a = press.n;
     if (a && famOf(a) && a.params) {
       // blend: towards the nearest other entry of a's family; t by distance to each
@@ -548,10 +618,13 @@ export function openCollection(env: CollectionEnv) {
     if (pts.size < 2) pinch = null;
     if (press && press.id === e.pointerId) {
       if (!press.moved && press.n) {
+        // the first tap previews; a tap on the one already running opens or collapses it
         const n = press.n;
-        void toggle(n).then(() => show(n));
+        if (n === selected || !n.famId || !n.params) void toggle(n).then(() => show(n));
+        else show(n);
       }
       press = null;
+      if (e.pointerType !== 'mouse') setHover(null);
       if (blend) {
         blend = null;
         draw();
@@ -607,16 +680,29 @@ export function openCollection(env: CollectionEnv) {
           ? { ...kids[0], label: `${name}: ${kids[0].label}` }
           : node(name, { children: kids, count: kids.reduce((s, k) => s + k.count, 0), thumb: fs[0].thumb });
       });
+    // everything open from the start: every family loaded and clustered
+    readout.textContent = `Loading ${idx.families.length} rules…`;
+    const fams = top.children.flatMap((n) => (n.famEntry ? [n] : n.children));
+    await Promise.all(fams.map(async (n) => {
+      const fam = await loadFamily(n.famEntry!.id);
+      n.children = clusterFamily(fam);
+      n.params = mean(fam.presets);
+    }));
+    if (closed) return;
+    const openAll = (n: Node) => { if (n.children.length) { n.open = true; n.children.forEach(openAll); } };
+    openAll(top);
     layout();
-    fitView();
+    // readable: the tree's width across the screen, from the top (or round the current family)
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    zoom = Math.min(1, Math.max(0.6, W / (Math.max(...visible.map((n) => n.x)) + COL + 20)));
+    panX = -20 / zoom;
+    panY = -ROW / 2;
+    draw();
     readout.textContent = `${idx.families.length} rules, ${idx.families.reduce((s: number, f: FamilyEntry) => s + f.count, 0)} presets from Dan's Ready patterns. Tap to open; pinch or scroll to zoom; drag empty space to move.`;
-    const cur = env.current?.famId;
-    if (cur) {
-      const fnode = top.children.flatMap((n) => (n.famEntry ? [n] : n.children)).find((n) => n.famEntry?.id === cur);
-      const parent = top.children.find((n) => n.children.includes(fnode!));
-      if (parent) parent.open = true;
-      if (fnode) await toggle(fnode);
-      fitView();
+    const fnode = env.current && fams.find((n) => n.famEntry?.id === env.current!.famId);
+    if (fnode) {
+      panY = fnode.y - H / 2 / zoom;
+      draw();
     }
   });
 }
