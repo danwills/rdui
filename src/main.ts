@@ -1,5 +1,5 @@
 import './style.css';
-import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type ViewOptions } from './sim';
+import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type CustomChannel, type ViewOptions } from './sim';
 import { buildPanel, defaultSettings, fmt, HUE_DEFAULTS, hueOffsetFor, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
 import { StampLibrary, newStampId, stampThumbnail, transformStamp, type Stamp } from './stamps';
@@ -18,6 +18,12 @@ import { openExplorerPanel } from './explorer';
 import { openCollection, presetImport } from './collection';
 import { startAnalysis } from './analysis';
 import { STARTER_STAMPS, boostStamp, compositeOnto, stampBackground } from './stamps';
+
+/** The custom palette's starting point: the first three reagents on, in orange, cyan and green; the rest off. */
+function defaultCustom(n: number): CustomChannel[] {
+  const colours: [number, number, number][] = [[1, 0.55, 0.2], [0.2, 0.75, 1], [0.6, 1, 0.3], [1, 0.3, 0.85], [1, 0.95, 0.4], [0.55, 0.45, 1]];
+  return Array.from({ length: Math.min(n, 12) }, (_, r) => ({ on: r < 3, low: 0, high: 1, power: 1, color: colours[r % colours.length] }));
+}
 
 const RECT_TOOLS = new Set(['capture', 'probe']);
 const PROBE_SAMPLE_EVERY = 3; // frames
@@ -137,7 +143,7 @@ async function init() {
   }
 
   // the view and painting settings a saved scene keeps
-  const SAVED_VIEW = ['reagent', 'low', 'high', 'tint', 'tintLow', 'tintHigh', 'tintStrength', 'palette', 'hueShape', 'hueOffset', 'fleckLow', 'fleckHigh', 'fleckGain', 'viewMode', 'stepsPerFrame', 'paint'] as const;
+  const SAVED_VIEW = ['reagent', 'low', 'high', 'tint', 'tintLow', 'tintHigh', 'tintStrength', 'palette', 'hueShape', 'hueOffset', 'fleckLow', 'fleckHigh', 'fleckGain', 'custom', 'viewMode', 'stepsPerFrame', 'paint'] as const;
 
   /** Save the whole field (rule, params, walls, chemistry, probes) and view as a scene in this browser. */
   async function saveScene() {
@@ -200,7 +206,7 @@ async function init() {
         ...rule.view,
         reagent: rule.reagents[s.reagent], low: s.low, high: s.high,
         tint: s.tint >= 0 ? rule.reagents[s.tint] : undefined,
-        stepsPerFrame: s.stepsPerFrame, palette: s.palette, hueShape: s.hueShape, hueOffset: s.hueOffset, fleckLow: s.fleckLow, fleckHigh: s.fleckHigh, fleckGain: s.fleckGain,
+        stepsPerFrame: s.stepsPerFrame, palette: s.palette, hueShape: s.hueShape, hueOffset: s.hueOffset, fleckLow: s.fleckLow, fleckHigh: s.fleckHigh, fleckGain: s.fleckGain, custom: structuredClone(s.custom),
       },
       size: { ...full },
     };
@@ -222,6 +228,24 @@ async function init() {
     const lo = v[Math.floor(v.length * 0.02)], hi = v[Math.floor(v.length * 0.98)];
     s.fleckLow = lo;
     s.fleckHigh = hi > lo ? hi : lo + 1e-3;
+    ui.sync();
+  }
+
+  /** Custom palette: each reagent's low and high from its 1st to 99th percentile (a strided sample of the middle 512²). */
+  async function fitCustom() {
+    const w = Math.min(512, sim.width), h = Math.min(512, sim.height);
+    const { state } = await sim.readRegion((sim.width - w) >> 1, (sim.height - h) >> 1, w, h);
+    const S4 = sim.layout.S * 4;
+    s.custom.forEach((c, r) => {
+      const v: number[] = [];
+      for (let i = 0; i < w * h; i += 7) if (Number.isFinite(state[i * S4 + r])) v.push(state[i * S4 + r]);
+      if (!v.length) return;
+      v.sort((p, q) => p - q);
+      const lo = v[Math.floor(v.length * 0.01)], hi = v[Math.floor(v.length * 0.99)];
+      if (!(hi - lo > 1e-6)) return; // (nearly) uniform: nothing to fit to
+      c.low = lo;
+      c.high = hi;
+    });
     ui.sync();
   }
 
@@ -400,7 +424,7 @@ async function init() {
       if (rule.view.stepsPerFrame && s.ruleSpeed) s.stepsPerFrame = rule.view.stepsPerFrame;
       // a rule may ask for a palette; leaving one that only it suits goes back to the default
       if (rule.view.palette !== undefined) s.palette = rule.view.palette;
-      else if (s.palette >= 5) s.palette = 0;
+      else if (s.palette === 5 || s.palette === 6) s.palette = 0;
       s.hueShape = rule.view.hueShape ?? HUE_DEFAULTS.shape;
       s.hueOffset = rule.view.hueOffset ?? hueOffsetFor(s.palette);
       // the fleck range: a rule's own, else 0 to 1 for rules made for the fleck palettes (their
@@ -408,9 +432,11 @@ async function init() {
       s.fleckLow = rule.view.fleckLow ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 0 : Math.min(rule.view.low, 0));
       s.fleckHigh = rule.view.fleckHigh ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 1 : Math.max(rule.view.high, s.fleckLow + 1e-3));
       s.fleckGain = rule.view.fleckGain ?? 1;
+      s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents.length);
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
+    if (s.custom.length !== Math.min(rule.reagents.length, 12)) s.custom = defaultCustom(rule.reagents.length);
     if (s.tint >= rule.reagents.length) s.tint = -1;
     if (full.width === full.height) s.gridSize = full.width;
 
@@ -630,6 +656,7 @@ async function init() {
     explore: () => void openExplorer(),
     collection: () => void openCollectionPanel(),
     fitFleckRange: () => void fitFleckRange(),
+    fitCustom: () => void fitCustom(),
     setGlobal: (name, v) => {
       globals[name] = v;
       sim.setGlobal(name, v);
@@ -1064,6 +1091,7 @@ async function init() {
       fleckLow: s.fleckLow,
       fleckHigh: s.fleckHigh,
       fleckGain: s.fleckGain,
+      custom: s.custom,
       // param map / outline colours go red, green, blue, orange in this order: absorbing walls red, reflecting
       // walls green, potential V blue, damping gamma (or traps, once drawn) orange, whatever order a scene lists them in
       paramSlots: [...rule.paintable].sort((a, b) => colourRank(a) - colourRank(b)).slice(0, 4).map((n) => {

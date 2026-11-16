@@ -29,11 +29,14 @@ struct View {
   paramBase: vec4<f32>,   // unpainted value of each (outlines mode); for a wall distance field, the wall growth
   paramKind: vec4<u32>,   // 1 = a wall distance field (signed distance in cells, negative inside)
   fleck: vec4<f32>,       // fleck palettes: the range (low, high) a, b and c are mapped through first; z, the intensity lightness and chroma are scaled by
+  custom: array<vec4<f32>, 24>, // custom palette, per reagent: (low, high, power, on), (r, g, b, -)
 };
 
 @group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var<storage, read> params: array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read> state: array<vec4<f32>>;
+// colour maps (colormaps.ts): one per 256 entries, RGBA8 packed
+@group(0) @binding(3) var<storage, read> colormaps: array<u32>;
 
 @vertex
 fn vs(@builtin(vertex_index) vi: u32) -> @builtin(position) vec4<f32> {
@@ -115,7 +118,34 @@ fn cosPal(t: f32, a: vec3<f32>, b: vec3<f32>, c: vec3<f32>, d: vec3<f32>) -> vec
   return a + b * cos(6.28318 * (c * t + d));
 }
 
+// colour map m (palette 100 + m) at t, linear between its 256 steps
+fn colormap(m: u32, t: f32) -> vec3<f32> {
+  let x = clamp(t, 0.0, 1.0) * 255.0;
+  let i = min(u32(x), 254u);
+  let a = unpack4x8unorm(colormaps[m * 256u + i]).rgb;
+  let b = unpack4x8unorm(colormaps[m * 256u + i + 1u]).rgb;
+  return mix(a, b, x - f32(i));
+}
+
+// custom palette: each reagent switched on, fitted (low → 0, high → 1), raised to its power and
+// multiplied by its colour; the colours summed
+fn customColor(g: vec2<f32>) -> vec3<f32> {
+  var c = vec3<f32>(0.0);
+  let n = min(u32(view.reagents), 12u);
+  for (var r = 0u; r < n; r++) {
+    let a = view.custom[2u * r];
+    if (a.w > 0.5) {
+      let t = norm(sampleReagent(g, r), a.x, a.y);
+      c += pow(t, max(a.z, 1e-3)) * view.custom[2u * r + 1u].rgb;
+    }
+  }
+  return clamp(c, vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
 fn palette(t: f32) -> vec3<f32> {
+  if (view.palette >= 100u) {
+    return colormap(view.palette - 100u, t);
+  }
   switch view.palette {
     case 1u: { // ember
       return clamp(vec3<f32>(t * 2.2, t * t * 1.6, pow(t, 4.0) * 1.2), vec3<f32>(0.0), vec3<f32>(1.0));
@@ -245,6 +275,8 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     col = mix(pc * 0.55, pc, smoothstep(0.2, 0.6, t));
   } else if (view.palette == 5u || view.palette == 6u) {
     col = fleck(g);
+  } else if (view.palette == 7u) {
+    col = customColor(g);
   } else if (view.palette == 4u) {
     // HSV: the shown reagent is the hue, the tint reagent the saturation (tint mix: how much).
     var sat = 1.0;

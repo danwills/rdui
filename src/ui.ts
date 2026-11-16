@@ -1,6 +1,8 @@
 import { PRESETS } from './presets';
 import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, openLoupe } from './fkmap';
 import type { RuleDef } from './rule';
+import type { CustomChannel } from './sim';
+import { COLORMAP_NAMES } from './colormaps';
 
 export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'capture' | 'stamp' | 'probe';
 
@@ -54,6 +56,8 @@ export interface Settings {
   fleckLow: number;
   fleckHigh: number;
   fleckGain: number;
+  /** Custom palette (7): per reagent, fitted, powered, coloured and summed. */
+  custom: CustomChannel[];
   stampId: string | null;
   stampRot: number;
   stampFlip: boolean;
@@ -94,6 +98,8 @@ export interface Actions {
   setFeatureSize(): void;
   /** Fleck palettes: set the fleck range from the field's values. */
   fitFleckRange(): void;
+  /** Custom palette: fit each reagent's low and high to the field. */
+  fitCustom(): void;
 }
 
 /** What the panel needs to know about the current rule. */
@@ -157,6 +163,7 @@ export function defaultSettings(): Settings {
     fleckLow: 0,
     fleckHigh: 1,
     fleckGain: 1,
+    custom: [],
     stampId: null,
     stampRot: 0,
     stampFlip: false,
@@ -565,6 +572,45 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     slider('intensity', 'fleckGain', 0.05, 1.5, 0.01, 2),
     el('div', { class: 'buttons' }, button('fit fleck range', actions.fitFleckRange, 'set the fleck range from the field: from the 2nd to the 98th percentile of a, b and c together')));
   syncers.push(() => (fleckRows.style.display = s.palette === 5 || s.palette === 6 ? '' : 'none'));
+
+  // custom palette only: per reagent, on/off, colour, low, high, power (rebuilt for each rule)
+  const customBox = el('div', {});
+  let customKey = '';
+  const toHex = (c: number[]) => '#' + c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('');
+  const fillCustom = () => {
+    const names = rc.rule().reagents;
+    const key = names.join() + ':' + s.custom.length;
+    if (key === customKey) return;
+    customKey = key;
+    const refreshers: (() => void)[] = [];
+    const rows: Node[] = [];
+    names.slice(0, 12).forEach((name, r) => {
+      const ch = () => s.custom[r];
+      if (!ch()) return;
+      const on = el('input', { type: 'checkbox' });
+      on.addEventListener('change', () => (ch().on = on.checked));
+      const colour = el('input', { type: 'color', class: 'swatch', title: `${name}'s colour (its contribution at full strength)` });
+      colour.addEventListener('input', () => {
+        const h = colour.value;
+        ch().color = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255) as [number, number, number];
+      });
+      const lo = valueRow('low', () => ch().low, (v) => (ch().low = v), [-1, 1]);
+      const hi = valueRow('high', () => ch().high, (v) => (ch().high = v), [0, 2]);
+      const pw = valueRow('power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4]);
+      refreshers.push(() => { on.checked = ch().on; colour.value = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
+      rows.push(el('div', { class: 'custom-channel' }, el('label', { class: 'check' }, on, name), colour), lo.row, hi.row, pw.row);
+    });
+    customBox.replaceChildren(...rows,
+      el('div', { class: 'buttons' }, button('fit ranges', actions.fitCustom, "set each reagent's low and high from the field: its 1st to 99th percentile")));
+    customRefresh = () => refreshers.forEach((f) => f());
+  };
+  let customRefresh = () => {};
+  syncers.push(() => {
+    customBox.style.display = s.palette === 7 ? '' : 'none';
+    if (s.palette !== 7) return;
+    fillCustom();
+    customRefresh();
+  });
   const viewTint = select('tint by', 'tint', () => [[-1, 'none'], ...reagentOptions()]);
 
   const importBtn = button('Import…', actions.importRule, 'load a Ready formula pattern (.vti) or a saved rdui rule (.json)');
@@ -616,7 +662,11 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       slider('hue shape', 'hueShape', 0.1, 4, 0.01, 2),
       slider('hue offset', 'hueOffset', 0, 1, 0.01, 2),
       fleckRows,
-      select('palette', 'palette', () => [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral'], [4, 'HSV: show → hue, tint → sat'], [5, 'HSV fleck: a b c → V S H'], [6, 'OKLCH fleck: a b c → L C h']], () => {
+      customBox,
+      select('palette', 'palette', () => [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral'], [4, 'HSV: show → hue, tint → sat'], [5, 'HSV fleck: a b c → V S H'], [6, 'OKLCH fleck: a b c → L C h'], [7, 'custom: every reagent fitted, powered, coloured, summed'],
+        ...COLORMAP_NAMES.map((n, i): [number, string] => [100 + i, n])], () => {
+        // custom: fit the reagents' ranges to the field on first choosing it for this rule
+        if (s.palette === 7 && s.custom.every((c) => c.low === 0 && c.high === 1)) actions.fitCustom();
         // a fleck palette starts from its own hue offset
         if (s.palette === 5 || s.palette === 6) s.hueOffset = hueOffsetFor(s.palette);
         // HSV wants a second reagent for the saturation: default to the other one

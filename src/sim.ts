@@ -1,4 +1,5 @@
 import brushWGSL from './shaders/brush.wgsl?raw';
+import { COLORMAP_RGB } from './colormaps';
 import renderWGSL from './shaders/render.wgsl?raw';
 import type { CompiledRule, Layout } from './rule';
 import { Spectral } from './spectral';
@@ -51,6 +52,22 @@ export interface CellSample {
   wall: boolean;
 }
 
+export interface CustomChannel { on: boolean; low: number; high: number; power: number; color: [number, number, number] }
+
+/** The colour maps (colormaps.ts) as RGBA8 words, 256 per map, for the render shader; decoded once per device. */
+const colormapBuffers = new WeakMap<GPUDevice, GPUBuffer>();
+function colormapBuffer(device: GPUDevice): GPUBuffer {
+  let b = colormapBuffers.get(device);
+  if (b) return b;
+  const rgb = Uint8Array.from(atob(COLORMAP_RGB), (ch) => ch.charCodeAt(0));
+  const rgba = new Uint8Array((rgb.length / 3) * 4);
+  for (let i = 0, j = 0; i < rgb.length; i += 3, j += 4) rgba.set([rgb[i], rgb[i + 1], rgb[i + 2], 255], j);
+  b = device.createBuffer({ size: rgba.length, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST });
+  device.queue.writeBuffer(b, 0, rgba);
+  colormapBuffers.set(device, b);
+  return b;
+}
+
 export interface ViewOptions {
   mode: 'reagent' | 'params' | 'outlines';
   palette: number;
@@ -70,6 +87,8 @@ export interface ViewOptions {
   fleckHigh?: number;
   /** Fleck palettes: what lightness and chroma (V and S) are scaled by (below 1: less white in HSV, less flat in OKLCH). */
   fleckGain?: number;
+  /** Custom palette (7), per reagent: fitted from low to high, raised to power, times colour (0-1 RGB), summed. */
+  custom?: CustomChannel[];
   /** Up to three flat param slots (>0) with their display ranges. */
   /** Painted params to show: flat slot, range, and base (unpainted) value. */
   paramSlots: { slot: number; min: number; max: number; base: number; distance?: boolean }[];
@@ -110,6 +129,7 @@ export class Simulation {
   private stepPipeline: GPUComputePipeline;
   private brushPipeline: GPUComputePipeline;
   private renderPipeline: GPURenderPipeline;
+  private colormaps: GPUBuffer;
 
   private stepGroups: [GPUBindGroup, GPUBindGroup];
   private brushGroups: [GPUBindGroup, GPUBindGroup];
@@ -141,7 +161,8 @@ export class Simulation {
     this.infoUniform = device.createBuffer({ size: 16, usage: uniform });
     this.globalsUniform = device.createBuffer({ size: compiled.globalVec4s * 16, usage: uniform });
     this.brushUniform = device.createBuffer({ size: 272, usage: uniform });
-    this.viewUniform = device.createBuffer({ size: 160, usage: uniform });
+    this.viewUniform = device.createBuffer({ size: 544, usage: uniform });
+    this.colormaps = colormapBuffer(device);
     this.writeInfo();
     this.globals = new Float32Array(compiled.globalVec4s * 4);
     compiled.rule.params.forEach((p, i) => (this.globals[i] = p.value));
@@ -217,6 +238,7 @@ export class Simulation {
           { binding: 0, resource: { buffer: this.viewUniform } },
           { binding: 1, resource: { buffer: this.params } },
           { binding: 2, resource: { buffer: this.state[cur] } },
+          { binding: 3, resource: { buffer: this.colormaps } },
         ],
       });
     this.renderGroups = [renderGroup(0), renderGroup(1)];
@@ -360,7 +382,7 @@ export class Simulation {
   }
 
   render(enc: GPUCommandEncoder, target: GPUTextureView, canvasW: number, canvasH: number, v: ViewOptions) {
-    const buf = new ArrayBuffer(160);
+    const buf = new ArrayBuffer(544);
     const u = new Uint32Array(buf);
     const f = new Float32Array(buf);
     u[0] = this.width; u[1] = this.height;
@@ -380,6 +402,9 @@ export class Simulation {
       u[32 + k] = p.distance ? 1 : 0;
     });
     f[36] = v.fleckLow ?? 0; f[37] = v.fleckHigh ?? 1; f[38] = v.fleckGain ?? 1;
+    v.custom?.slice(0, 12).forEach((c, r) => {
+      f.set([c.low, c.high, c.power, c.on ? 1 : 0, ...c.color, 0], 40 + 8 * r);
+    });
     this.device.queue.writeBuffer(this.viewUniform, 0, buf);
 
     const pass = enc.beginRenderPass({

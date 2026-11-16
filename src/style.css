@@ -160,6 +160,9 @@ button.del:hover { color: #ff7a7a; border-color: var(--line); }
 .checks { display: flex; gap: 12px; margin: 8px 0 2px; }
 .check { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
 .check input { accent-color: var(--accent); margin: 0; }
+.custom-channel { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+.custom-channel .check { color: var(--fg, inherit); font-size: 13px; }
+.swatch { width: 34px; height: 20px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; cursor: pointer; }
 
 .probe {
   display: grid;

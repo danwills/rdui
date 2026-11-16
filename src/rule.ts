@@ -13,6 +13,7 @@
  *           paintable parameters in order (up to 7)
  *   globals: uniform array of vec4 holding every parameter's global value
  */
+import type { CustomChannel } from './sim';
 import type { Second } from './spectral';
 
 export const MAX_REAGENTS = 12;
@@ -91,7 +92,7 @@ export interface RuleDef {
   seedNoise: number[];
   initial: Overlay[];
   /** Suggested view: reagent shown, its range, and steps per frame. */
-  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number; palette?: number; hueShape?: number; hueOffset?: number; fleckLow?: number; fleckHigh?: number; fleckGain?: number; mode?: 'reagent' | 'params' | 'outlines' };
+  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number; palette?: number; hueShape?: number; hueOffset?: number; fleckLow?: number; fleckHigh?: number; fleckGain?: number; custom?: CustomChannel[]; mode?: 'reagent' | 'params' | 'outlines' };
   /**
    * Membranes: for the listed reagents, neighbours whose `param` value differs
    * (a painted compartment id) are treated as no-flux, like walls but only for
