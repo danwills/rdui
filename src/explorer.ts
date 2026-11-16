@@ -66,7 +66,15 @@ export function openExplorerPanel(env: ExplorerEnv) {
     restartTimer = window.setTimeout(() => start(), 250);
   };
   let centre: Record<string, number> = { ...env.globals };
+  // the mode it was last in (this browser)
+  const MODE_KEY = 'rdui.exploreMode';
   let mode: 'grid' | 'map' = 'grid';
+  try { if (localStorage.getItem(MODE_KEY) === 'map') mode = 'map'; } catch { /* no storage */ }
+  // a colour per parameter: chips, strength rows, trajectories and the tiles' dots
+  const PARAM_COLOURS = ['#ff9f43', '#4fc3ff', '#9be15d', '#ff6bcb', '#ffe066', '#a78bfa', '#5eead4', '#f87171', '#c4b5fd', '#fdba74'];
+  const colourOf = (n: string) => PARAM_COLOURS[Math.max(0, specs.findIndex((p) => p.name === n)) % PARAM_COLOURS.length];
+  // the centres visited (grid taps), for each strength row's trajectory
+  let history: Record<string, number>[] = [{ ...env.globals }];
   let fromSim = !!env.section;
   /** Fills an N×N state with the main sim's piece (its middle, or repeated if it's smaller); false if there's none. */
   function fromSection(state: Float32Array, N: number, S4: number) {
@@ -98,6 +106,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
   const tabs = (['grid', 'map'] as const).map((m) => {
     const b = button(m === 'grid' ? 'Grid' : 'Map', () => {
       mode = m;
+      try { localStorage.setItem(MODE_KEY, m); } catch { /* no storage */ }
       tabs.forEach((t, i) => t.classList.toggle('active', ['grid', 'map'][i] === mode));
       start();
     }, m === 'grid' ? 'nine variants around the current values' : 'two parameters across the field');
@@ -142,9 +151,16 @@ export function openExplorerPanel(env: ExplorerEnv) {
     }
     sims = [];
   }
+  /** The screen canvas's size in CSS pixels (the grid: a square; the map: the map and its preview). */
+  function sizeScreen(w: number, h: number) {
+    screen.width = Math.floor(w * dpr);
+    screen.height = Math.floor(h * dpr);
+    screen.style.width = `${w}px`;
+    screen.style.height = `${h}px`;
+  }
   /** Shows `sim` at (x, y, size) in CSS pixels of the screen canvas. */
   function place(sim: Simulation, x: number, y: number, size: number) {
-    const px = Math.min(screen.width - Math.round(x * dpr), Math.floor(size * dpr));
+    const px = Math.min(screen.width - Math.round(x * dpr), screen.height - Math.round(y * dpr), Math.floor(size * dpr));
     const tex = device.createTexture({ size: [px, px], format, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
     sims.push({ sim, tex, x: Math.round(x * dpr), y: Math.round(y * dpr) });
   }
@@ -197,6 +213,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
         return v;
       });
     }
+    sizeScreen(area, area);
     const gap = 6, tileSize = Math.floor((area - 2 * gap) / 3);
     const N = 128;
     const compiled = compileRule(rule);
@@ -211,10 +228,22 @@ export function openExplorerPanel(env: ExplorerEnv) {
       const x = (i % 3) * (tileSize + gap), y = Math.floor(i / 3) * (tileSize + gap);
       place(sim, x, y, tileSize);
       const changed = [...unlocked].map((n) => `${n} ${fmtV(vals[n])}`).join(' · ');
-      const tile = el('div', { class: i === 4 ? 'explore-cell centre' : 'explore-cell' }, el('span', {}, changed));
+      // where tapping this tile moves each parameter: a dot in its colour, sized by the step
+      // (in strengths), filled for up and hollow for down
+      const dots = el('div', { class: 'explore-dots' });
+      if (i !== 4) for (const n of unlocked) {
+        const [lo, hi] = range(n), d = (vals[n] - centre[n]) / Math.max(1e-12, strengthOf(n) * (hi - lo));
+        const r = 3 + Math.min(7, 3.5 * Math.abs(d));
+        const c = colourOf(n);
+        const dot = el('span', { title: `${n} ${d >= 0 ? '+' : ''}${fmtV(vals[n] - centre[n])}` });
+        Object.assign(dot.style, { width: `${2 * r}px`, height: `${2 * r}px`, background: d > 0 ? c : 'transparent', border: `2px solid ${c}`, opacity: Math.abs(d) < 0.05 ? '0.35' : '1' });
+        dots.append(dot);
+      }
+      const tile = el('div', { class: i === 4 ? 'explore-cell centre' : 'explore-cell' }, dots, el('span', {}, changed));
       Object.assign(tile.style, { left: `${x}px`, top: `${y}px`, width: `${tileSize}px`, height: `${tileSize}px` });
       tile.addEventListener('click', () => {
         centre = { ...vals };
+        if (i !== 4) history = [...history, { ...vals }].slice(-24);
         start();
       });
       grid.append(tile);
@@ -234,6 +263,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
         start(); // (rebuilds these controls too: a strength row per varied parameter)
       }, 'tap to vary or hold this parameter');
       b.classList.toggle('active', unlocked.has(p.name));
+      if (unlocked.has(p.name)) Object.assign(b.style, { borderColor: colourOf(p.name), color: colourOf(p.name) });
       chips.append(b);
     }
     // a strength per varied parameter (with the value ladder: middle button or long-press)
@@ -253,7 +283,31 @@ export function openExplorerPanel(env: ExplorerEnv) {
       s.addEventListener('input', () => set(Number(s.value)));
       s.addEventListener('change', () => start());
       show();
-      const row = el('label', { class: 'row', title: `how far ${n} is nudged, as a fraction of its range` }, el('span', {}, n), s, out);
+      // the trajectory: this parameter over the last centres visited (scaled to their spread)
+      const spark = el('canvas', { class: 'explore-spark', title: `${n} over the last ${history.length} centres` });
+      const SW = 72, SH = 18, dpr2 = Math.min(2, window.devicePixelRatio || 1);
+      spark.width = SW * dpr2;
+      spark.height = SH * dpr2;
+      const g = spark.getContext('2d')!;
+      g.scale(dpr2, dpr2);
+      const vs = history.map((h) => h[n] ?? centre[n]);
+      let lo = Math.min(...vs), hi = Math.max(...vs);
+      if (hi - lo < 1e-12) { lo -= 1; hi += 1; }
+      const px = (k: number) => (vs.length < 2 ? SW - 4 : 3 + (k / (vs.length - 1)) * (SW - 7)), py = (v: number) => SH - 3 - ((v - lo) / (hi - lo)) * (SH - 6);
+      g.strokeStyle = colourOf(n);
+      g.globalAlpha = 0.8;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      vs.forEach((v, k) => (k ? g.lineTo(px(k), py(v)) : g.moveTo(px(k), py(v))));
+      g.stroke();
+      g.globalAlpha = 1;
+      g.fillStyle = colourOf(n);
+      g.beginPath();
+      g.arc(px(vs.length - 1), py(vs[vs.length - 1]), 2.5, 0, Math.PI * 2);
+      g.fill();
+      const name = el('span', {}, n);
+      name.style.color = colourOf(n);
+      const row = el('label', { class: 'row strength', title: `how far ${n} is nudged, as a fraction of its range` }, name, s, out, spark);
       ladder(row, { get: () => strengthOf(n), set: (v) => { set(v); restartSoon(); }, range: [0, 1], clamp: [MIN, MAX] });
       return row;
     };
@@ -297,6 +351,13 @@ export function openExplorerPanel(env: ExplorerEnv) {
     } catch { /* no storage */ }
   };
   function startMap() {
+    // the map and, beside it (below on a portrait screen), a preview running the picked point
+    // everywhere, so dragging the point shows its effect at once
+    const GAP = 8, wide = W > H;
+    const m = Math.floor(wide ? Math.min(H - 150, (W - 16 - GAP) / 2, 700) : Math.min(W - 16, 700));
+    const pv = wide ? m : Math.floor(Math.min(m, Math.max(160, H - 150 - m - GAP)));
+    sizeScreen(wide ? m + GAP + pv : m, wide ? m : m + GAP + pv);
+    const area = m; // (the map's size, below)
     const N = 256;
     const paintable = [...new Set([mx, my, ...rule.paintable])].slice(0, 7);
     const r: RuleDef = { ...rule, paintable };
@@ -325,6 +386,25 @@ export function openExplorerPanel(env: ExplorerEnv) {
     }
     sim.load(f.state, f.params);
     place(sim, 0, 0, area);
+
+    // the preview: the rule with the two axes as plain globals, so dragging sets them live
+    const PN = 160;
+    const pr: RuleDef = { ...rule, paintable: rule.paintable.filter((n) => n !== mx && n !== my) };
+    const pc = compileRule(pr);
+    const preview = new Simulation(device, format, PN, PN, pc);
+    preview.setCellScale(env.cell);
+    const pvals = mapPick ?? centre;
+    for (const [k, v] of Object.entries(pvals)) preview.setGlobal(k, v);
+    const pf = initialField(pr, PN, PN, pvals, 'zero', env.cell);
+    fromSection(pf.state, PN, pc.layout.S * 4);
+    preview.load(pf.state, pf.params);
+    place(preview, wide ? area + GAP : 0, wide ? 0 : area + GAP, pv);
+    const setPick = (vx: number, vy: number) => {
+      mapPick = { ...centre, [mx]: vx, [my]: vy };
+      preview.setGlobal(mx, vx);
+      preview.setGlobal(my, vy);
+    };
+
     // axes, readout and the picked point on a 2D layer
     const over = el('canvas', { class: 'explore-over' });
     over.width = over.height = Math.floor(area * dpr);
@@ -364,15 +444,24 @@ export function openExplorerPanel(env: ExplorerEnv) {
       const cur = hover ?? (mapPick ? [mapPick[mx], mapPick[my]] : null);
       readout.textContent = cur
         ? `${hover ? 'pointer' : 'picked'} ${mx} ${fmtV(cur[0])} · ${my} ${fmtV(cur[1])}${hover ? '' : ' (Use or Save as rule takes it)'}`
-        : `Each spot runs its own ${mx} (x) and ${my} (y). Tap to pick a point; blue ring: current values.`;
+        : `Each spot runs its own ${mx} (x) and ${my} (y). Tap or drag to pick a point (the preview runs it); blue ring: current values.`;
     }
-    over.addEventListener('pointermove', (e) => drawOver(at(e)));
-    over.addEventListener('pointerleave', () => drawOver());
+    let dragging = false;
+    over.addEventListener('pointermove', (e) => {
+      if (dragging) {
+        setPick(...at(e));
+        drawOver();
+      } else drawOver(at(e));
+    });
+    over.addEventListener('pointerleave', () => { if (!dragging) drawOver(); });
     over.addEventListener('pointerdown', (e) => {
-      const [vx, vy] = at(e);
-      mapPick = { ...centre, [mx]: vx, [my]: vy };
+      if (e.button !== 0) return;
+      dragging = true;
+      over.setPointerCapture(e.pointerId);
+      setPick(...at(e));
       drawOver();
     });
+    for (const t of ['pointerup', 'pointercancel']) over.addEventListener(t, () => (dragging = false));
     content.replaceChildren(el('div', { class: 'explore-box' }, screen, over));
     drawOver();
   }

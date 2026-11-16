@@ -243,7 +243,7 @@ header button.narrow span { display: inline-block; transform: scaleX(0.5); margi
 .explore-grid { position: absolute; inset: 0; }
 .explore-cell { position: absolute; cursor: pointer; outline: 1px solid var(--line); }
 .explore-cell.centre { outline: 2px solid var(--accent); z-index: 1; }
-.explore-cell span { position: absolute; left: 0; right: 0; bottom: 0; padding: 1px 4px; font: 10px ui-monospace, monospace; background: rgba(8, 9, 12, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.explore-cell > span { position: absolute; left: 0; right: 0; bottom: 0; padding: 1px 4px; font: 10px ui-monospace, monospace; background: rgba(8, 9, 12, 0.7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .explore-over { position: absolute; inset: 0; cursor: crosshair; touch-action: none; }
 .explore-readout { font: 11px ui-monospace, monospace; color: var(--muted); max-width: 900px; text-align: center; }
 .pal-button { display: flex; align-items: center; gap: 6px; min-width: 0; text-align: left; }
@@ -268,3 +268,8 @@ header button.narrow span { display: inline-block; transform: scaleX(0.5); margi
 .ladder-row.active { background: rgba(255, 200, 90, 0.16); color: var(--fg, #ddd); }
 .ladder-value { color: var(--accent); }
 .row.param, .row { -webkit-touch-callout: none; }
+.explore-dots { position: absolute; left: 4px; top: 4px; display: flex; align-items: center; gap: 3px; pointer-events: none; }
+.explore-dots span { display: block; box-sizing: border-box; border-radius: 50%; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55); }
+.row.strength { grid-template-columns: 76px 1fr 52px 72px; }
+.explore-spark { width: 72px; height: 18px; display: block; }
+.explore-over { right: auto; bottom: auto; }
