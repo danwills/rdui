@@ -2,12 +2,16 @@
  * The explorer: ways through a rule's parameter space, live.
  * - Grid: nine small sims, the centre at the current values and the others with
  *   the unlocked parameters nudged at random (strength = a fraction of each
- *   parameter's range). Tap a tile to make it the centre and nudge again.
+ *   parameter's range, each its own). Tap a tile to make it the centre and nudge again.
+ *   "Keep going": the eight outer tiles are fixed directions instead (opposite tiles
+ *   opposite; with two parameters, a compass: x the first, y the second), kept from
+ *   tap to tap, so tapping the same tile again carries on that way through the space.
  * - Map: one sim where two chosen parameters vary across the field (x rightward,
  *   y upward), seeded everywhere: each spot shows what that pair does, like the
  *   Gray-Scott F/k map. Tap to pick a point.
  * Either can hand its values back to the main sim or save them as a rule.
  */
+import { ladder } from './ladder';
 import { Simulation, type ViewOptions } from './sim';
 import { compileRule, initialField, type RuleDef } from './rule';
 import { el, button } from './ui';
@@ -50,7 +54,17 @@ export function openExplorerPanel(env: ExplorerEnv) {
   };
   const defaults = rule.explore ?? rule.paintable;
   const unlocked = new Set(defaults.length ? defaults : specs.filter((p) => !/^(timestep|clamp)/i.test(p.name)).slice(0, 2).map((p) => p.name));
-  let strength = 0.08;
+  // how far each varied parameter is nudged, as a fraction of its range
+  const strengths: Record<string, number> = {};
+  const strengthOf = (n: string) => strengths[n] ?? 0.08;
+  let keepGoing = false;
+  let dirs: Record<string, number>[] | null = null; // keep going: each tile's step from the centre
+  // restarting the sims on every step of a ladder drag would stall it: wait for a pause
+  let restartTimer = 0;
+  const restartSoon = () => {
+    clearTimeout(restartTimer);
+    restartTimer = window.setTimeout(() => start(), 250);
+  };
   let centre: Record<string, number> = { ...env.globals };
   let mode: 'grid' | 'map' = 'grid';
   let fromSim = !!env.section;
@@ -152,15 +166,37 @@ export function openExplorerPanel(env: ExplorerEnv) {
   const picked = () => (mode === 'map' && mapPick ? mapPick : centre);
   function startGrid() {
     const rnd = Math.random;
-    tiles = Array.from({ length: 9 }, (_, i) => {
-      if (i === 4) return { ...centre };
-      const v = { ...centre };
-      for (const n of unlocked) {
-        const [lo, hi] = range(n);
-        v[n] = clamp(n, centre[n] + strength * (hi - lo) * gauss(rnd));
+    const step = (n: string) => { const [lo, hi] = range(n); return strengthOf(n) * (hi - lo); };
+    if (keepGoing) {
+      if (!dirs) {
+        const vary = [...unlocked];
+        dirs = Array.from({ length: 9 }, () => ({} as Record<string, number>));
+        if (vary.length === 2) {
+          // a compass: left/right the first parameter, down/up the second
+          dirs.forEach((d, i) => {
+            d[vary[0]] = ((i % 3) - 1) * step(vary[0]);
+            d[vary[1]] = (1 - Math.floor(i / 3)) * step(vary[1]);
+          });
+        } else {
+          for (let i = 0; i < 4; i++) for (const n of vary) {
+            dirs[i][n] = step(n) * gauss(rnd);
+            dirs[8 - i][n] = -dirs[i][n];
+          }
+        }
       }
-      return v;
-    });
+      tiles = dirs.map((d) => {
+        const v = { ...centre };
+        for (const [n, dv] of Object.entries(d)) v[n] = clamp(n, centre[n] + dv);
+        return v;
+      });
+    } else {
+      tiles = Array.from({ length: 9 }, (_, i) => {
+        if (i === 4) return { ...centre };
+        const v = { ...centre };
+        for (const n of unlocked) v[n] = clamp(n, centre[n] + step(n) * gauss(rnd));
+        return v;
+      });
+    }
     const gap = 6, tileSize = Math.floor((area - 2 * gap) / 3);
     const N = 128;
     const compiled = compileRule(rule);
@@ -184,7 +220,9 @@ export function openExplorerPanel(env: ExplorerEnv) {
       grid.append(tile);
     });
     content.replaceChildren(el('div', { class: 'explore-box' }, screen, grid));
-    readout.textContent = 'Centre: the current values. Tap a variant to make it the centre; Use or Save as rule takes the centre.';
+    readout.textContent = keepGoing
+      ? 'Keep going: each tile is a direction (opposite tiles opposite). Tap one to move that way; tap it again to carry on. Use or Save as rule takes the centre.'
+      : 'Centre: the current values. Tap a variant to make it the centre; Use or Save as rule takes the centre.';
   }
   function gridControls() {
     const chips = el('div', { class: 'explore-chips' }, el('span', { class: 'hint' }, 'vary'));
@@ -192,20 +230,44 @@ export function openExplorerPanel(env: ExplorerEnv) {
       const b = button(p.name, () => {
         if (unlocked.has(p.name)) unlocked.delete(p.name);
         else unlocked.add(p.name);
-        b.classList.toggle('active', unlocked.has(p.name));
+        dirs = null;
+        start(); // (rebuilds these controls too: a strength row per varied parameter)
       }, 'tap to vary or hold this parameter');
       b.classList.toggle('active', unlocked.has(p.name));
       chips.append(b);
     }
-    const s = el('input', { type: 'range', min: '0.01', max: '0.4', step: 'any' });
-    s.value = String(strength);
-    const out = el('output', {}, `${Math.round(strength * 100)}%`);
-    s.addEventListener('input', () => {
-      strength = Number(s.value);
-      out.textContent = `${Math.round(strength * 100)}%`;
+    // a strength per varied parameter (with the value ladder: middle button or long-press)
+    const MIN = 0.001, MAX = 1;
+    const strengthRow = (n: string) => {
+      const s = el('input', { type: 'range', min: '0.01', max: '0.4', step: 'any' });
+      const out = el('output');
+      const show = () => {
+        s.value = String(strengthOf(n));
+        out.textContent = `${+(strengthOf(n) * 100).toPrecision(3)}%`;
+      };
+      const set = (v: number) => {
+        strengths[n] = Math.min(MAX, Math.max(MIN, v));
+        dirs = null;
+        show();
+      };
+      s.addEventListener('input', () => set(Number(s.value)));
+      s.addEventListener('change', () => start());
+      show();
+      const row = el('label', { class: 'row', title: `how far ${n} is nudged, as a fraction of its range` }, el('span', {}, n), s, out);
+      ladder(row, { get: () => strengthOf(n), set: (v) => { set(v); restartSoon(); }, range: [0, 1], clamp: [MIN, MAX] });
+      return row;
+    };
+    const go = el('input', { type: 'checkbox' });
+    go.checked = keepGoing;
+    go.addEventListener('change', () => {
+      keepGoing = go.checked;
+      dirs = null;
+      start();
     });
-    s.addEventListener('change', () => start());
-    controls.replaceChildren(chips, el('label', { class: 'row' }, el('span', {}, 'strength'), s, out));
+    controls.replaceChildren(chips,
+      el('label', { class: 'check', title: 'tiles become fixed directions, kept from tap to tap: tap one to move that way, again to carry on' }, go, 'keep going'),
+      el('div', { class: 'hint' }, 'strength'),
+      ...[...unlocked].map(strengthRow));
   }
 
   // --- map
@@ -329,11 +391,20 @@ export function openExplorerPanel(env: ExplorerEnv) {
     sp.value = String(span);
     const out = el('output', {}, `${Math.round(span * 100)}%`);
     sp.addEventListener('input', () => (out.textContent = `${Math.round(Number(sp.value) * 100)}%`));
-    sp.addEventListener('change', () => {
-      span = Number(sp.value);
+    const setSpan = (v: number) => {
+      span = v;
       setLimits(mx, null);
       setLimits(my, null);
+    };
+    sp.addEventListener('change', () => {
+      setSpan(Number(sp.value));
       start();
+    });
+    const spanRow = el('label', { class: 'row', title: 'how much of each parameter\'s range the map covers, about the current values (resets the limits below)' }, el('span', {}, 'span'), sp, out);
+    ladder(spanRow, {
+      get: () => span,
+      set: (v) => { setSpan(v); sp.value = String(v); out.textContent = `${+(v * 100).toPrecision(3)}%`; restartSoon(); },
+      range: [0, 1], clamp: [0.001, 1],
     });
     // each axis's ends, typed in: any values (beyond the slider ranges too); low > high flips the axis
     const limitRow = (n: string, label: string) => {
@@ -349,11 +420,17 @@ export function openExplorerPanel(env: ExplorerEnv) {
       };
       a.addEventListener('change', apply);
       b.addEventListener('change', apply);
+      // the value ladder on each end (middle button or long-press), stepping in this axis's units
+      for (const box of [a, b]) ladder(box, {
+        get: () => Number(box.value),
+        set: (v) => { box.value = String(+v.toPrecision(8)); clearTimeout(restartTimer); restartTimer = window.setTimeout(apply, 250); },
+        range: range(n) as [number, number],
+      });
       return el('label', { class: 'row limits', title: `${n} at the map's ${label === 'x' ? 'left and right' : 'bottom and top'} edges` }, el('span', {}, `${label} ${n}`), a, el('span', { class: 'hint' }, 'to'), b);
     };
     controls.replaceChildren(
       el('div', { class: 'explore-chips' }, el('span', { class: 'hint' }, 'x'), sel(mx, (n) => (mx = n)), el('span', { class: 'hint' }, 'y'), sel(my, (n) => (my = n))),
-      el('label', { class: 'row', title: 'how much of each parameter\'s range the map covers, about the current values (resets the limits below)' }, el('span', {}, 'span'), sp, out),
+      spanRow,
       limitRow(mx, 'x'),
       limitRow(my, 'y'),
       ...(fieldWide.length > 1 ? [el('p', { class: 'hint' }, `FFT rule: ${fieldWide.filter((n) => specs.some((p) => p.name === n)).join(', ')} can't vary across the field, so they aren't offered.`)] : []),
@@ -372,6 +449,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
     raf = requestAnimationFrame(loop);
   }
   function close() {
+    clearTimeout(restartTimer);
     stopSims();
     ctx.unconfigure();
     root.remove();
