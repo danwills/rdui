@@ -391,20 +391,37 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       btn.title = p.title;
     });
     btn.addEventListener('click', () => {
+      // tiles apply at once and the grid stays open: Enter, ✕ or a tap outside keep the choice,
+      // Esc puts back what was there when it opened
+      const was = { palette: s.palette, hueOffset: s.hueOffset, tint: s.tint, tintStrength: s.tintStrength, custom: structuredClone(s.custom) };
       const close = () => { sheet.remove(); document.removeEventListener('keydown', onKey, true); };
-      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          Object.assign(s, structuredClone(was));
+          sync();
+        } else if (e.key !== 'Enter') return;
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      };
       const groups = [...new Set(PALETTES.map((p) => p.group))];
       const grid = el('div', { class: 'pal-grid' }, ...groups.flatMap((g) => [
         el('div', { class: 'pal-group' }, g),
         ...PALETTES.filter((p) => p.group === g).map((p) => {
           const tile = el('button', { class: 'pal-tile' + (p.id === s.palette ? ' active' : ''), title: p.title },
             el('span', { class: 'pal-swatch', style: `background: ${paletteCss(p.id, s.custom)}` }), el('span', { class: 'pal-name' }, p.name));
-          tile.addEventListener('click', () => { choose(p.id); close(); });
+          tile.addEventListener('click', () => {
+            choose(p.id);
+            grid.querySelectorAll('.pal-tile.active').forEach((t) => t.classList.remove('active'));
+            tile.classList.add('active');
+            tile.blur(); // so Enter means "keep", not "press this tile again"
+          });
           return tile;
         }),
       ]));
       const sheet = el('div', { class: 'pal-sheet' }, el('div', { class: 'pal-panel' },
-        el('div', { class: 'pal-head' }, el('span', {}, 'Palette'), (() => { const x = el('button', {}, '✕'); x.addEventListener('click', close); return x; })()), grid));
+        el('div', { class: 'pal-head' }, el('span', {}, 'Palette'), el('span', { class: 'pal-hint' }, 'Enter keeps · Esc cancels'),
+          (() => { const x = el('button', { title: 'done: keep the chosen palette' }, '✕'); x.addEventListener('click', close); return x; })()), grid));
       sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
       document.addEventListener('keydown', onKey, true);
       document.body.append(sheet);
