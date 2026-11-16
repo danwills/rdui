@@ -28,6 +28,8 @@ export interface ExplorerEnv {
   /** Grid spacing (1 / feature size) to run at. */
   cell: number;
   use(values: Record<string, number>): void;
+  /** The current tool's stroke from (ax, ay) to (bx, by), in the given sim's cells (Paint mode). */
+  brush(sim: Simulation, ax: number, ay: number, bx: number, by: number, alt: boolean): void;
   save(values: Record<string, number>): void;
   onClose(): void;
 }
@@ -113,6 +115,14 @@ export function openExplorerPanel(env: ExplorerEnv) {
     b.classList.toggle('active', m === mode);
     return b;
   });
+  // Paint: drags paint the current tool into the sim under the pointer (every grid tile at once)
+  // instead of picking tiles or map points
+  let painting = false;
+  const paintBtn = button('✎ Paint', () => {
+    painting = !painting;
+    paintBtn.classList.toggle('active', painting);
+    root.classList.toggle('painting', painting);
+  }, 'paint with the current tool (Seed, Erase, Wall, Unwall; others seed) into the explore sims: every grid tile at once, or the map or its preview');
   const root = el('div', { class: 'explore' },
     el('div', { class: 'explore-bar' }, ...tabs,
       button('Use', () => { env.use(picked()); close(); }, 'run the main sim with these values'),
@@ -123,6 +133,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
       }, 'keep these values as a new rule under My rules'),
       ...(env.section ? [startFrom()] : []),
       button('Reseed', () => start(), 'start the sims again'),
+      paintBtn,
       button('✕', () => close(), 'close · Esc')),
     controls, content, readout);
   document.body.append(root);
@@ -141,8 +152,41 @@ export function openExplorerPanel(env: ExplorerEnv) {
   screen.style.width = screen.style.height = `${area}px`;
   const ctx = screen.getContext('webgpu')!;
   ctx.configure({ device, format, alphaMode: 'opaque', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST });
-  let sims: { sim: Simulation; tex: GPUTexture; x: number; y: number }[] = [];
+  // group: grid tiles paint together (the same stroke in each, for a fair comparison)
+  let sims: { sim: Simulation; tex: GPUTexture; x: number; y: number; group?: string }[] = [];
   let raf = 0;
+  {
+    // a sim and its cell under a point of the screen canvas
+    const hit = (e: PointerEvent) => {
+      const r = screen.getBoundingClientRect();
+      const px = ((e.clientX - r.left) / r.width) * screen.width, py = ((e.clientY - r.top) / r.height) * screen.height;
+      const t = sims.find((q) => px >= q.x && py >= q.y && px < q.x + q.tex.width && py < q.y + q.tex.height);
+      return t && { t, cx: ((px - t.x) / t.tex.width) * t.sim.width, cy: ((py - t.y) / t.tex.height) * t.sim.height };
+    };
+    let last: { t: (typeof sims)[number]; cx: number; cy: number; alt: boolean } | null = null;
+    const stroke = (ax: number, ay: number, bx: number, by: number) => {
+      const targets = last!.t.group ? sims.filter((q) => q.group === last!.t.group) : [last!.t];
+      for (const q of targets) env.brush(q.sim, ax, ay, bx, by, last!.alt);
+    };
+    screen.addEventListener('pointerdown', (e) => {
+      if (!painting) return;
+      const h = hit(e);
+      if (!h) return;
+      e.preventDefault();
+      screen.setPointerCapture(e.pointerId);
+      last = { ...h, alt: e.button === 2 };
+      stroke(h.cx, h.cy, h.cx, h.cy);
+    });
+    screen.addEventListener('pointermove', (e) => {
+      if (!painting || !last || !screen.hasPointerCapture(e.pointerId)) return;
+      const h = hit(e);
+      if (!h || h.t.sim !== last.t.sim) return;
+      stroke(last.cx, last.cy, h.cx, h.cy);
+      last = { ...last, cx: h.cx, cy: h.cy };
+    });
+    for (const t of ['pointerup', 'pointercancel']) screen.addEventListener(t, () => (last = null));
+    screen.addEventListener('contextmenu', (e) => { if (painting) e.preventDefault(); });
+  }
   function stopSims() {
     cancelAnimationFrame(raf);
     for (const t of sims) {
@@ -159,10 +203,10 @@ export function openExplorerPanel(env: ExplorerEnv) {
     screen.style.height = `${h}px`;
   }
   /** Shows `sim` at (x, y, size) in CSS pixels of the screen canvas. */
-  function place(sim: Simulation, x: number, y: number, size: number) {
+  function place(sim: Simulation, x: number, y: number, size: number, group?: string) {
     const px = Math.min(screen.width - Math.round(x * dpr), screen.height - Math.round(y * dpr), Math.floor(size * dpr));
     const tex = device.createTexture({ size: [px, px], format, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
-    sims.push({ sim, tex, x: Math.round(x * dpr), y: Math.round(y * dpr) });
+    sims.push({ sim, tex, x: Math.round(x * dpr), y: Math.round(y * dpr), group });
   }
   function loop() {
     const enc = device.createCommandEncoder();
@@ -226,7 +270,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
       fromSection(f.state, N, compiled.layout.S * 4);
       sim.load(f.state, f.params);
       const x = (i % 3) * (tileSize + gap), y = Math.floor(i / 3) * (tileSize + gap);
-      place(sim, x, y, tileSize);
+      place(sim, x, y, tileSize, 'grid');
       const changed = [...unlocked].map((n) => `${n} ${fmtV(vals[n])}`).join(' · ');
       // where tapping this tile moves each parameter: a dot in its colour, sized by the step
       // (in strengths), filled for up and hollow for down

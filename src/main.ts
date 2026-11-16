@@ -345,6 +345,16 @@ async function init() {
     const section = { w, h, state: (await sim.readRegion(Math.floor((sim.width - w) / 2), Math.floor((sim.height - h) / 2), w, h)).state };
     openExplorerPanel({
       device, format, rule, globals: { ...globals }, section,
+      // Paint mode: the current tool's stroke into an explore sim (tools that need the main sim's
+      // param layout, or aren't strokes, seed instead)
+      brush: (target, ax, ay, bx, by, alt) => {
+        const tool = s.tool === 'erase' || s.tool === 'wall' || s.tool === 'unwall' ? s.tool : 'seed';
+        const mode = tool === 'erase' ? BrushMode.Erase : tool === 'wall' ? (alt ? BrushMode.Unwall : BrushMode.Wall)
+          : tool === 'unwall' ? (alt ? BrushMode.Wall : BrushMode.Unwall) : alt ? BrushMode.Erase : BrushMode.Seed;
+        const fft = rule.laplacian === 'spectral' || rule.laplacian === 'spectral-exact';
+        target.brush({ ax, ay, bx, by, mode, radius: s.radius / cellScale, strength: s.strength, hardness: s.hardness, paint: [],
+          ...(mode === BrushMode.Wall ? { base: s.wallsFeed || fft ? 2 : 1 } : {}) });
+      },
       view: viewOptions,
       stepsPerFrame: () => s.stepsPerFrame,
       cell: cellScale,
