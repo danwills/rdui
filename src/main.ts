@@ -519,9 +519,9 @@ async function init() {
       s.fleckGain = rule.view.fleckGain ?? 1;
       s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents.length);
       if (!rule.view.custom) customAutoFit = 20;
-      s.customContrast = rule.view.customContrast ?? 1;
+      s.customContrast = rule.view.customContrast ?? 1.2;
       s.customSaturation = rule.view.customSaturation ?? 1;
-      s.customGamma = rule.view.customGamma ?? 1;
+      s.customGamma = rule.view.customGamma ?? 2.5;
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
