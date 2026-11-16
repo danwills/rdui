@@ -60,6 +60,7 @@ export interface Settings {
   fleckGain: number;
   customContrast: number;
   customSaturation: number;
+  customGamma: number;
   /** Custom palette (7): per reagent, fitted, powered, coloured and summed. */
   custom: CustomChannel[];
   stampId: string | null;
@@ -172,6 +173,7 @@ export function defaultSettings(): Settings {
     fleckGain: 1,
     customContrast: 1,
     customSaturation: 1,
+    customGamma: 1,
     custom: [],
     stampId: null,
     stampRot: 0,
@@ -698,7 +700,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
 
   // custom palette only: per reagent, on/off, colour, low, high, power (rebuilt for each rule)
   const customBox = el('div', {});
-  const gradeRows = el('div', {}, slider('contrast', 'customContrast', 0.5, 3, 0.01, 2), slider('saturation', 'customSaturation', 0, 3, 0.01, 2));
+  const gradeRows = el('div', {}, slider('gamma', 'customGamma', 0.2, 4, 0.01, 2), slider('contrast', 'customContrast', 0.5, 3, 0.01, 2), slider('saturation', 'customSaturation', 0, 3, 0.01, 2));
   let customKey = '';
   const toHex = (c: number[]) => '#' + c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('');
   const fillCustom = () => {

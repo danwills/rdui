@@ -30,10 +30,18 @@ function oklchToRgb(L: number, C: number, h: number): [number, number, number] {
   return srgb.map((x) => x / top) as [number, number, number];
 }
 
-/** The custom palette's starting point: the first three reagents on, in orange, cyan and green; the rest off. */
+/**
+ * The custom palette's starting point: every reagent on (untick the ones that only wash it out). Up to
+ * three get orange, cyan and green; more get hues spread round the wheel, dimmed by how many are summed
+ * so they don't burn out to white. Low and high are fitted to the field once it has some structure.
+ */
 function defaultCustom(n: number): CustomChannel[] {
-  const colours: [number, number, number][] = [[1, 0.55, 0.2], [0.2, 0.75, 1], [0.6, 1, 0.3], [1, 0.3, 0.85], [1, 0.95, 0.4], [0.55, 0.45, 1]];
-  return Array.from({ length: Math.min(n, 12) }, (_, r) => ({ on: r < 3, low: 0, high: 1, power: 1, color: colours[r % colours.length] }));
+  const colours: [number, number, number][] = [[1, 0.55, 0.2], [0.2, 0.75, 1], [0.6, 1, 0.3]];
+  const m = Math.min(n, 12), dim = Math.min(1, 2.2 / m);
+  return Array.from({ length: m }, (_, r) => ({
+    on: true, low: 0, high: 1, power: 1,
+    color: m <= 3 ? colours[r] : oklchToRgb(0.72, 0.15, 0.08 + r / m).map((x) => x * dim) as [number, number, number],
+  }));
 }
 
 const RECT_TOOLS = new Set(['capture', 'probe']);
@@ -103,6 +111,8 @@ async function init() {
   let globals: Record<string, number> = defaultGlobals(rule);
   for (const n of rule.paintable) s.paint[n] = globals[n];
   s.custom = defaultCustom(rule.reagents.length);
+  // the custom palette's automatic fit: pending after its channels are reset to defaults (tries left)
+  let customAutoFit = 20;
   let compiled: CompiledRule = compileRule(rule);
   let sim = new Simulation(device, format, s.gridSize, s.gridSize, compiled);
   // the field's full-resolution size; the sim runs at full × s.resScale. Separately,
@@ -155,7 +165,7 @@ async function init() {
   }
 
   // the view and painting settings a saved scene keeps
-  const SAVED_VIEW = ['reagent', 'low', 'high', 'tint', 'tintLow', 'tintHigh', 'tintStrength', 'palette', 'hueShape', 'hueOffset', 'fleckLow', 'fleckHigh', 'fleckGain', 'custom', 'customContrast', 'customSaturation', 'viewMode', 'stepsPerFrame', 'paint'] as const;
+  const SAVED_VIEW = ['reagent', 'low', 'high', 'tint', 'tintLow', 'tintHigh', 'tintStrength', 'palette', 'hueShape', 'hueOffset', 'fleckLow', 'fleckHigh', 'fleckGain', 'custom', 'customContrast', 'customSaturation', 'customGamma', 'viewMode', 'stepsPerFrame', 'paint'] as const;
 
   /** Save the whole field (rule, params, walls, chemistry, probes) and view as a scene in this browser. */
   async function saveScene() {
@@ -218,7 +228,7 @@ async function init() {
         ...rule.view,
         reagent: rule.reagents[s.reagent], low: s.low, high: s.high,
         tint: s.tint >= 0 ? rule.reagents[s.tint] : undefined,
-        stepsPerFrame: s.stepsPerFrame, palette: s.palette, hueShape: s.hueShape, hueOffset: s.hueOffset, fleckLow: s.fleckLow, fleckHigh: s.fleckHigh, fleckGain: s.fleckGain, custom: structuredClone(s.custom), customContrast: s.customContrast, customSaturation: s.customSaturation,
+        stepsPerFrame: s.stepsPerFrame, palette: s.palette, hueShape: s.hueShape, hueOffset: s.hueOffset, fleckLow: s.fleckLow, fleckHigh: s.fleckHigh, fleckGain: s.fleckGain, custom: structuredClone(s.custom), customContrast: s.customContrast, customSaturation: s.customSaturation, customGamma: s.customGamma,
       },
       size: { ...full },
     };
@@ -268,6 +278,21 @@ async function init() {
   async function fitCustom(only?: number) {
     const samples = await reagentSamples();
     s.custom.forEach((c, r) => { if (only === undefined || r === only) fitChannel(c, samples[r]); });
+    ui.sync();
+  }
+  /**
+   * Custom palette, shown with channels still at their defaults (low 0, high 1): fit those to the field.
+   * Tried every half second (a fresh field is often flat, nothing to fit yet) until none are left or
+   * the tries run out.
+   */
+  async function autoFitCustom() {
+    customAutoFit--;
+    const samples = await reagentSamples();
+    let left = 0;
+    s.custom.forEach((c, r) => {
+      if (c.on && c.low === 0 && c.high === 1 && !fitChannel(c, samples[r])) left++;
+    });
+    if (!left) customAutoFit = 0;
     ui.sync();
   }
   /**
@@ -493,12 +518,14 @@ async function init() {
       s.fleckHigh = rule.view.fleckHigh ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 1 : Math.max(rule.view.high, s.fleckLow + 1e-3));
       s.fleckGain = rule.view.fleckGain ?? 1;
       s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents.length);
+      if (!rule.view.custom) customAutoFit = 20;
       s.customContrast = rule.view.customContrast ?? 1;
       s.customSaturation = rule.view.customSaturation ?? 1;
+      s.customGamma = rule.view.customGamma ?? 1;
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
-    if (s.custom.length !== Math.min(rule.reagents.length, 12)) s.custom = defaultCustom(rule.reagents.length);
+    if (s.custom.length !== Math.min(rule.reagents.length, 12)) { s.custom = defaultCustom(rule.reagents.length); customAutoFit = 20; }
     if (s.tint >= rule.reagents.length) s.tint = -1;
     if (full.width === full.height) s.gridSize = full.width;
 
@@ -1171,6 +1198,7 @@ async function init() {
       custom: s.custom,
       customContrast: s.customContrast,
       customSaturation: s.customSaturation,
+      customGamma: s.customGamma,
       // param map / outline colours go red, green, blue, orange in this order: absorbing walls red, reflecting
       // walls green, potential V blue, damping gamma (or traps, once drawn) orange, whatever order a scene lists them in
       paramSlots: [...rule.paintable].sort((a, b) => colourRank(a) - colourRank(b)).slice(0, 4).map((n) => {
@@ -1225,6 +1253,7 @@ async function init() {
       stats = `${(frames / dt).toFixed(0)} fps · ${(stepsDone / dt).toFixed(0)} steps/s · ${sim.width}×${sim.height} · ${rule.name}`;
       frames = stepsDone = 0;
       lastStat = now;
+      if (s.palette === 7 && customAutoFit > 0) void autoFitCustom();
     }
     if (hover && frameNo % 4 === 0) {
       sim.probe(Math.floor(hover[0]), Math.floor(hover[1])).then((c) => {

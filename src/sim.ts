@@ -96,6 +96,8 @@ export interface ViewOptions {
   /** Custom palette: contrast (about mid-grey) and saturation applied to the summed colour (1 = as is). */
   customContrast?: number;
   customSaturation?: number;
+  /** Custom palette: the summed colour raised to this power first (above 1 darkens the mid-tones, so contrast has room). */
+  customGamma?: number;
   /** Up to three flat param slots (>0) with their display ranges. */
   /** Painted params to show: flat slot, range, and base (unpainted) value. */
   paramSlots: { slot: number; min: number; max: number; base: number; distance?: boolean }[];
@@ -457,7 +459,7 @@ export class Simulation {
     v.custom?.slice(0, 12).forEach((c, r) => {
       f.set([c.low, c.high, c.power, c.on ? 1 : 0, ...c.color, 0], 40 + 8 * r);
     });
-    f[136] = v.customContrast ?? 1; f[137] = v.customSaturation ?? 1;
+    f[136] = v.customContrast ?? 1; f[137] = v.customSaturation ?? 1; f[138] = v.customGamma ?? 1;
     this.device.queue.writeBuffer(this.viewUniform, 0, buf);
 
     const pass = enc.beginRenderPass({
