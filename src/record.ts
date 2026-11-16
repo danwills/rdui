@@ -38,23 +38,29 @@ export async function recordVideo(device: GPUDevice, sim: Simulation, view: () =
   const encoder = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: (e) => (failure = e) });
   encoder.configure({ codec: chosen[0], width, height, bitrate, framerate: o.fps, latencyMode: 'quality' });
 
-  const canvas = new OffscreenCanvas(width, height);
-  const ctx = canvas.getContext('webgpu')!;
-  ctx.configure({ device, format: navigator.gpu.getPreferredCanvasFormat(), alphaMode: 'opaque' });
+  // each frame is rendered into a texture and read back (a WebGPU OffscreenCanvas's transferToImageBitmap
+  // gave black frames), in the format the render pipeline draws in (the canvas's preferred one)
+  const format = navigator.gpu.getPreferredCanvasFormat();
+  const target = device.createTexture({ size: [width, height], format, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
+  const stride = Math.ceil((width * 4) / 256) * 256;
+  const readback = device.createBuffer({ size: stride * height, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
   const us = 1e6 / o.fps;
   try {
     for (let i = 0; i < total && !cancelled(); i++) {
       if (failure) throw failure;
       const enc = device.createCommandEncoder();
       if (i > 0) sim.step(enc, o.stepsPerFrame);
-      sim.render(enc, ctx.getCurrentTexture().createView(), width, height, view());
+      sim.render(enc, target.createView(), width, height, view());
+      enc.copyTextureToBuffer({ texture: target }, { buffer: readback, bytesPerRow: stride }, [width, height]);
       device.queue.submit([enc.finish()]);
-      await device.queue.onSubmittedWorkDone();
-      const bitmap = canvas.transferToImageBitmap();
-      const frame = new VideoFrame(bitmap, { timestamp: Math.round(i * us), duration: Math.round(us) });
+      await readback.mapAsync(GPUMapMode.READ);
+      const frame = new VideoFrame(new Uint8Array(readback.getMappedRange()), {
+        format: format === 'bgra8unorm' ? 'BGRX' : 'RGBX', codedWidth: width, codedHeight: height,
+        layout: [{ offset: 0, stride }], timestamp: Math.round(i * us), duration: Math.round(us),
+      });
+      readback.unmap();
       encoder.encode(frame, { keyFrame: i % Math.max(1, Math.round(o.fps * 2)) === 0 });
       frame.close();
-      bitmap.close();
       while (encoder.encodeQueueSize > 4) await new Promise((r) => setTimeout(r, 4));
       progress(i + 1, total);
     }
@@ -62,7 +68,8 @@ export async function recordVideo(device: GPUDevice, sim: Simulation, view: () =
     if (failure) throw failure;
   } finally {
     if (encoder.state !== 'closed') encoder.close();
-    ctx.unconfigure();
+    target.destroy();
+    readback.destroy();
   }
   muxer.finalize();
   return new Blob([muxer.target.buffer], { type: 'video/mp4' });
