@@ -91,6 +91,7 @@ async function init() {
   let note = ''; // shown under the rule picker (scene description)
   let globals: Record<string, number> = defaultGlobals(rule);
   for (const n of rule.paintable) s.paint[n] = globals[n];
+  s.custom = defaultCustom(rule.reagents.length);
   let compiled: CompiledRule = compileRule(rule);
   let sim = new Simulation(device, format, s.gridSize, s.gridSize, compiled);
   // the field's full-resolution size; the sim runs at full × s.resScale. Separately,

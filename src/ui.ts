@@ -2,7 +2,7 @@ import { PRESETS } from './presets';
 import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, openLoupe } from './fkmap';
 import type { RuleDef } from './rule';
 import type { CustomChannel } from './sim';
-import { COLORMAP_NAMES } from './colormaps';
+import { PALETTES, paletteCss } from './palettes';
 
 export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'capture' | 'stamp' | 'probe';
 
@@ -365,6 +365,54 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return { row: el('label', { class: 'row' }, el('span', {}, label), sel), fill };
   }
 
+  /** The palette: a button showing the current one, opening a grid of every palette with its preview. */
+  function palettePicker() {
+    const choose = (id: number) => {
+      s.palette = id;
+      // custom: fit the reagents' ranges to the field on first choosing it for this rule
+      if (s.palette === 7 && s.custom.every((c) => c.low === 0 && c.high === 1)) actions.fitCustom();
+      // a fleck palette starts from its own hue offset
+      if (s.palette === 5 || s.palette === 6) s.hueOffset = hueOffsetFor(s.palette);
+      // HSV wants a second reagent for the saturation: default to the other one
+      const n = rc.rule().reagents.length;
+      if (s.palette === 4 && s.tint < 0 && n > 1) {
+        s.tint = s.reagent === 0 ? 1 : 0;
+        s.tintStrength = 1;
+      }
+      sync();
+    };
+    const swatch = el('span', { class: 'pal-swatch' });
+    const name = el('span', { class: 'pal-name' });
+    const btn = el('button', { class: 'pal-button', title: 'choose a palette' }, swatch, name);
+    syncers.push(() => {
+      const p = PALETTES.find((q) => q.id === s.palette) ?? PALETTES[0];
+      swatch.style.background = paletteCss(p.id, s.custom);
+      name.textContent = p.name;
+      btn.title = p.title;
+    });
+    btn.addEventListener('click', () => {
+      const close = () => { sheet.remove(); document.removeEventListener('keydown', onKey, true); };
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+      const groups = [...new Set(PALETTES.map((p) => p.group))];
+      const grid = el('div', { class: 'pal-grid' }, ...groups.flatMap((g) => [
+        el('div', { class: 'pal-group' }, g),
+        ...PALETTES.filter((p) => p.group === g).map((p) => {
+          const tile = el('button', { class: 'pal-tile' + (p.id === s.palette ? ' active' : ''), title: p.title },
+            el('span', { class: 'pal-swatch', style: `background: ${paletteCss(p.id, s.custom)}` }), el('span', { class: 'pal-name' }, p.name));
+          tile.addEventListener('click', () => { choose(p.id); close(); });
+          return tile;
+        }),
+      ]));
+      const sheet = el('div', { class: 'pal-sheet' }, el('div', { class: 'pal-panel' },
+        el('div', { class: 'pal-head' }, el('span', {}, 'Palette'), (() => { const x = el('button', {}, '✕'); x.addEventListener('click', close); return x; })()), grid));
+      sheet.addEventListener('click', (e) => { if (e.target === sheet) close(); });
+      document.addEventListener('keydown', onKey, true);
+      document.body.append(sheet);
+      grid.querySelector('.active')?.scrollIntoView({ block: 'center' });
+    });
+    return el('label', { class: 'row' }, el('span', {}, 'palette'), btn);
+  }
+
   function rangeRow(label: string, key: 'low' | 'high' | 'tintLow' | 'tintHigh' | 'fleckLow' | 'fleckHigh', range: [number, number]) {
     const r = valueRow(label, () => s[key], (v) => (s[key] = v), range);
     syncers.push(r.refresh);
@@ -663,19 +711,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       slider('hue offset', 'hueOffset', 0, 1, 0.01, 2),
       fleckRows,
       customBox,
-      select('palette', 'palette', () => [[0, 'abyss'], [1, 'ember'], [2, 'mono'], [3, 'spectral'], [4, 'HSV: show → hue, tint → sat'], [5, 'HSV fleck: a b c → V S H'], [6, 'OKLCH fleck: a b c → L C h'], [7, 'custom: every reagent fitted, powered, coloured, summed'],
-        ...COLORMAP_NAMES.map((n, i): [number, string] => [100 + i, n])], () => {
-        // custom: fit the reagents' ranges to the field on first choosing it for this rule
-        if (s.palette === 7 && s.custom.every((c) => c.low === 0 && c.high === 1)) actions.fitCustom();
-        // a fleck palette starts from its own hue offset
-        if (s.palette === 5 || s.palette === 6) s.hueOffset = hueOffsetFor(s.palette);
-        // HSV wants a second reagent for the saturation: default to the other one
-        const n = rc.rule().reagents.length;
-        if (s.palette === 4 && s.tint < 0 && n > 1) {
-          s.tint = s.reagent === 0 ? 1 : 0;
-          s.tintStrength = 1;
-        }
-      }).row,
+      palettePicker(),
     ),
     el('footer', {}, el('p', { class: 'hint' },
       '1–7 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle reagent · T cycle tint · H hide panel · right-click alt action · Esc cancel')),
