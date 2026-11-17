@@ -133,3 +133,21 @@ scene('hw-niches-restless.json', 'GS History+Wave Niches: restless',
       walls=False, rule='builtin:17', noise=0.12, extra={'c_to_F': -0.04},
       view={'reagent': 'c', 'low': 0, 'high': 1, 'tint': 'P_F', 'tintLow': 0.03, 'tintHigh': 0.072},
       more=[{'chem': 'd', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 0.37}, 'shape': {'type': 'everywhere'}}])
+
+# worms are too strong for the gentler species (they flood empty ground, held back only by their own history), so
+# here they fight each other: four worm-like settings from the map, all at k 0.055. The higher a worm's feed the better
+# it copes with the history's pull on feed (it won every time), so each feels its own trails more the higher its feed
+# (history2..4); and history pulls harder (c_to_F -0.04, as in the restless scene), which keeps it moving
+HW_WORMS = [('worms .054', 0.054, 0.055), ('worms .058', 0.058, 0.055), ('worms .062', 0.062, 0.055), ('worms .066', 0.066, 0.055)]
+scene('hw-niches-worm-battle.json', 'GS History+Wave Niches: worm battle',
+      'Four kinds of worm in GS History+Wave Niches, in the open: F 0.054 (top left), 0.058 (top right), 0.062 (bottom left) '
+      'and 0.066 (bottom right), all at k 0.055. Worm settings flood a field on their own, held back only by the history they '
+      'leave, and are too strong for gliders and spots, so here they fight each other. The higher a worm\'s feed the better it '
+      'copes with the history (it won every time), so each feels its own trails more the higher its feed (history2..4 = 1.12, '
+      '1.25, 1.42); history pulls feed down harder than in four behaviours (c_to_F -0.04), which keeps it churning. All four '
+      'still there at 160k steps, 71% of the live cells moving. Each starts as a patch of noise. View c (the history) tinted '
+      'by P_F; b1…b4 to see one kind alone.',
+      [(*HW_WORMS[0], 0.27, 0.27), (*HW_WORMS[1], 0.73, 0.27), (*HW_WORMS[2], 0.27, 0.73), (*HW_WORMS[3], 0.73, 0.73)],
+      walls=False, rule='builtin:17', noise=0.12, extra={'c_to_F': -0.04, 'history2': 1.12, 'history3': 1.25, 'history4': 1.42},
+      view={'reagent': 'c', 'low': 0, 'high': 1, 'tint': 'P_F', 'tintLow': 0.05, 'tintHigh': 0.068},
+      more=[{'chem': 'd', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 0.37}, 'shape': {'type': 'everywhere'}}])

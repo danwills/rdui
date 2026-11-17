@@ -1,0 +1,207 @@
+{
+  "name": "GS History+Wave Niches: worm battle",
+  "description": "Four kinds of worm in GS History+Wave Niches, in the open: F 0.054 (top left), 0.058 (top right), 0.062 (bottom left) and 0.066 (bottom right), all at k 0.055. Worm settings flood a field on their own, held back only by the history they leave, and are too strong for gliders and spots, so here they fight each other. The higher a worm's feed the better it copes with the history (it won every time), so each feels its own trails more the higher its feed (history2..4 = 1.12, 1.25, 1.42); history pulls feed down harder than in four behaviours (c_to_F -0.04), which keeps it churning. All four still there at 160k steps, 71% of the live cells moving. Each starts as a patch of noise. View c (the history) tinted by P_F; b1…b4 to see one kind alone.",
+  "rule": "builtin:17",
+  "size": 384,
+  "start": "initial",
+  "stepsPerFrame": 20,
+  "globals": {
+    "F1": 0.054,
+    "k1": 0.055,
+    "F2": 0.058,
+    "k2": 0.055,
+    "F3": 0.062,
+    "k3": 0.055,
+    "F4": 0.066,
+    "k4": 0.055,
+    "c_to_F": -0.04,
+    "history2": 1.12,
+    "history3": 1.25,
+    "history4": 1.42
+  },
+  "initial": [
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b4",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "d",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.37
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    }
+  ],
+  "view": {
+    "reagent": "c",
+    "low": 0,
+    "high": 1,
+    "tint": "P_F",
+    "tintLow": 0.05,
+    "tintHigh": 0.068
+  }
+}
