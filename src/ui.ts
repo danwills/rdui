@@ -501,10 +501,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   syncers.push(() => (toolHint.textContent = TOOLS.find((t) => t.id === s.tool)!.hint));
 
   // --- rule section (rebuilt when the rule changes)
-  // Three menus: the family, its rules, and its scenes.
+  // Two menus: the family, then its rules, each followed by its own scenes (indented under it).
   const familySel = el('select', { class: 'rule-select', title: 'rule family' });
-  const ruleSel = el('select', { class: 'rule-select', title: 'rule' });
-  const sceneSel = el('select', { class: 'rule-select', title: 'scenes for this family' });
+  const ruleSel = el('select', { class: 'rule-select', title: 'rule, or one of its scenes (indented under it)' });
   let shownFamily = '';
   function fillRules() {
     const all = rc.choices(), cur = rc.currentId();
@@ -516,15 +515,24 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     familySel.replaceChildren(...families.map((f) => el('option', { value: f }, f)));
     familySel.value = family;
     const rules = all.filter((c) => !c.rule && c.group === family);
-    ruleSel.replaceChildren(...rules.map((c) => el('option', { value: c.id }, c.label)));
-    const ruleId = here?.rule ?? cur;
-    if (!rules.some((c) => c.id === ruleId)) ruleSel.append(el('option', { value: ruleId }, rc.rule().source ?? rc.rule().name));
-    ruleSel.value = ruleId;
     const scenes = all.filter((c) => c.rule && c.group === family);
-    sceneSel.replaceChildren(el('option', { value: '' }, scenes.length ? `scenes (${scenes.length})…` : 'no scenes'),
-      ...scenes.map((c) => el('option', { value: c.id }, c.label)));
-    sceneSel.disabled = !scenes.length;
-    sceneSel.value = here?.rule ? cur : '';
+    const ruleId = here?.rule ?? cur;
+    const opts: HTMLOptionElement[] = [];
+    const sceneOpt = (c: RuleChoice) => el('option', { value: c.id }, `\u00a0\u00a0\u00a0\u00a0${c.label}`);
+    for (const r of rules) {
+      opts.push(el('option', { value: r.id }, r.label));
+      opts.push(...scenes.filter((c) => c.rule === r.id).map(sceneOpt));
+    }
+    // the current rule if it isn't one of the family's (an imported or edited one), with its scenes
+    if (!rules.some((c) => c.id === ruleId)) {
+      opts.push(el('option', { value: ruleId }, rc.rule().source ?? rc.rule().name));
+      opts.push(...scenes.filter((c) => c.rule === ruleId).map(sceneOpt));
+    }
+    // scenes whose rule isn't listed here
+    const placed = new Set(opts.map((o) => o.value));
+    opts.push(...scenes.filter((c) => !placed.has(c.id)).map(sceneOpt));
+    ruleSel.replaceChildren(...opts);
+    ruleSel.value = cur;
   }
   fillRules();
   familySel.addEventListener('change', () => {
@@ -532,7 +540,6 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     if (first) actions.selectRule(first.id);
   });
   ruleSel.addEventListener('change', () => actions.selectRule(ruleSel.value));
-  sceneSel.addEventListener('change', () => { if (sceneSel.value) actions.selectRule(sceneSel.value); });
   const ruleBody = el('div');
   let ruleSyncers: (() => void)[] = [];
   syncers.push(() => ruleSyncers.forEach((f) => f()));
@@ -764,7 +771,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       slider('hardness', 'hardness', 0, 1, 0.01, 2),
       select('shape', 'brushShape', () => [['free', 'freehand'], ['line', 'line (press, drag to the end)'], ['circle', 'circle (press the centre, drag out)']]).row,
     ),
-    section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel), el('div', { class: 'rule-row' }, sceneSel), ruleBody),
+    section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel), ruleBody),
     section('Simulation',
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Restart', actions.restart, 'start the rule or scene over from scratch: its own parameters, opening, paint and stamps (Reset keeps your parameters)'), button('Clear chem', actions.clearChemistry, 'C')),
       logSlider('steps/frame', 'stepsPerFrame', 64, 5000),

@@ -104,3 +104,20 @@ write('pf-bubbles-foam-2.json', {
     'globals': {},
     'initial': [o for x, y, R, k in FOAM2 for o in pf(x / 256, y / 256, 0.6 * R / 256, 6.5, k)],
 })
+
+# Phase-field Bubbles 3 (builtin:21): one phase, islands stay islands. The mixed foam's layout (kinds unused), content
+# 5 (about 1.7 x the stamp radius each, as the mixed foam's)
+def pf3(cx, cy, r, m):
+    return disk(cx, cy, r, [('phi', 1), ('m', m)])
+FOAM3 = [[104, 93, 44.0, 1], [202, 18, 44.0, 1], [114, 248, 44.0, 2], [228, 220, 28.0, 2], [57, 227, 28.0, 0], [31, 92, 28.0, 2], [141, 138, 28.0, 0], [39, 175, 28.0, 1], [59, 50, 28.0, 0], [63, 124, 17.0, 0], [3, 29, 17.0, 2], [246, 149, 17.0, 2], [174, 199, 17.0, 0], [248, 1, 17.0, 0], [208, 97, 17.0, 2], [212, 127, 17.0, 0], [93, 158, 17.0, 2], [139, 197, 17.0, 1], [237, 67, 17.0, 0], [196, 176, 17.0, 1], [174, 160, 17.0, 2], [34, 3, 17.0, 1], [154, 29, 17.0, 0]]
+write('pf3-bubbles-foam.json', {
+    'name': 'Phase-field Bubbles 3: mixed foam',
+    'description': 'One phase for every bubble; where edges face each other the gap between them is drained, so they dock '
+                   'along flat walls. Work in progress: 23 bubbles end up as about 11, as some still merge while growing fast '
+                   'into each other. Big, medium and small bubbles from stamps of '
+                   'different sizes (the same content concentration, so size follows stamp). Try cutting one in two with '
+                   'Erase: the halves round up and stay two, docked like a dividing cell.',
+    'rule': 'builtin:21', 'size': 256, 'start': 'initial', 'stepsPerFrame': 40,
+    'globals': {},
+    'initial': [o for x, y, R, k in FOAM3 for o in pf3(x / 256, y / 256, 0.6 * R / 256, 5)],
+})

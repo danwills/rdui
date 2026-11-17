@@ -1,5 +1,5 @@
 // Phase-field Bubbles: cut a settled bubble in two (an erased stripe, phi and content to 0, as the Erase brush does) and
-// watch whether the halves round up as two bubbles or merge back. Logs the number of bubbles and each blob's area.
+// watch whether the halves round up as two bubbles or merge back. Logs each blob's area and the total content.
 //   node lab/run.mjs pf-split '{"r":30,"m":6,"gap":6}'
 import * as R from '../src/rule';
 import { makeLab, log, saveFrame, blobs } from './lab';
@@ -12,7 +12,11 @@ export default async function (cfg: { r: number; m: number; gap: number; settle?
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (Math.hypot(x - 128, y - 128) <= cfg.r) { const i = (y * N + x) * S4; state[i + P] = 1; state[i + M] = cfg.m; }
   lab.sim.writeRegion(0, 0, N, N, undefined, state);
   await lab.run(cfg.settle ?? 15000);
-  const count = (s: Float32Array) => blobs(s, N, lab.layout.S, P, 0.5, 4).map((b) => b.area).join(' ');
+  const count = (s: Float32Array) => {
+    let mt = 0;
+    for (let i = 0; i < N * N; i++) mt += s[i * S4 + M];
+    return `${blobs(s, N, lab.layout.S, P, 0.5, 4).map((b) => b.area).join(' ')}  content ${mt.toFixed(0)}`;
+  };
   state = (await lab.read()).state;
   log(`settled: areas ${count(state)}`);
   // the cut: every reagent back to rest in a vertical stripe through the middle

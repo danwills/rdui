@@ -1744,12 +1744,75 @@ delta_mem = (4.0*phi*(1.0 - phi) - mem)/timestep;`,
   view: { reagent: 'mem', low: 0, high: 1, tint: 'm' },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1];
+/**
+ * Phase-field Bubbles 3 (islands stay islands): one phase φ as in version 1, aiming for no two islands ever joining, whatever
+ * they are (two bubbles meeting, or the halves of one that's been cut). The halves of a cut stay two; bubbles still growing
+ * fast into each other can still merge (the blur h, taking ~50 steps to respond, lags a fast front). Version 1's gap push only tilted the double well, which is
+ * weak beside diffusion, and its edges were about 10 cells wide, so two within about 12 cells filled the gap between them
+ * even with nothing pushing. Here the edge is sharper (a stronger well, less diffusion: about 4 cells, so gaps of 8 hold
+ * by themselves; any sharper and it pins to the grid, bubbles staying rectangles), and a gap is drained directly: outside (φ low) where the blur h is above a half, which only happens
+ * where edges face each other, φ is pulled down at a rate beating diffusion, so the gap holds and the bubbles dock.
+ */
+export const PF_BUBBLES_3: RuleDef = {
+  name: 'Phase-field Bubbles 3 (islands stay islands)',
+  description: 'Bubbles as one phase field φ (1 inside, 0 outside), whose edges move by their own curvature (smoothing '
+    + 'bulges rather than buckling) and by the pressure of the content m inside (its excess over target), so a bubble\'s '
+    + 'size follows its content. Where two edges face each other across a narrow gap, the gap is drained (drain), so '
+    + 'a bubble cut in two (Erase across it) stays two, each rounding up at the size its half of the content sets, docked '
+    + 'along a flat wall. Work in progress: bubbles still growing fast into each other can still merge. Seed paints a '
+    + 'bubble (content 3). View mem (the membrane) tinted by m.',
+  reagents: ['phi', 'm', 'h', 'g', 'gm', 'mphi', 'mem'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.2 },
+    { name: 'D_phi', value: 0.1, min: 0, max: 0.24 },
+    { name: 'well', value: 0.2, min: 0.005, max: 1 },
+    { name: 'D_m', value: 0.2, min: 0, max: 0.24 },
+    { name: 'm_inward', value: 0.2, min: 0, max: 1 },
+    { name: 'pressure', value: 0.3, min: 0, max: 2 },
+    { name: 'target', value: 1, min: 0.1, max: 4 },
+    { name: 'D_h', value: 0.2, min: 0, max: 0.24 },
+    { name: 'h_decay', value: 0.02, min: 0.002, max: 0.5 },
+    { name: 'drain', value: 6, min: 0, max: 12 },
+    { name: 'gap_margin', value: 0.05, min: 0, max: 0.5 },
+  ],
+  paintable: [],
+  formula: `// the drive at the edge: content pressure out (its excess over target), capped so the double well keeps two phases
+float lambda = clamp(pressure*(m - target), -0.45, 0.45);
+// a gap: outside (phi low) yet the blur h above a half: only where edges face each other across it does h add up past
+// a half outside them (at a lone edge h reaches a half only at the edge itself); none at all where phi is over a half,
+// so it can't eat into a bubble (where h is near 1 too)
+float gap = max(h - 0.5 - gap_margin, 0.0)*(1.0 - smoothstep(0.1, 0.5, phi));
+// Allen-Cahn: diffusion and the double well (stable at 0 and 1) make an edge a few cells wide that moves by its curvature;
+// lambda tilts the well, moving it out (lambda > 0) or in; and a gap is drained directly (not through the well, which
+// diffusion from both sides would beat), so islands never join
+delta_phi = D_phi*laplacian_phi + well*phi*(1.0 - phi)*(phi - 0.5 + lambda) - drain*gap*phi;
+// content spreads inside, held in at the edge: div(g grad m), g a smooth step in phi (exactly 0 below 0.3, so phi's
+// faint tail outside doesn't let it seep away), written as (lap(g m) + g lap m - m lap g)/2, which sums to zero over the
+// grid (no content made or lost)
+// and drawn up phi's slope (flux m_inward m grad phi, as (lap(m phi) - phi lap m + m lap phi)/2, also summing to zero),
+// so content at a retreating edge goes in with it rather than being stranded outside (which drained a shrinking
+// bubble, so it shrank further, until it was gone)
+delta_m = D_m*0.5*(laplacian_gm + g*laplacian_m - m*laplacian_g) - m_inward*0.5*(laplacian_mphi - phi*laplacian_m + m*laplacian_phi);
+// h: phi blurred over a few cells (relaxes to the local phi, spreads); a narrow gap between two bubbles stays high
+delta_h = D_h*laplacian_h + h_decay*(phi - h);
+delta_g = (smoothstep(0.3, 0.7, phi) - g)/timestep;
+delta_gm = (g*m - gm)/timestep;
+delta_mphi = (m*phi - mphi)/timestep;
+// the membrane, for the view: where phi crosses
+delta_mem = (4.0*phi*(1.0 - phi) - mem)/timestep;`,
+  rest: [0, 0, 0, 0, 0, 0, 0],
+  seed: [1, 3, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0],
+  initial: [],
+  view: { reagent: 'mem', low: 0, high: 1, tint: 'm' },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Gray-Scott', [GRAY_SCOTT, GRAY_SCOTT_ZOOM, GS_FLECK, GS_BUBBLES]],
-  ['Bubbles', [PF_BUBBLES_1, PF_BUBBLES]],
+  ['Bubbles', [PF_BUBBLES_1, PF_BUBBLES, PF_BUBBLES_3]],
   ['History + Wave', [GS_HISTORY_WAVE, GS_HW_MEMORY]],
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
