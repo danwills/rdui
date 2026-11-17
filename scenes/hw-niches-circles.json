@@ -1,0 +1,315 @@
+{
+  "name": "GS History+Wave Niches: walled circles",
+  "description": "GS History+Wave Niches' four species, each in its own walled circle as in the Niches heredity scenes: F 0.042 k 0.06 (top left: gliders that leave trails), 0.05 0.062 (top right), 0.058 0.0635 (bottom left) and 0.062 0.062 (bottom right), the last three building colonies of glowing blobs. Each circle starts as History+Wave's own opening does, with noise. All four were still there at 40k steps. The history and wave are shared, but the walls keep them apart until you open doors with the Unwall tool (key 8): then watch who crosses. View c (the history) tinted by P_F (who made each trail); b1…b4 to see one species alone.",
+  "rule": "builtin:17",
+  "size": 384,
+  "start": "initial",
+  "stepsPerFrame": 20,
+  "globals": {
+    "F1": 0.042,
+    "k1": 0.06,
+    "F2": 0.05,
+    "k2": 0.062,
+    "F3": 0.058,
+    "k3": 0.0635,
+    "F4": 0.062,
+    "k4": 0.062
+  },
+  "initial": [
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.18200000000000002
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.17
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.18200000000000002
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.17
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.18200000000000002
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.17
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.18200000000000002
+      }
+    },
+    {
+      "chem": "wall",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.17
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b4",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "d",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.37
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    }
+  ],
+  "view": {
+    "reagent": "c",
+    "low": 0,
+    "high": 1,
+    "tint": "P_F",
+    "tintLow": 0.04,
+    "tintHigh": 0.068
+  }
+}

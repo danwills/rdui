@@ -1533,7 +1533,7 @@ delta_e = laplacian_d*wave_diffusion;
 delta_d = wave_DC_value + clamp(sign(w)*pow(abs(w)*wave_damp, wave_power) + bt*b_to_wave, -wave_clamp, wave_clamp) - d + e + delta_e;
 // the tint: the local mean feed where there's life, kept where it has gone, so trails show who made them
 delta_P_F = min(bt*20.0, 1.0)*((F1*b1 + F2*b2 + F3*b3 + F4*b4)/max(bt, 1e-4) - P_F)/timestep;`,
-  rest: [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+  rest: [1, 1, 1, 1, 0, 0, 0, 0, 0, 0.37, 0, 0], // the wave at its DC value, so walls and Erase don't kick it
   seed: [0.5, null, null, null, 0.25, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0.25, 0, 0, 0, 0, 0, 0, 0],
   initial: [
