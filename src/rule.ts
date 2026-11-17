@@ -2014,7 +2014,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'warmth'] },
 };
 
 /**
@@ -2098,7 +2098,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'warmth'] },
 };
 
 /**
@@ -2184,7 +2184,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'warmth'] },
 };
 
 /**
@@ -2275,7 +2275,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'warmth'] },
 };
 
 /**
@@ -2374,7 +2374,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'warmth'] },
 };
 
 /**
@@ -2475,7 +2475,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, 1, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'vx', 'vw'] },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'warmth', 'vx', 'vw'] },
 };
 
 /**
@@ -2576,7 +2576,7 @@ delta_psi = -psi_drift*x_gradient_psi;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'psi'] },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'warmth', 'psi'] },
 };
 
 /**
@@ -2673,7 +2673,7 @@ delta_psi = -psi_drift*x_gradient_psi;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'psi'] },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'warmth', 'psi'] },
 };
 
 export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13];
