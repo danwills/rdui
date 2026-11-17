@@ -121,3 +121,21 @@ write('pf3-bubbles-foam.json', {
     'globals': {},
     'initial': [o for x, y, R, k in FOAM3 for o in pf3(x / 256, y / 256, 0.6 * R / 256, 5)],
 })
+
+# Phase-field Bubbles 4 (builtin:22): substrate keeps islands apart. The mixed foam's layout again (FOAM3), content 5
+# (at 8, crammed, pressure beats the starving and 23 merge into 6)
+def pf4(cx, cy, r, m):
+    return disk(cx, cy, r, [('phi', 1), ('m', m)])
+write('pf4-bubbles-foam.json', {
+    'name': 'Phase-field Bubbles 4: mixed foam',
+    'description': 'Big, medium and small bubbles from stamps of different sizes (the same content concentration, so size '
+                   'follows stamp: area in proportion to content). Bubbles eat a substrate fed in from outside and an edge '
+                   'needs it to advance, so between two neighbours, where it\'s eaten from both sides, both edges hold back: '
+                   'they keep a gap (23 stamped, 22 left at 40k steps). Try cutting one in two with Erase: the halves round up '
+                   'and stay two. Work in progress: crammed tighter (more content), pressure beats the starving and they '
+                   'merge. View u to see the substrate.',
+    'rule': 'builtin:22', 'size': 256, 'start': 'initial', 'stepsPerFrame': 40,
+    'globals': {},
+    'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}}]
+               + [o for x, y, R, k in FOAM3 for o in pf4(x / 256, y / 256, 0.6 * R / 256, 5)],
+})
