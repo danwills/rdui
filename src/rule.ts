@@ -1472,14 +1472,90 @@ delta_P_F = ((F1*b1 + F2*b2 + F3*b3 + F4*b4)/(bt + 1e-4) - P_F)/timestep;`,
   view: { reagent: 'b', low: 0, high: 0.5, tint: 'P_F' },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES];
+/**
+ * History+Wave Niches' species: four that each hold about the same share of a 256² field (0.1-1.2% of it alive,
+ * the sparse life of History+Wave; denser species such as Niches' spots and worms die in their own history) with
+ * feeds far apart, for distinct tints. Found by trying sets; with these all four were still there at 40k steps.
+ */
+const HW_NICHES_TRAITS: [number, number][] = [[0.042, 0.06], [0.05, 0.062], [0.058, 0.0635], [0.066, 0.065]];
+export const GS_HW_NICHES: RuleDef = {
+  name: 'GS History+Wave Niches',
+  description: 'Gray-Scott Niches (four species, each with its own feed and kill F1, k1 … F4, k4, and its own food a1 … a4, '
+    + 'competing for space where they overlap: interfere) inside GS History+Wave\'s medium: one history c, laid down by every '
+    + 'species\' b, and one damped wave d, e, rung by them, both shared, and both shifting every species\' feed, kill and '
+    + 'diffusion as in History+Wave. So each species lives in the trails and wakes of all the others. Life here is sparse, as in '
+    + 'History+Wave: by default four species with feeds 0.042 to 0.066 that each keep a small share (all four still there '
+    + 'after 40k steps). The brush seeds species 1. View c (the history) tinted by P_F (the local mean feed, kept where life '
+    + 'has gone, so trails show who made them), or b1…b4 one at a time.',
+  reagents: ['a1', 'a2', 'a3', 'a4', 'b1', 'b2', 'b3', 'b4', 'c', 'd', 'e', 'P_F'],
+  params: [
+    ...([
+      ['timestep', 1], ['D_a', 0.164], ['D_b', 0.082],
+      ...HW_NICHES_TRAITS.flatMap(([F, k], i) => [[`F${i + 1}`, F], [`k${i + 1}`, k]]),
+      ['interfere', 0.3],
+      ['b_to_c', 0.005], ['c_damp', 0.0005], ['D_c', 0.01], ['c_to_k', 0.001], ['c_to_F', -0.03],
+      ['b_to_wave', 0.01], ['wave_diffusion', 7e-5], ['wave_damp', 0.9993], ['wave_power', 0.9997], ['wave_DC_value', 0.37],
+      ['wave_clamp', 4], ['wave_to_F', 0.0033], ['wave_to_k', -0.009], ['wave_to_Da', 0.05], ['wave_to_Db', 0.03], ['wave_to_b', -0.0055],
+    ] as [string, number][]).map(([name, v]) => {
+      const [min, max] = /^F\d$/.test(name) ? [0, 0.1] : /^k\d$/.test(name) ? [0.03, 0.075] : name === 'interfere' ? [0, 4] : name === 'c_damp' ? [0, 0.01] : guessRange(v);
+      return { name, value: v, min, max };
+    }),
+  ],
+  paintable: [],
+  explore: ['interfere', 'c_to_F', 'wave_to_F', 'b_to_wave'],
+  formula: `float bt = b1 + b2 + b3 + b4;
+float w = d - wave_DC_value;
+// each species' share of the wave's push on b (safe where b is near zero, or a little below it)
+float bs = max(bt, 0.01);
+float share1 = max(b1, 0.0)/bs;
+float share2 = max(b2, 0.0)/bs;
+float share3 = max(b3, 0.0)/bs;
+float share4 = max(b4, 0.0)/bs;
+// the shared medium's shifts, the same for every species
+// (capped: with four species ringing it the wave can run large, and a negative kill lets b grow without end)
+float dF = clamp(c_to_F*c + wave_to_F*w, -0.03, 0.03);
+float dk = clamp(c_to_k*c + wave_to_k*w, -0.03, 0.03);
+// (diffusion kept within what the explicit step can take, should the wave run large)
+float Da = clamp(D_a + wave_to_Da*w, 0.0, 0.24);
+float Db = clamp(D_b + wave_to_Db*w, 0.0, 0.24);
+delta_a1 = Da*laplacian_a1 - a1*b1*b1 + (F1 + dF)*(1.0 - a1);
+delta_a2 = Da*laplacian_a2 - a2*b2*b2 + (F2 + dF)*(1.0 - a2);
+delta_a3 = Da*laplacian_a3 - a3*b3*b3 + (F3 + dF)*(1.0 - a3);
+delta_a4 = Da*laplacian_a4 - a4*b4*b4 + (F4 + dF)*(1.0 - a4);
+delta_b1 = Db*laplacian_b1 + a1*b1*b1 - (F1 + k1 + dF + dk + interfere*(bt - b1))*b1 + wave_to_b*w*share1;
+delta_b2 = Db*laplacian_b2 + a2*b2*b2 - (F2 + k2 + dF + dk + interfere*(bt - b2))*b2 + wave_to_b*w*share2;
+delta_b3 = Db*laplacian_b3 + a3*b3*b3 - (F3 + k3 + dF + dk + interfere*(bt - b3))*b3 + wave_to_b*w*share3;
+delta_b4 = Db*laplacian_b4 + a4*b4*b4 - (F4 + k4 + dF + dk + interfere*(bt - b4))*b4 + wave_to_b*w*share4;
+// history and wave as History+Wave's (c clamped to 0-1; d damped, rung by b, clamped, then moved by e), written as
+// increments that land on those values
+delta_c = clamp(c - c*c_damp + bt*b_to_c + D_c*laplacian_c, 0.0, 1.0) - c;
+delta_e = laplacian_d*wave_diffusion;
+delta_d = wave_DC_value + clamp(sign(w)*pow(abs(w)*wave_damp, wave_power) + bt*b_to_wave, -wave_clamp, wave_clamp) - d + e + delta_e;
+// the tint: the local mean feed where there's life, kept where it has gone, so trails show who made them
+delta_P_F = min(bt*20.0, 1.0)*((F1*b1 + F2*b2 + F3*b3 + F4*b4)/max(bt, 1e-4) - P_F)/timestep;`,
+  rest: [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+  seed: [0.5, null, null, null, 0.25, null, null, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0.25, 0, 0, 0, 0, 0, 0, 0],
+  initial: [
+    ...[1, 2, 3, 4].map((i): Overlay => ({ chem: `a${i}`, op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } })),
+    ...[1, 2, 3, 4].flatMap((i): Overlay[] => [
+      { chem: `a${i}`, op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'spots', count: 10, minSize: 4, maxSize: 8, seed: 10 + i } },
+      { chem: `b${i}`, op: 'overwrite', fill: { type: 'constant', value: 0.3 }, shape: { type: 'spots', count: 10, minSize: 4, maxSize: 8, seed: 10 + i } },
+    ]),
+    // the wave at rest (its DC value), not kicked from 0
+    { chem: 'd', op: 'overwrite', fill: { type: 'constant', value: 0.37 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'c', low: 0, high: 1, tint: 'P_F', stepsPerFrame: 20 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Gray-Scott', [GRAY_SCOTT, GRAY_SCOTT_ZOOM, GS_FLECK]],
   ['History + Wave', [GS_HISTORY_WAVE, GS_HW_MEMORY]],
   ['Parameters as fields', [META_GS, WEATHER_GS]],
-  ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES]],
+  ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
