@@ -89,3 +89,18 @@ write('pf1-bubbles.json', {
     'initial': pf1(0.18, 0.22, 0.055, 3) + pf1(0.48, 0.22, 0.055, 6) + pf1(0.8, 0.28, 0.055, 12)
                + pf1(0.3, 0.72, 0.07, 4) + pf1(0.52, 0.72, 0.07, 4),
 })
+
+# a mixed foam (version 2 of the foam scene): 3 big, 6 medium, 14 small bubbles (expected settled radius 44, 28, 17), from
+# lab/foam-layout-sizes.py 256 3 22 44:3 28:6 17:14 (biggest placed first; coloured so any two within 22 cells of
+# meeting differ). Each stamp is 0.6 x that radius with content 6.5 (not 4: everything about 1.25 x larger, so most
+# press into each other), so content follows stamp area
+FOAM2 = [[104, 93, 44.0, 1], [202, 18, 44.0, 1], [114, 248, 44.0, 2], [228, 220, 28.0, 2], [57, 227, 28.0, 0], [31, 92, 28.0, 2], [141, 138, 28.0, 0], [39, 175, 28.0, 1], [59, 50, 28.0, 0], [63, 124, 17.0, 0], [3, 29, 17.0, 2], [246, 149, 17.0, 2], [174, 199, 17.0, 0], [248, 1, 17.0, 0], [208, 97, 17.0, 2], [212, 127, 17.0, 0], [93, 158, 17.0, 2], [139, 197, 17.0, 1], [237, 67, 17.0, 0], [196, 176, 17.0, 1], [174, 160, 17.0, 2], [34, 3, 17.0, 1], [154, 29, 17.0, 0]]
+write('pf-bubbles-foam-2.json', {
+    'name': 'Phase-field Bubbles 2: mixed foam',
+    'description': 'A foam of mixed sizes: three big bubbles, six medium and fourteen small, from stamps of different sizes '
+                   'with the same content concentration, so the settled size follows the stamp. They swell until most press '
+                   'into each other, a foam of rounded polygons; different kinds dock, and the colouring keeps any two that will meet different kinds.',
+    'rule': 'builtin:19', 'size': 256, 'start': 'initial', 'stepsPerFrame': 40,
+    'globals': {},
+    'initial': [o for x, y, R, k in FOAM2 for o in pf(x / 256, y / 256, 0.6 * R / 256, 6.5, k)],
+})
