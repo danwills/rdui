@@ -1,0 +1,179 @@
+{
+ "name": "Phase-field Bubbles 2: size from content",
+ "description": "Each bubble grows until its content is diluted to near target, so its size follows its content. Top: three stamps of the same size with content 2.5, 5 and 10 (left to right) settle at radius about 15, 22 and 35 (about the square root of the content). Below them, two of different kinds start close, grow into each other and dock, a flat wall between them. Too little content (1.5 here) and surface tension wins: the bubble shrinks away, as the bottom-right one does.",
+ "rule": "builtin:19",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 40,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "phi1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.16,
+    "cy": 0.22,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "m1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 2.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.16,
+    "cy": 0.22,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "phi2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.42,
+    "cy": 0.22,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "m2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.42,
+    "cy": 0.22,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "phi3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.78,
+    "cy": 0.25,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "m3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 10
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.78,
+    "cy": 0.25,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "phi1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.7,
+    "r": 0.07
+   }
+  },
+  {
+   "chem": "m1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 4
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.7,
+    "r": 0.07
+   }
+  },
+  {
+   "chem": "phi3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.52,
+    "cy": 0.7,
+    "r": 0.07
+   }
+  },
+  {
+   "chem": "m3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 4
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.52,
+    "cy": 0.7,
+    "r": 0.07
+   }
+  },
+  {
+   "chem": "phi2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.82,
+    "cy": 0.78,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "m2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.82,
+    "cy": 0.78,
+    "r": 0.055
+   }
+  }
+ ]
+}

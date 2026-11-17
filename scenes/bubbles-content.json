@@ -1,0 +1,196 @@
+{
+ "name": "Gray-Scott Bubbles: content (work in progress)",
+ "description": "Where the bubble hunt got to, part 2: size regulation, not working yet. Each bubble holds content m (the tint), held in by its membrane; its pressure over a target pushes the membrane out, so a bubble should settle at a size set by its content (here 1, 4, 2 and 8 x the target, so 1, 2, 1.4 and 2.8 x its starting radius). What happens: within 5k steps most membranes open into rods (one into a three-armed star), and by 20k the field fills with stripes; the content leaks too (its total doubles over 60k steps, where it should stay fixed).",
+ "rule": "builtin:18",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 20,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.27,
+    "cy": 0.27,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.25
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.27,
+    "cy": 0.27,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.27,
+    "cy": 0.27,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.27,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.25
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.27,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 4
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.27,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.27,
+    "cy": 0.7,
+    "r": 0.06
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.25
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.27,
+    "cy": 0.7,
+    "r": 0.06
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 2
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.27,
+    "cy": 0.7,
+    "r": 0.06
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.7,
+    "r": 0.04
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.25
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.7,
+    "r": 0.04
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 8
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.7,
+    "r": 0.04
+   }
+  }
+ ],
+ "view": {
+  "reagent": "b",
+  "low": 0,
+  "high": 0.4,
+  "tint": "m"
+ }
+}

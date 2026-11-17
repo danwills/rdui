@@ -1477,6 +1477,17 @@ delta_P_F = ((F1*b1 + F2*b2 + F3*b3 + F4*b4)/(bt + 1e-4) - P_F)/timestep;`,
 };
 
 /**
+ * Gray-Scott Bubbles: Gray-Scott at the edge of its ring regime (F 0.058, k just under 0.0645), where a
+ * disk of b hollows into a round membrane round an empty inside, and neighbouring membranes press flat
+ * against each other without merging (its stripes repel). Alone, such a ring grows forever and buckles;
+ * here a bubble also holds content m, which spreads freely inside but hardly through the membrane
+ * (its diffusion is gated by e^(−b/seal), as ∇·(g∇m)). The content's concentration sets the
+ * membrane's k: crowded (small bubble), k below the edge and it grows; as it grows the content thins, and
+ * at the target concentration k reaches the edge and growth stops. So a bubble's size is its content ÷
+ * target: like osmotic pressure, a feedback the bubble runs itself. k never goes past the edge, where a
+ * membrane dies.
+ */
+/**
  * History+Wave Niches' species: four that each hold about the same share of a 256² field (0.1-1.2% of it alive,
  * the sparse life of History+Wave; denser species such as Niches' spots and worms die in their own history) with
  * feeds far apart, for distinct tints. Found by trying sets; with these all four were still there at 40k steps.
@@ -1574,11 +1585,171 @@ delta_P_F = min(bt*20.0, 1.0)*((F1*b1 + F2*b2 + F3*b3 + F4*b4)/max(bt, 1e-4) - P
   view: { reagent: 'c', low: 0, high: 1, tint: 'P_F', stepsPerFrame: 20 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES];
+export const GS_BUBBLES: RuleDef = {
+  name: 'Gray-Scott Bubbles (content, work in progress)',
+  description: 'Bubbles with membranes that dock. Gray-Scott at the edge of its ring regime: a seeded disk hollows into a round '
+    + 'membrane, and neighbouring membranes press flat against each other without merging. Each bubble also holds content (m), '
+    + 'which spreads inside but is held in by the membrane; the thinner the content, the closer the membrane\'s k to the edge where '
+    + 'growth stops (k_edge). So a bubble grows until its content is down to target, and its size is the content it was seeded '
+    + 'with ÷ target: the brush seeds content × the area it paints, so a bubble settles at about √content × the brush radius. '
+    + 'View b for the membranes, tinted by m.',
+  reagents: ['a', 'b', 'm', 'g', 'gm', 'p'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.5 },
+    { name: 'D_a', value: 0.3, min: 0, max: 0.37 },
+    { name: 'D_b', value: 0.15, min: 0, max: 0.37 },
+    { name: 'D_m', value: 0.2, min: 0, max: 0.3 },
+    { name: 'F', value: 0.058, min: 0.04, max: 0.07 },
+    { name: 'k_edge', value: 0.0645, min: 0.06, max: 0.066 },
+    { name: 'chi', value: 0.05, min: 0, max: 0.2 },
+    { name: 'soft', value: 0.2, min: 0.02, max: 1 },
+    { name: 'target', value: 1, min: 0.1, max: 4 },
+    { name: 'seal', value: 0.03, min: 0.01, max: 0.2 },
+  ],
+  paintable: [],
+  formula: `// pressure p: osmotic, the content's excess over the ambient solution outside (at target). The membrane
+// is carried down its gradient (a and b advected at velocity -chi grad p, so the stripe moves as a whole):
+// out while the content is crowded, in once it's diluted
+delta_a = D_a*laplacian_a - a*b*b + F*(1.0 - a) + chi*(x_gradient_a*x_gradient_p + y_gradient_a*y_gradient_p);
+delta_b = D_b*laplacian_b + a*b*b - (F + k_edge)*b + chi*(x_gradient_b*x_gradient_p + y_gradient_b*y_gradient_p);
+// (capped at soft either way: the membrane can't be pushed faster than the stripe follows)
+// content pushes out (m), tension (target, wherever there is content) pulls in: they balance at m = target
+delta_p = (soft*tanh((m - target*min(m/(0.05*target), 1.0))/soft) - p)/timestep;
+// content spreads inside, the membrane holds it in: div(g grad m), g = exp(-b/seal), written as
+// (lap(g m) + g lap m - m lap g)/2, which sums to exactly zero over the grid (no content made or lost)
+// and moves with the membrane (advected at the same velocity, conservatively): a growing bubble pushes the
+// solution outside ahead of it rather than swallowing it
+delta_m = D_m*0.5*(laplacian_gm + g*laplacian_m - m*laplacian_g) + chi*(x_gradient_m*x_gradient_p + y_gradient_m*y_gradient_p + m*laplacian_p);
+delta_g = (exp(-b/seal) - g)/timestep;
+delta_gm = (g*m - gm)/timestep;`,
+  rest: [1, 0, 0, 1, 0, 0],
+  seed: [0.5, 0.25, 4, null, null, null],
+  seedNoise: [0, 0.05, 0, 0, 0, 0],
+  initial: [
+    { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'b', low: 0, high: 0.4, tint: 'm' },
+};
+
+/**
+ * Phase-field Bubbles 2 (three kinds): each bubble is a region of phase φ = 1 in a sea of φ = 0, its edge an Allen-Cahn interface. That
+ * interface moves by its own curvature (bulges pulled back, dents pushed out), so a membrane stays smooth and round rather
+ * than buckling. Each holds content m, spread inside and held in (its diffusion gated by φ, conservatively); the content's
+ * concentration over a target pushes the edge out (osmotic), against the curvature's surface tension pulling it in. A
+ * bubble grows until its content is diluted down near target, so its size follows its content. A single φ can't keep
+ * neighbours apart (once their faint tails touch, the gap fills in), so there are three kinds, φ1-3, each pushed out where
+ * another is: different kinds dock, while two of the same kind that meet merge.
+ */
+export const PF_BUBBLES: RuleDef = {
+  name: 'Phase-field Bubbles 2 (three kinds)',
+  description: 'Bubbles as phase fields: φ is 1 inside, 0 outside, and its edge moves by its own curvature (so it smooths '
+    + 'bulges and dents rather than buckling) and by the pressure of the content m inside (its excess over target). A bubble '
+    + 'grows until its content is diluted to near target, so its size follows its content. Three kinds (φ1-3), each pushed out '
+    + 'where another is: neighbours of different kinds dock into a foam, two of the same kind merge. Seed paints a kind-1 '
+    + 'bubble (content 3); Paint can set phi2 or phi3 and its m.',
+  reagents: ['phi1', 'phi2', 'phi3', 'm1', 'm2', 'm3', 'g1', 'g2', 'g3', 'gm1', 'gm2', 'gm3'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.2 },
+    { name: 'D_phi', value: 0.2, min: 0, max: 0.24 },
+    { name: 'well', value: 0.05, min: 0.005, max: 0.2 },
+    { name: 'D_m', value: 0.2, min: 0, max: 0.24 },
+    { name: 'pressure', value: 0.3, min: 0, max: 2 },
+    { name: 'target', value: 1, min: 0.1, max: 4 },
+    { name: 'repel', value: 0.1, min: 0, max: 1 },
+  ],
+  paintable: [],
+  formula: `// three kinds of bubble (phases 1-3; a foam can be coloured with three so no two neighbours match), each with its content
+// for each: the drive at its edge, its content's pressure (excess over target), capped so the double well keeps two phases
+float lambda1 = clamp(pressure*(m1 - target), -0.45, 0.45);
+float lambda2 = clamp(pressure*(m2 - target), -0.45, 0.45);
+float lambda3 = clamp(pressure*(m3 - target), -0.45, 0.45);
+// Allen-Cahn: diffusion and a double well (stable at 0 and 1) make an edge a few cells wide that moves by its curvature, so
+// bulges are pulled back and dents pushed out (no buckling); lambda tilts the well, moving it out (lambda > 0) or in. Where
+// two kinds overlap each is pushed out (repel), so neighbours dock against each other and never merge
+delta_phi1 = D_phi*laplacian_phi1 + well*phi1*(1.0 - phi1)*(phi1 - 0.5 + lambda1) - repel*phi1*(phi2*phi2 + phi3*phi3);
+delta_phi2 = D_phi*laplacian_phi2 + well*phi2*(1.0 - phi2)*(phi2 - 0.5 + lambda2) - repel*phi2*(phi1*phi1 + phi3*phi3);
+delta_phi3 = D_phi*laplacian_phi3 + well*phi3*(1.0 - phi3)*(phi3 - 0.5 + lambda3) - repel*phi3*(phi1*phi1 + phi2*phi2);
+// content spreads inside, held in at the edge: div(g grad m), g a smooth step in phi (exactly 0 below 0.3, so phi's faint
+// tail outside doesn't let it seep away), written as (lap(g m) + g lap m - m lap g)/2, which sums to zero over the grid
+// (no content made or lost)
+delta_m1 = D_m*0.5*(laplacian_gm1 + g1*laplacian_m1 - m1*laplacian_g1);
+delta_m2 = D_m*0.5*(laplacian_gm2 + g2*laplacian_m2 - m2*laplacian_g2);
+delta_m3 = D_m*0.5*(laplacian_gm3 + g3*laplacian_m3 - m3*laplacian_g3);
+delta_g1 = (smoothstep(0.3, 0.7, phi1) - g1)/timestep;
+delta_g2 = (smoothstep(0.3, 0.7, phi2) - g2)/timestep;
+delta_g3 = (smoothstep(0.3, 0.7, phi3) - g3)/timestep;
+delta_gm1 = (g1*m1 - gm1)/timestep;
+delta_gm2 = (g2*m2 - gm2)/timestep;
+delta_gm3 = (g3*m3 - gm3)/timestep;`,
+  rest: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  seed: [1, null, null, 3, null, null, null, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  initial: [],
+  // custom colours: the three kinds as coral, green and blue; content and the helper fields off
+  view: {
+    reagent: 'phi1', low: 0, high: 1, palette: 7, customContrast: 1.1, customSaturation: 1, customGamma: 1,
+    custom: [[1, 0.42, 0.35], [0.4, 0.85, 0.35], [0.35, 0.55, 1]].map((color) => ({ on: true, low: 0, high: 1, power: 1, color }))
+      .concat(Array.from({ length: 9 }, () => ({ on: false, low: 0, high: 1, power: 1, color: [0.5, 0.5, 0.5] }))) as RuleDef['view']['custom'],
+  },
+};
+
+/**
+ * Phase-field Bubbles 1 (one phase): the first phase-field version, kept to compare. One phase φ for every bubble, its edge
+ * an Allen-Cahn interface moving by its curvature (no buckling) and pushed out by its content's pressure; content m held in
+ * by a smooth step in φ. Neighbours are meant to be kept apart by h, a short blur of φ that sits above φ in a narrow gap
+ * between two bubbles, pushing both edges back; but once their faint tails touch the gap fills in and they merge (version
+ * 2 fixes that with three kinds).
+ */
+export const PF_BUBBLES_1: RuleDef = {
+  name: 'Phase-field Bubbles 1 (one phase)',
+  description: 'The first phase-field bubbles, kept to compare: one phase φ for all bubbles, 1 inside and 0 outside, its edge '
+    + 'moving by its own curvature (so it smooths bulges rather than buckling) and by the pressure of the content m inside. A '
+    + 'lone bubble settles at a size its content sets; but two that meet merge (the gap push, repel, isn\'t enough). Seed '
+    + 'paints a bubble (content 3). View mem (the membrane) tinted by m.',
+  reagents: ['phi', 'm', 'h', 'g', 'gm', 'mem'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.2 },
+    { name: 'D_phi', value: 0.2, min: 0, max: 0.24 },
+    { name: 'well', value: 0.05, min: 0.005, max: 0.2 },
+    { name: 'D_m', value: 0.2, min: 0, max: 0.24 },
+    { name: 'pressure', value: 0.3, min: 0, max: 2 },
+    { name: 'target', value: 1, min: 0.1, max: 4 },
+    { name: 'D_h', value: 0.2, min: 0, max: 0.24 },
+    { name: 'h_decay', value: 0.02, min: 0.002, max: 0.5 },
+    { name: 'repel', value: 2, min: 0, max: 8 },
+    { name: 'gap_margin', value: 0.08, min: 0, max: 0.5 },
+  ],
+  paintable: [],
+  formula: `// the drive at the edge: content pressure out (its excess over target), crowding in: in a narrow gap between two
+// bubbles the blur h sits well above phi (at a lone edge, or inside, it tracks phi); capped so the double well always keeps
+// two phases
+float lambda = clamp(pressure*(m - target) - repel*max(h - phi - gap_margin, 0.0), -0.45, 0.45);
+// Allen-Cahn: diffusion and the double well (stable at 0 and 1) make an edge a few cells wide that moves by its curvature;
+// lambda tilts the well, moving it out (lambda > 0) or in
+delta_phi = D_phi*laplacian_phi + well*phi*(1.0 - phi)*(phi - 0.5 + lambda);
+// content spreads inside, held in at the edge: div(g grad m), g a smooth step in phi (exactly 0 below 0.3, so phi's
+// faint tail outside doesn't let it seep away), written as (lap(g m) + g lap m - m lap g)/2, which sums to zero over the
+// grid (no content made or lost)
+delta_m = D_m*0.5*(laplacian_gm + g*laplacian_m - m*laplacian_g);
+// h: phi blurred over a few cells (relaxes to the local phi, spreads); a narrow gap between two bubbles stays high
+delta_h = D_h*laplacian_h + h_decay*(phi - h);
+delta_g = (smoothstep(0.3, 0.7, phi) - g)/timestep;
+delta_gm = (g*m - gm)/timestep;
+// the membrane, for the view: where phi crosses
+delta_mem = (4.0*phi*(1.0 - phi) - mem)/timestep;`,
+  rest: [0, 0, 0, 0, 0, 0],
+  seed: [1, 3, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0],
+  initial: [],
+  view: { reagent: 'mem', low: 0, high: 1, tint: 'm' },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
-  ['Gray-Scott', [GRAY_SCOTT, GRAY_SCOTT_ZOOM, GS_FLECK]],
+  ['Gray-Scott', [GRAY_SCOTT, GRAY_SCOTT_ZOOM, GS_FLECK, GS_BUBBLES]],
+  ['Bubbles', [PF_BUBBLES_1, PF_BUBBLES]],
   ['History + Wave', [GS_HISTORY_WAVE, GS_HW_MEMORY]],
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],

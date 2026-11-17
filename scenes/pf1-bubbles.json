@@ -1,0 +1,151 @@
+{
+ "name": "Phase-field Bubbles 1: one phase",
+ "description": "The first phase-field version, kept to compare with version 2. Three lone bubbles (content 3, 6 and 12 from equal stamps) settle at sizes their content sets and stay round. The two at the bottom start close: with one phase for every bubble they merge into one oval when they meet, which is why version 2 has three kinds. View: the membrane, tinted by content.",
+ "rule": "builtin:20",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 40,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.18,
+    "cy": 0.22,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.18,
+    "cy": 0.22,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.48,
+    "cy": 0.22,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 6
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.48,
+    "cy": 0.22,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.8,
+    "cy": 0.28,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 12
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.8,
+    "cy": 0.28,
+    "r": 0.055
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.72,
+    "r": 0.07
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 4
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.72,
+    "r": 0.07
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.52,
+    "cy": 0.72,
+    "r": 0.07
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 4
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.52,
+    "cy": 0.72,
+    "r": 0.07
+   }
+  }
+ ]
+}

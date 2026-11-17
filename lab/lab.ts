@@ -241,7 +241,7 @@ function fleck([R, G, B]: [number, number, number], mode: 'hsv' | 'oklch', shape
 }
 
 export async function saveFrame(
-  name: string, lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string; hsv?: boolean; fleck?: 'hsv' | 'oklch'; hueShape?: number; hueOffset?: number },
+  name: string, lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string; hsv?: boolean; rgb?: [number, number, number]; fleck?: 'hsv' | 'oklch'; hueShape?: number; hueOffset?: number },
 ) {
   const { state, params } = await lab.read();
   const N = lab.N, S4 = lab.layout.S * 4, P4 = lab.layout.P * 4, sc = o.scale ?? 2;
@@ -250,7 +250,12 @@ export async function saveFrame(
   for (let i = 0; i < N * N; i++) {
     const v = (state[i * S4 + o.ri] - o.lo) / (o.hi - o.lo);
     let [r, g, b] = pal(v);
-    if (o.fleck) {
+    if (o.rgb) {
+      // three reagents (lo-hi each) as red, green and blue, the edges (where each is mid-way) brightened
+      const u = o.rgb.map((k) => Math.max(0, Math.min(1, (state[i * S4 + k] - o.lo) / (o.hi - o.lo))));
+      const e = Math.max(...u.map((x) => 4 * x * (1 - x)));
+      [r, g, b] = u.map((x) => 30 + 150 * x + 75 * e) as [number, number, number];
+    } else if (o.fleck) {
       // as the app: with no third reagent, c → 9.1·b (where the shader's c settles)
       const b1 = state[i * S4 + 1], c = lab.layout.reagents.length > 2 ? state[i * S4 + 2] : Math.min(1, Math.max(0, 9.1 * b1));
       [r, g, b] = fleck([state[i * S4], b1, c], o.fleck, o.hueShape ?? 1, o.hueOffset ?? 0);

@@ -1,0 +1,403 @@
+{
+ "name": "Phase-field Bubbles 2: foam",
+ "description": "Fourteen bubbles of three kinds (red, green, blue: phi1-3), each stamped with content 7, swell until they press against their neighbours into a loose foam of rounded polygons. The edges move by their own curvature, so they stay smooth instead of buckling. Different kinds dock and never merge; two of the same kind that meet do merge (one pair does here, by 40k steps). Content is conserved exactly.",
+ "rule": "builtin:19",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 40,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "phi1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.69921875,
+    "cy": 0.828125,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.69921875,
+    "cy": 0.828125,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.41796875,
+    "cy": 0.16015625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.41796875,
+    "cy": 0.16015625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.20703125,
+    "cy": 0.5,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.20703125,
+    "cy": 0.5,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.41796875,
+    "cy": 0.78515625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.41796875,
+    "cy": 0.78515625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.9765625,
+    "cy": 0.22265625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.9765625,
+    "cy": 0.22265625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4453125,
+    "cy": 0.51171875,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.4453125,
+    "cy": 0.51171875,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.8984375,
+    "cy": 0.640625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.8984375,
+    "cy": 0.640625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.15625,
+    "cy": 0.921875,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.15625,
+    "cy": 0.921875,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7578125,
+    "cy": 0.203125,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7578125,
+    "cy": 0.203125,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.86328125,
+    "cy": 0.41015625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.86328125,
+    "cy": 0.41015625,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.6171875,
+    "cy": 0.046875,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m3",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.6171875,
+    "cy": 0.046875,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.8984375,
+    "cy": 0.88671875,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m2",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.8984375,
+    "cy": 0.88671875,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.21875,
+    "cy": 0.2109375,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.21875,
+    "cy": 0.2109375,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "phi1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.22265625,
+    "cy": 0.70703125,
+    "r": 0.0625
+   }
+  },
+  {
+   "chem": "m1",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 7
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.22265625,
+    "cy": 0.70703125,
+    "r": 0.0625
+   }
+  }
+ ]
+}
