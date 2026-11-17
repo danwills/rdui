@@ -1498,11 +1498,12 @@ export const GS_HW_NICHES: RuleDef = {
       ...HW_NICHES_TRAITS.flatMap(([F, k], i) => [[`F${i + 1}`, F], [`k${i + 1}`, k]]),
       ['interfere', 0.3], ['interfere1', 1], ['interfere2', 1], ['interfere3', 1], ['interfere4', 1],
       ['history1', 1], ['history2', 1], ['history3', 1], ['history4', 1],
+      ['wave1', 1], ['wave2', 1], ['wave3', 1], ['wave4', 1],
       ['b_to_c', 0.005], ['c_damp', 0.0005], ['D_c', 0.01], ['c_to_k', 0.001], ['c_to_F', -0.03],
       ['b_to_wave', 0.01], ['wave_diffusion', 7e-5], ['wave_damp', 0.9993], ['wave_power', 0.9997], ['wave_DC_value', 0.37],
       ['wave_clamp', 4], ['wave_to_F', 0.0033], ['wave_to_k', -0.009], ['wave_to_Da', 0.05], ['wave_to_Db', 0.03], ['wave_to_b', -0.0055],
     ] as [string, number][]).map(([name, v]) => {
-      const [min, max] = /^F\d$/.test(name) ? [0, 0.1] : /^k\d$/.test(name) ? [0.03, 0.075] : name === 'interfere' ? [0, 4] : /^(interfere|history)\d$/.test(name) ? [0, 3] : name === 'c_damp' ? [0, 0.01] : guessRange(v);
+      const [min, max] = /^F\d$/.test(name) ? [0, 0.1] : /^k\d$/.test(name) ? [0.03, 0.075] : name === 'interfere' ? [0, 4] : /^(interfere|history|wave)\d$/.test(name) ? [0, 3] : name === 'c_damp' ? [0, 0.01] : guessRange(v);
       return { name, value: v, min, max };
     }),
   ],
@@ -1518,22 +1519,39 @@ float share1 = max(b1, 0.0)/bs;
 float share2 = max(b2, 0.0)/bs;
 float share3 = max(b3, 0.0)/bs;
 float share4 = max(b4, 0.0)/bs;
-// the shared medium's shifts to feed and kill; the history's part scaled per species by history1..4 (how much each
-// one feels where life has been: above 1, a species that floods is held back by its own trails)
-// (capped: with four species ringing it the wave can run large, and a negative kill lets b grow without end)
-float dF = clamp(c_to_F*c + wave_to_F*w, -0.03, 0.03);
-float dk = clamp(c_to_k*c + wave_to_k*w, -0.03, 0.03);
-// (diffusion kept within what the explicit step can take, should the wave run large)
-float Da = clamp(D_a + wave_to_Da*w, 0.0, 0.24);
-float Db = clamp(D_b + wave_to_Db*w, 0.0, 0.24);
-delta_a1 = Da*laplacian_a1 - a1*b1*b1 + (F1 + dF + c_to_F*c*(history1 - 1.0))*(1.0 - a1);
-delta_a2 = Da*laplacian_a2 - a2*b2*b2 + (F2 + dF + c_to_F*c*(history2 - 1.0))*(1.0 - a2);
-delta_a3 = Da*laplacian_a3 - a3*b3*b3 + (F3 + dF + c_to_F*c*(history3 - 1.0))*(1.0 - a3);
-delta_a4 = Da*laplacian_a4 - a4*b4*b4 + (F4 + dF + c_to_F*c*(history4 - 1.0))*(1.0 - a4);
-delta_b1 = Db*laplacian_b1 + a1*b1*b1 - (F1 + k1 + dF + dk + (c_to_F + c_to_k)*c*(history1 - 1.0) + interfere*(hit - interfere1*b1))*b1 + wave_to_b*w*share1;
-delta_b2 = Db*laplacian_b2 + a2*b2*b2 - (F2 + k2 + dF + dk + (c_to_F + c_to_k)*c*(history2 - 1.0) + interfere*(hit - interfere2*b2))*b2 + wave_to_b*w*share2;
-delta_b3 = Db*laplacian_b3 + a3*b3*b3 - (F3 + k3 + dF + dk + (c_to_F + c_to_k)*c*(history3 - 1.0) + interfere*(hit - interfere3*b3))*b3 + wave_to_b*w*share3;
-delta_b4 = Db*laplacian_b4 + a4*b4*b4 - (F4 + k4 + dF + dk + (c_to_F + c_to_k)*c*(history4 - 1.0) + interfere*(hit - interfere4*b4))*b4 + wave_to_b*w*share4;
+// the shared medium's shifts to each species' feed, kill and diffusion: the history's part scaled by history1..4 (how
+// much it feels where life has been: above 1, a species that floods is held back by its own trails), the wave's by
+// wave1..4 (below 1, a species keeps nearer its own feed and kill, as worms need)
+// (capped: with four species ringing it the wave can run large, and a negative kill lets b grow without end;
+// diffusion kept within what the explicit step can take)
+float cF = c_to_F*c;
+float ck = c_to_k*c;
+float wF = wave_to_F*w;
+float wk = wave_to_k*w;
+float dF1 = clamp(cF*history1 + wF*wave1, -0.03, 0.03);
+float dk1 = clamp(ck*history1 + wk*wave1, -0.03, 0.03);
+float Da1 = clamp(D_a + wave_to_Da*w*wave1, 0.0, 0.24);
+float Db1 = clamp(D_b + wave_to_Db*w*wave1, 0.0, 0.24);
+float dF2 = clamp(cF*history2 + wF*wave2, -0.03, 0.03);
+float dk2 = clamp(ck*history2 + wk*wave2, -0.03, 0.03);
+float Da2 = clamp(D_a + wave_to_Da*w*wave2, 0.0, 0.24);
+float Db2 = clamp(D_b + wave_to_Db*w*wave2, 0.0, 0.24);
+float dF3 = clamp(cF*history3 + wF*wave3, -0.03, 0.03);
+float dk3 = clamp(ck*history3 + wk*wave3, -0.03, 0.03);
+float Da3 = clamp(D_a + wave_to_Da*w*wave3, 0.0, 0.24);
+float Db3 = clamp(D_b + wave_to_Db*w*wave3, 0.0, 0.24);
+float dF4 = clamp(cF*history4 + wF*wave4, -0.03, 0.03);
+float dk4 = clamp(ck*history4 + wk*wave4, -0.03, 0.03);
+float Da4 = clamp(D_a + wave_to_Da*w*wave4, 0.0, 0.24);
+float Db4 = clamp(D_b + wave_to_Db*w*wave4, 0.0, 0.24);
+delta_a1 = Da1*laplacian_a1 - a1*b1*b1 + (F1 + dF1)*(1.0 - a1);
+delta_a2 = Da2*laplacian_a2 - a2*b2*b2 + (F2 + dF2)*(1.0 - a2);
+delta_a3 = Da3*laplacian_a3 - a3*b3*b3 + (F3 + dF3)*(1.0 - a3);
+delta_a4 = Da4*laplacian_a4 - a4*b4*b4 + (F4 + dF4)*(1.0 - a4);
+delta_b1 = Db1*laplacian_b1 + a1*b1*b1 - (F1 + k1 + dF1 + dk1 + interfere*(hit - interfere1*b1))*b1 + wave_to_b*w*wave1*share1;
+delta_b2 = Db2*laplacian_b2 + a2*b2*b2 - (F2 + k2 + dF2 + dk2 + interfere*(hit - interfere2*b2))*b2 + wave_to_b*w*wave2*share2;
+delta_b3 = Db3*laplacian_b3 + a3*b3*b3 - (F3 + k3 + dF3 + dk3 + interfere*(hit - interfere3*b3))*b3 + wave_to_b*w*wave3*share3;
+delta_b4 = Db4*laplacian_b4 + a4*b4*b4 - (F4 + k4 + dF4 + dk4 + interfere*(hit - interfere4*b4))*b4 + wave_to_b*w*wave4*share4;
 // history and wave as History+Wave's (c clamped to 0-1; d damped, rung by b, clamped, then moved by e), written as
 // increments that land on those values
 delta_c = clamp(c - c*c_damp + bt*b_to_c + D_c*laplacian_c, 0.0, 1.0) - c;

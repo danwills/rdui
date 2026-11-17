@@ -48,6 +48,21 @@ fn segDist(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
   return length(pa - ba * h);
 }
 
+// distance to the stroke on the wrapping field: the nearest of its copies shifted by a field width and/or height,
+// so a stroke near an edge or corner paints across onto the other side(s)
+fn wrapDist(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
+  let W = f32(size.width);
+  let H = f32(size.height);
+  var d = 1e30;
+  for (var i = -1; i <= 1; i++) {
+    for (var j = -1; j <= 1; j++) {
+      let o = vec2<f32>(f32(i) * W, f32(j) * H);
+      d = min(d, segDist(p, a + o, b + o));
+    }
+  }
+  return d;
+}
+
 fn hash(p: vec2<f32>) -> f32 {
   return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
 }
@@ -58,7 +73,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     return;
   }
   let cell = vec2<f32>(f32(gid.x) + 0.5, f32(gid.y) + 0.5);
-  let d = segDist(cell, brush.a, brush.b);
+  let d = wrapDist(cell, brush.a, brush.b);
   if (d > brush.radius + select(0.0, SDF_REACH, brush.mode == MODE_SDF)) {
     return;
   }
