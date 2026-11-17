@@ -139,3 +139,18 @@ write('pf4-bubbles-foam.json', {
     'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}}]
                + [o for x, y, R, k in FOAM3 for o in pf4(x / 256, y / 256, 0.6 * R / 256, 5)],
 })
+
+# Phase-field Bubbles 5 (builtin:23): pressure needs substrate too, so they can be crammed. The mixed layout (FOAM3),
+# content 12: pressed into a foam with thin walls (23 stay 23 at content 8, 22 at 12)
+write('pf5-bubbles-foam.json', {
+    'name': 'Phase-field Bubbles 5: pressed foam',
+    'description': 'Big, medium and small bubbles crammed with content until they press into a foam of polygons with thin '
+                   'walls between them, and still they keep apart (22 of the 23 at 40k steps): an edge needs substrate to be pushed out, and between two '
+                   'neighbours the substrate is eaten from both sides. Size follows content (area in proportion). Cut one in '
+                   'two with Erase and the halves stay two (a hard cut can leave a speck or two from its corners). View u '
+                   'to see the substrate.',
+    'rule': 'builtin:23', 'size': 256, 'start': 'initial', 'stepsPerFrame': 40,
+    'globals': {},
+    'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}}]
+               + [o for x, y, R, k in FOAM3 for o in pf4(x / 256, y / 256, 0.6 * R / 256, 12)],
+})

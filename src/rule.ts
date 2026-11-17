@@ -1866,12 +1866,72 @@ delta_mem = (4.0*phi*(1.0 - phi) - mem)/timestep;`,
   view: { reagent: 'mem', low: 0, high: 1, tint: 'm' },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4];
+/**
+ * Phase-field Bubbles 5 (fed pressure): version 4, with the content's outward push needing substrate too. In version 4 a
+ * crammed bubble's pressure beat the starving and neighbours merged; here the push out is scaled by the substrate at the
+ * edge (u over u_supply, up to 1), so an edge facing a neighbour across a depleted gap can't be pushed into it however
+ * crammed the bubble. Pulling in (pressure below target) is never held back.
+ */export const PF_BUBBLES_5: RuleDef = {
+  name: 'Phase-field Bubbles 5 (fed pressure)',
+  description: 'Bubbles as one phase field φ (1 inside, 0 outside), whose edges move by their own curvature (smoothing '
+    + 'bulges rather than buckling) and by the pressure of the content m inside, so size follows content. As in Gray-Scott, '
+    + 'bubbles eat a substrate u fed in from outside, and an edge needs substrate to advance: between two bubbles it\'s '
+    + 'eaten from both sides, holding both edges back; and the content\'s push out needs substrate too, so even crammed '
+    + 'bubbles can\'t be pushed into each other: neighbours keep a gap rather than merging, and a bubble cut in two '
+    + '(Erase across it) stays two. Seed paints a bubble '
+    + '(content 3). View mem (the membrane) tinted by m; u shows the substrate.',
+  reagents: ['phi', 'm', 'u', 'g', 'gm', 'mphi', 'mem'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.2 },
+    { name: 'D_phi', value: 0.1, min: 0, max: 0.24 },
+    { name: 'well', value: 0.2, min: 0.005, max: 1 },
+    { name: 'D_m', value: 0.2, min: 0, max: 0.24 },
+    { name: 'm_inward', value: 0.2, min: 0, max: 1 },
+    { name: 'pressure', value: 0.3, min: 0, max: 2 },
+    { name: 'target', value: 1, min: 0.1, max: 4 },
+    { name: 'D_u', value: 0.2, min: 0, max: 0.24 },
+    { name: 'u_feed', value: 0.01, min: 0.001, max: 0.1 },
+    { name: 'u_eat', value: 0.3, min: 0, max: 1 },
+    { name: 'u_edge', value: 0.15, min: 0, max: 1 },
+    { name: 'starve', value: 3, min: 0, max: 20 },
+    { name: 'u_supply', value: 0.3, min: 0.01, max: 1 },
+  ],
+  paintable: [],
+  formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
+// u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
+// where the substrate is short of a lone edge's share (between two bubbles, eaten from both sides); capped so the double
+// well keeps two phases. Content pushes only where phi is already an edge (over 0.1): the little that seeps into phi's faint
+// tail outside would otherwise grow specks there
+float P = pressure*(m - target)*smoothstep(0.05, 0.15, phi);
+float lambda = clamp(max(P, 0.0)*min(u/u_supply, 1.0) + min(P, 0.0) - starve*max(u_edge - u, 0.0), -0.45, 0.45);
+// Allen-Cahn: diffusion and the double well (stable at 0 and 1) make an edge a few cells wide that moves by its curvature;
+// lambda tilts the well, moving it out (lambda > 0) or in
+delta_phi = D_phi*laplacian_phi + well*phi*(1.0 - phi)*(phi - 0.5 + lambda);
+// the substrate: fed toward 1, eaten inside bubbles, spreading
+delta_u = D_u*laplacian_u + u_feed*(1.0 - u) - u_eat*phi*u;
+// content spreads inside, held in at the edge: div(g grad m), g a smooth step in phi (0 below 0.02: open a little into
+// the edge's outer tail, so the inward pull below has diffusion to damp it there, else it rings into a checkerboard), as
+// (lap(g m) + g lap m - m lap g)/2, which sums to zero over the grid; and drawn up phi's slope (flux m_inward m grad phi,
+// as (lap(m phi) - phi lap m + m lap phi)/2, also summing to zero), so content at a retreating edge goes in with it
+delta_m = D_m*0.5*(laplacian_gm + g*laplacian_m - m*laplacian_g) - m_inward*0.5*(laplacian_mphi - phi*laplacian_m + m*laplacian_phi);
+delta_g = (smoothstep(0.02, 0.5, phi) - g)/timestep;
+delta_gm = (g*m - gm)/timestep;
+delta_mphi = (m*phi - mphi)/timestep;
+// the membrane, for the view: where phi crosses
+delta_mem = (4.0*phi*(1.0 - phi) - mem)/timestep;`,
+  rest: [0, 0, 1, 0, 0, 0, 0],
+  seed: [1, 3, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0],
+  initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
+  view: { reagent: 'mem', low: 0, high: 1, tint: 'm' },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Gray-Scott', [GRAY_SCOTT, GRAY_SCOTT_ZOOM, GS_FLECK, GS_BUBBLES]],
-  ['Bubbles', [PF_BUBBLES_1, PF_BUBBLES, PF_BUBBLES_3, PF_BUBBLES_4]],
+  ['Bubbles', [PF_BUBBLES_1, PF_BUBBLES, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5]],
   ['History + Wave', [GS_HISTORY_WAVE, GS_HW_MEMORY]],
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
