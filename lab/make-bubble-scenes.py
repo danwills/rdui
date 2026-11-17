@@ -194,3 +194,28 @@ write('pf6-lava-lamp-slow.json', {
                + [o for cx, cy, r in LAVA for o in pf4(cx, cy, r, 6)],
     'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
 })
+
+# the lava lamp, many: 20 bubbles of three sizes (lab/foam-layout-sizes.py 256 _ 0 20:3 14:8 9:14, those clear of the
+# wall band), each starting at a random temperature (so all move from the start); no heat leak, so a bubble's temperature
+# changes only in the heater and cooler (with the slow scene's leak, sinking bubbles went neutral mid-way and stalled);
+# heating 3 x the slow scene's. Each stamp 0.9 x its expected radius, content 6
+LAVA_MANY = [[0.133, 0.848, 20.0, -0.35], [0.766, 0.254, 20.0, -0.7], [0.496, 0.449, 20.0, 0.3], [0.652, 0.789, 14.0, -0.86], [0.836, 0.434, 14.0, 0.07], [0.445, 0.723, 14.0, -0.27], [0.027, 0.543, 14.0, -0.88], [0.938, 0.383, 9.0, 0.01], [0.215, 0.422, 9.0, -0.93], [0.027, 0.223, 9.0, -0.13], [0.234, 0.23, 9.0, -0.86], [0.836, 0.555, 9.0, -0.82], [0.641, 0.188, 9.0, -0.15], [0.992, 0.859, 9.0, 0.65], [0.121, 0.332, 9.0, -0.75], [0.723, 0.711, 9.0, -0.55], [0.828, 0.672, 9.0, 0.25], [0.305, 0.586, 9.0, 0.9], [0.883, 0.848, 9.0, 0.15], [0.504, 0.59, 9.0, -0.21]]
+def pf6(cx, cy, r, m, temp):
+    return disk(cx, cy, r, [('phi', 1), ('m', m), ('T', temp)])
+write('pf6-lava-lamp-many.json', {
+    'name': 'Phase-field Bubbles 6: lava lamp (many)',
+    'description': 'A lava lamp of many bubbles, big, medium and small, each starting at its own temperature. Warm ones rise, '
+                   'cool ones sink; the heater along the bottom warms any bubble there and the cooler along the top cools it, '
+                   'and a bubble keeps its temperature in between, so each rises all the way, cools, sinks all the way and '
+                   'warms again. They bump rather than merge. Tint shows temperature. Slow, so bubbles keep their content '
+                   'and shape: raise steps per frame if your GPU keeps up. Work in progress: small dots bud off in the heater and '
+                   'cooler (20 bubbles become about 45 islands by 400k steps).',
+    'rule': 'builtin:24', 'size': 256, 'start': 'initial', 'stepsPerFrame': 200,
+    'globals': {'buoy': 0.015, 'heat': 0.0001, 'T_leak': 0},
+    'walls': [[0, 0, 256, 4]],
+    'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.86, 'x1': 1, 'y1': 1}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': -1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.016, 'x1': 1, 'y1': 0.15}}]
+               + [o for cx, cy, R, temp in LAVA_MANY for o in pf6(cx, cy, 0.9 * R / 256, 6, temp)],
+    'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
+})
