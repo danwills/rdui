@@ -11,6 +11,9 @@ declare global {
     __log(line: string): Promise<void>;
     __save(name: string, dataUrl: string): Promise<void>;
     __saveText(name: string, text: string): Promise<void>;
+    /** The live viewer (lab/live.mjs): a snapshot of the running field, every __liveEvery steps (0: off). */
+    __live?(dataUrl: string, caption: string): Promise<void>;
+    __liveEvery?: number;
   }
 }
 export const log = (...a: unknown[]) => window.__log(a.map((v) => (typeof v === 'string' ? v : JSON.stringify(v))).join(' '));
@@ -55,13 +58,22 @@ export async function makeLab(base: R.RuleDef, N: number, globals: Record<string
   const f = start === 'rest' ? R.initialField({ ...rule, initial: [] }, N, N, g, 'rest') : R.initialField(rule, N, N, g, 'zero');
   sim.load(f.state, f.params);
   const L = c.layout;
+  let stepped = 0, lastLive = 0;
   const lab: Lab = {
     sim, rule, layout: L, globals: g, N,
     async run(steps) {
+      const every = window.__liveEvery ?? 0;
       for (let k = 0; k < steps; k += 250) {
         const e = d.createCommandEncoder();
         sim.step(e, Math.min(250, steps - k));
         d.queue.submit([e.finish()]);
+        stepped += Math.min(250, steps - k);
+        // a snapshot for the live viewer, in the rule's own view
+        if (every && stepped - lastLive >= every) {
+          lastLive = stepped;
+          await d.queue.onSubmittedWorkDone();
+          await liveFrame(lab, stepped);
+        }
       }
       await d.queue.onSubmittedWorkDone();
     },
@@ -240,8 +252,30 @@ function fleck([R, G, B]: [number, number, number], mode: 'hsv' | 'oklch', shape
   return t.map((x) => 255 * Math.max(0, Math.min(1, x))) as [number, number, number];
 }
 
-export async function saveFrame(
-  name: string, lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string; hsv?: boolean; rgb?: [number, number, number]; fleck?: 'hsv' | 'oklch'; hueShape?: number; hueOffset?: number },
+/** The live viewer's snapshot: the rule's view reagent over its range, tinted by its tint (over the tint's own range). */
+async function liveFrame(lab: Lab, t: number) {
+  const v = lab.rule.view, ri = Math.max(0, lab.layout.reagents.indexOf(v.reagent));
+  const ti = v.tint ? lab.layout.reagents.indexOf(v.tint) : -1;
+  let tlo = 0, thi = 1;
+  if (ti >= 0) {
+    const { state } = await lab.read(), S4 = lab.layout.S * 4;
+    tlo = Infinity; thi = -Infinity;
+    for (let i = 0; i < lab.N * lab.N; i++) { const x = state[i * S4 + ti]; if (x < tlo) tlo = x; if (x > thi) thi = x; }
+    if (thi - tlo < 1e-6) thi = tlo + 1;
+  }
+  const url = await renderFrame(lab, { ri, lo: v.low, hi: v.high, ...(ti >= 0 ? { ti, tlo, thi } : {}), scale: 2 });
+  await window.__live!(url, `${lab.rule.name}  t=${t}`);
+}
+
+export async function saveFrame(name: string, lab: Lab, o: Parameters<typeof renderFrame>[1]) {
+  const url = await renderFrame(lab, o);
+  await window.__save(name, url);
+  if (window.__live) await window.__live(url, o.caption ?? name);
+}
+
+/** A frame of the field: reagent ri (lo-hi) in the lab palette, optionally tinted, as an image data URL. */
+export async function renderFrame(
+  lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string; hsv?: boolean; rgb?: [number, number, number]; fleck?: 'hsv' | 'oklch'; hueShape?: number; hueOffset?: number },
 ) {
   const { state, params } = await lab.read();
   const N = lab.N, S4 = lab.layout.S * 4, P4 = lab.layout.P * 4, sc = o.scale ?? 2;
@@ -300,5 +334,5 @@ export async function saveFrame(
     x.strokeRect(b.x * sc + 0.5, b.y * sc + bar + 0.5, b.w * sc, b.h * sc);
     if (b.label) { x.fillStyle = b.color ?? '#ffcc66'; x.fillText(b.label, b.x * sc + 2, b.y * sc + bar - 3); }
   }
-  await window.__save(name, c.toDataURL('image/png'));
+  return c.toDataURL('image/png');
 }
