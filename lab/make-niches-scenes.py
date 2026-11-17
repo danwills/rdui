@@ -151,3 +151,21 @@ scene('hw-niches-worm-battle.json', 'GS History+Wave Niches: worm battle',
       walls=False, rule='builtin:17', noise=0.12, extra={'c_to_F': -0.04, 'history2': 1.12, 'history3': 1.25, 'history4': 1.42},
       view={'reagent': 'c', 'low': 0, 'high': 1, 'tint': 'P_F', 'tintLow': 0.05, 'tintHigh': 0.068},
       more=[{'chem': 'd', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 0.37}, 'shape': {'type': 'everywhere'}}])
+
+# elongated solitons (still worms and rods): from the corner of the map where one species alone grows long (F 0.062-0.07,
+# k 0.057-0.061). Together, their shared history saturates over much more of the field and pulls feed down into spot
+# territory, so each feels it at half strength (history1..4 0.5); small noise patches died or crowded into spots, so
+# each starts as a bigger patch (radius 0.2, neighbours just touching); balance is touchy (k to ±0.0003)
+HW_SOLITONS = [('curly worm', 0.062, 0.0567), ('long rods', 0.066, 0.058), ('rods', 0.07, 0.057), ('short worms', 0.07, 0.06)]
+scene('hw-niches-solitons.json', 'GS History+Wave Niches: worm solitons',
+      'Elongated solitons in GS History+Wave Niches: four species that grow into still worms and rods, from the corner of '
+      'feed and kill where one species alone grows long. F 0.062 k 0.0567 (top left: a long curly worm), 0.066 0.058 (top '
+      'right: long straight rods), 0.07 0.057 (bottom left: rods) and 0.07 0.06 (bottom right: short worms and spots; same '
+      'tint as bottom left, sharing its feed). Together their shared history spreads wider than any one alone and pulls feed '
+      'down into spot territory, so each feels it at half strength (history1..4 = 0.5); each starts as a large patch of '
+      'noise. All four still there at 120k steps in two runs out of two. The balance is touchy: the curly worm took over at k 0.0565 and once died at 0.0568. View '
+      'c (the history) tinted by P_F; b1…b4 to see one species alone.',
+      [(*HW_SOLITONS[0], 0.27, 0.27), (*HW_SOLITONS[1], 0.73, 0.27), (*HW_SOLITONS[2], 0.27, 0.73), (*HW_SOLITONS[3], 0.73, 0.73)],
+      walls=False, rule='builtin:17', noise=0.2, extra={'c_to_F': -0.03, 'history1': 0.5, 'history2': 0.5, 'history3': 0.5, 'history4': 0.5},
+      view={'reagent': 'c', 'low': 0, 'high': 1, 'tint': 'P_F', 'tintLow': 0.058, 'tintHigh': 0.072},
+      more=[{'chem': 'd', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 0.37}, 'shape': {'type': 'everywhere'}}])

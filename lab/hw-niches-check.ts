@@ -1,8 +1,9 @@
 // Runs a GS History+Wave Niches scene (or a scene given as json) and logs each species' live cells and how much is moving (live
-// cells that were not live 300 steps before) at the given steps; saves the last frame (history c tinted by P_F).
+// cells that were not live 300 steps before) and how wormy each is (its blobs' elongation, area-weighted: 1 round, worms
+// several) at the given steps; saves the last frame (history c tinted by P_F).
 import * as R from '../src/rule';
 import type { Scene } from '../src/scenes';
-import { makeLab, log, saveFrame } from './lab';
+import { makeLab, log, saveFrame, blobs } from './lab';
 export default async function (cfg: { scene: string; set?: Record<string, number>; tag?: string; at?: number[]; json?: Scene; tlo?: number }) {
   const sc: Scene = cfg.json ?? await (await fetch(`/scenes/${cfg.scene}.json`)).json();
   const lab = await makeLab({ ...R.GS_HW_NICHES, initial: sc.initial! }, sc.size!, { ...sc.globals, ...cfg.set }, 'initial');
@@ -18,7 +19,12 @@ export default async function (cfg: { scene: string; set?: Record<string, number
     for (let i = 0; i < N * N; i++) { let b = 0, b0 = 0; for (let j = 0; j < 4; j++) { b += state[i * S4 + 4 + j]; b0 += before[i * S4 + 4 + j]; } if (b > 0.1) { lv++; if (b0 <= 0.1) fresh++; } }
     const live = [0, 0, 0, 0];
     for (let i = 0; i < N * N; i++) for (let j = 0; j < 4; j++) if (state[i * S4 + ix(`b${j + 1}`)] > 0.1) live[j]++;
-    log(`t=${t}: live cells b1..b4 ${live.join(' ')}  moving ${lv ? (100 * fresh / lv).toFixed(0) : '-'}%`);
+    const elong = [1, 2, 3, 4].map((j) => {
+      const bs = blobs(state, N, lab.layout.S, ix(`b${j}`), 0.1, 8);
+      const a = bs.reduce((t, b) => t + b.area, 0);
+      return a ? (bs.reduce((t, b) => t + b.area * b.elong, 0) / a).toFixed(1) : '-';
+    });
+    log(`t=${t}: live cells b1..b4 ${live.join(' ')}  elongation ${elong.join(' ')}  moving ${lv ? (100 * fresh / lv).toFixed(0) : '-'}%`);
   }
   await saveFrame(`${cfg.tag ?? 'circles'}.png`, lab, { ri: ix('c'), lo: 0, hi: 1, ti: ix('P_F'), tlo: cfg.tlo ?? 0.03, thi: 0.072, scale: 1 });
 }
