@@ -165,7 +165,7 @@ export function defaultSettings(): Settings {
     tintLow: 0,
     tintHigh: 1,
     tintStrength: 0.8,
-    palette: 0,
+    palette: 7,
     hueShape: HUE_DEFAULTS.shape,
     hueOffset: HUE_DEFAULTS.offset,
     fleckLow: 0,

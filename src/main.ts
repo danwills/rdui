@@ -113,6 +113,8 @@ async function init() {
   s.custom = defaultCustom(rule.reagents.length);
   // the custom palette's automatic fit: pending after its channels are reset to defaults (tries left)
   let customAutoFit = 20;
+  // and once fitted, one randomise (new colours and powers): the default look
+  let customAutoRandomise = true;
   let compiled: CompiledRule = compileRule(rule);
   let sim = new Simulation(device, format, s.gridSize, s.gridSize, compiled);
   // the field's full-resolution size; the sim runs at full × s.resScale. Separately,
@@ -283,7 +285,7 @@ async function init() {
   /**
    * Custom palette, shown with channels still at their defaults (low 0, high 1): fit those to the field.
    * Tried every half second (a fresh field is often flat, nothing to fit yet) until none are left or
-   * the tries run out.
+   * the tries run out; then one randomise, for the default look.
    */
   async function autoFitCustom() {
     customAutoFit--;
@@ -293,6 +295,10 @@ async function init() {
       if (c.on && c.low === 0 && c.high === 1 && !fitChannel(c, samples[r])) left++;
     });
     if (!left) customAutoFit = 0;
+    if (customAutoFit <= 0 && customAutoRandomise) {
+      customAutoRandomise = false;
+      await randomiseCustom();
+    }
     ui.sync();
   }
   /**
@@ -507,9 +513,9 @@ async function init() {
       s.tintLow = 0;
       s.tintHigh = s.tint >= 0 ? 0.4 : 1;
       if (rule.view.stepsPerFrame && s.ruleSpeed) s.stepsPerFrame = rule.view.stepsPerFrame;
-      // a rule may ask for a palette; leaving one that only it suits goes back to the default
+      // a rule may ask for a palette; leaving one that only it suits goes back to the default (custom)
       if (rule.view.palette !== undefined) s.palette = rule.view.palette;
-      else if (s.palette === 5 || s.palette === 6) s.palette = 0;
+      else if (s.palette === 5 || s.palette === 6) s.palette = 7;
       s.hueShape = rule.view.hueShape ?? HUE_DEFAULTS.shape;
       s.hueOffset = rule.view.hueOffset ?? hueOffsetFor(s.palette);
       // the fleck range: a rule's own, else 0 to 1 for rules made for the fleck palettes (their
@@ -518,14 +524,14 @@ async function init() {
       s.fleckHigh = rule.view.fleckHigh ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 1 : Math.max(rule.view.high, s.fleckLow + 1e-3));
       s.fleckGain = rule.view.fleckGain ?? 1;
       s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents.length);
-      if (!rule.view.custom) customAutoFit = 20;
+      if (!rule.view.custom) { customAutoFit = 20; customAutoRandomise = true; }
       s.customContrast = rule.view.customContrast ?? 1.2;
       s.customSaturation = rule.view.customSaturation ?? 1;
       s.customGamma = rule.view.customGamma ?? 2.5;
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
-    if (s.custom.length !== Math.min(rule.reagents.length, 12)) { s.custom = defaultCustom(rule.reagents.length); customAutoFit = 20; }
+    if (s.custom.length !== Math.min(rule.reagents.length, 12)) { s.custom = defaultCustom(rule.reagents.length); customAutoFit = 20; customAutoRandomise = true; }
     if (s.tint >= rule.reagents.length) s.tint = -1;
     if (full.width === full.height) s.gridSize = full.width;
 
