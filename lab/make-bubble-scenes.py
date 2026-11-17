@@ -287,3 +287,39 @@ sc13.update({'name': 'Phase-field Bubbles 13: lava lamp (swirling)', 'rule': 'bu
              'description': sc13['description'].replace('Tint shows', 'Dots warm and cool too (in version 12 they kept the '
                                                          'temperature they budded off with). Tint shows')})
 write('pf13-lava-lamp-swirl.json', sc13)
+
+# soft heater and cooler bands (a flat core, smoothstep edges, as short linear ramps), for lamps with no wall: the
+# field wraps, so the bands fade to 0 at the seam. A band centred at c (0 to 1 along axis), core half-width hw, fade f
+def soft_band(value, c, hw, f, axis):
+    knots = [i / 4 for i in range(5)]
+    ease = lambda t: t * t * (3 - 2 * t)
+    ops = []
+    def rect(a, b):
+        return {'type': 'rectangle', 'x0': 0, 'y0': a, 'x1': 1, 'y1': b} if axis == 'y' else {'type': 'rectangle', 'x0': a, 'y0': 0, 'x1': b, 'y1': 1}
+    for i in range(4):  # the rising edge, then the falling one
+        a, b = c - hw - f + f * knots[i], c - hw - f + f * knots[i + 1]
+        ops.append({'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'ramp', 'from': round(value * ease(knots[i]), 4), 'to': round(value * ease(knots[i + 1]), 4), 'axis': axis}, 'shape': rect(round(a, 4), round(b, 4))})
+        a, b = c + hw + f * knots[i], c + hw + f * knots[i + 1]
+        ops.append({'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'ramp', 'from': round(value * ease(1 - knots[i]), 4), 'to': round(value * ease(1 - knots[i + 1]), 4), 'axis': axis}, 'shape': rect(round(a, 4), round(b, 4))})
+    ops.append({'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': value}, 'shape': rect(round(c - hw, 4), round(c + hw, 4))})
+    return ops
+
+def soft_lamp(name, fname, axis, desc):
+    sc = json.load(open('scenes/pf13-lava-lamp-swirl.json'))
+    sc.update({'name': name, 'description': desc, 'walls': [],
+               'initial': [o for o in sc['initial'] if o['chem'] != 'warmth'][:1]
+                          + soft_band(1, 0.82, 0.06, 0.12, axis) + soft_band(-1, 0.18, 0.06, 0.12, axis)
+                          + [o for o in sc['initial'] if o['chem'] != 'warmth'][1:]})
+    write(fname, sc)
+
+# the swirling lamp with no wall (the field wraps top to bottom) and soft bands: heater low, cooler high, neutral between
+soft_lamp('Phase-field Bubbles 13: lava lamp (soft bands, no wall)', 'pf13-lava-lamp-soft.json', 'y',
+          'The swirling lava lamp with no wall: the field wraps top to bottom, and the heater (low) and cooler (high) are '
+          'soft bands that fade in and out rather than sharp boxes, with a neutral middle. Warm bubbles rise from the heater '
+          'and cool at the top; one that rises past the top comes round at the bottom, into the heater. Tint shows temperature.')
+# the same with the bands as bars at the sides: heater on the right, cooler on the left; gravity still pulls down, and
+# with no wall bubbles rise or sink round and round the wrapping field
+soft_lamp('Phase-field Bubbles 13: lava lamp (side bars, no wall)', 'pf13-lava-lamp-sides.json', 'x',
+          'The soft-band lava lamp with the bands as bars down the sides: a heater on the right and a cooler on the left, '
+          'neutral between. Gravity still pulls down and there\'s no wall, so warm bubbles climb the right and cool ones sink '
+          'down the left, round and round the wrapping field, crossing over in the swirls. Tint shows temperature.')
