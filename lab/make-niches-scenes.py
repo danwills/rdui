@@ -117,3 +117,19 @@ scene('hw-niches-open.json', 'GS History+Wave Niches: four behaviours',
       walls=False, rule='builtin:17', noise=0.12,
       view={'reagent': 'c', 'low': 0, 'high': 1, 'tint': 'P_F', 'tintLow': 0.03, 'tintHigh': 0.072},
       more=[{'chem': 'd', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 0.37}, 'shape': {'type': 'everywhere'}}])
+
+# livelier: History's pull on feed at -0.04 (moreLifelike patterns use -0.03 and -0.035) keeps the field churning,
+# where at -0.03 it can settle once the gliders die out; standing still loses here, so spot rings (and a second mover)
+# died out by 160k steps, leaving three
+HW_RESTLESS = [('gliders', 0.038, 0.056), ('chains', 0.062, 0.06), ('blobs', 0.07, 0.06)]
+scene('hw-niches-restless.json', 'GS History+Wave Niches: restless',
+      'Three species of GS History+Wave Niches in a livelier medium: the history pulls feed down harder (c_to_F -0.04, '
+      'against -0.03 to -0.035 in the moreLifelike patterns), so where life has been turns hostile and nothing can sit still '
+      'for long. Blue gliders branch across the whole field (top left, F 0.038 k 0.056) between churning colonies of green '
+      '(bottom left, 0.062 0.06) and yellow (bottom right, 0.07 0.06). Still about three quarters in motion after 160k steps, '
+      'where "four behaviours" can settle once its gliders die out. A fourth species did not last: spot rings and a second '
+      'mover both died out. View c (the history) tinted by P_F; b1…b3 to see one alone.',
+      [(*HW_RESTLESS[0], 0.27, 0.27), (*HW_RESTLESS[1], 0.27, 0.73), (*HW_RESTLESS[2], 0.73, 0.73)],
+      walls=False, rule='builtin:17', noise=0.12, extra={'c_to_F': -0.04},
+      view={'reagent': 'c', 'low': 0, 'high': 1, 'tint': 'P_F', 'tintLow': 0.03, 'tintHigh': 0.072},
+      more=[{'chem': 'd', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 0.37}, 'shape': {'type': 'everywhere'}}])

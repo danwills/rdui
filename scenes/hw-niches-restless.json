@@ -1,0 +1,172 @@
+{
+  "name": "GS History+Wave Niches: restless",
+  "description": "Three species of GS History+Wave Niches in a livelier medium: the history pulls feed down harder (c_to_F -0.04, against -0.03 to -0.035 in the moreLifelike patterns), so where life has been turns hostile and nothing can sit still for long. Blue gliders branch across the whole field (top left, F 0.038 k 0.056) between churning colonies of green (bottom left, 0.062 0.06) and yellow (bottom right, 0.07 0.06). Still about three quarters in motion after 160k steps, where \"four behaviours\" can settle once its gliders die out. A fourth species did not last: spot rings and a second mover both died out. View c (the history) tinted by P_F; b1…b3 to see one alone.",
+  "rule": "builtin:17",
+  "size": 384,
+  "start": "initial",
+  "stepsPerFrame": 20,
+  "globals": {
+    "F1": 0.038,
+    "k1": 0.056,
+    "F2": 0.062,
+    "k2": 0.06,
+    "F3": 0.07,
+    "k3": 0.06,
+    "c_to_F": -0.04
+  },
+  "initial": [
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "d",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.37
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    }
+  ],
+  "view": {
+    "reagent": "c",
+    "low": 0,
+    "high": 1,
+    "tint": "P_F",
+    "tintLow": 0.03,
+    "tintHigh": 0.072
+  }
+}
