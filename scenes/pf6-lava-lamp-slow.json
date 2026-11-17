@@ -1,0 +1,240 @@
+{
+ "name": "Phase-field Bubbles 6: lava lamp (slow)",
+ "description": "The lava lamp, slowed until bubbles hold together: warm ones rise from the heater along the bottom, cool at the top, and sink to warm again, staying round and keeping their size. Faster than this and a moving bubble leaves its content behind in a wake and shrinks away. Tint shows temperature. Paint warmth to move the heater or cooler; gx, gy turn gravity.",
+ "rule": "builtin:24",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {
+  "buoy": 0.02,
+  "heat": 3e-05,
+  "T_leak": 3e-06
+ },
+ "walls": [
+  [
+   0,
+   0,
+   256,
+   4
+  ]
+ ],
+ "initial": [
+  {
+   "chem": "u",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "warmth",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.86,
+    "x1": 1,
+    "y1": 1
+   }
+  },
+  {
+   "chem": "warmth",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": -1
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.016,
+    "x1": 1,
+    "y1": 0.15
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.15,
+    "cy": 0.92,
+    "r": 0.06
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 6
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.15,
+    "cy": 0.92,
+    "r": 0.06
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.45,
+    "cy": 0.92,
+    "r": 0.06
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 6
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.45,
+    "cy": 0.92,
+    "r": 0.06
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.75,
+    "cy": 0.92,
+    "r": 0.07
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 6
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.75,
+    "cy": 0.92,
+    "r": 0.07
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.55,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 6
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.55,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.6,
+    "cy": 0.5,
+    "r": 0.06
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 6
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.6,
+    "cy": 0.5,
+    "r": 0.06
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.88,
+    "cy": 0.6,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 6
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.88,
+    "cy": 0.6,
+    "r": 0.05
+   }
+  }
+ ],
+ "view": {
+  "reagent": "phi",
+  "low": 0,
+  "high": 1,
+  "tint": "T",
+  "tintLow": -1,
+  "tintHigh": 1
+ }
+}

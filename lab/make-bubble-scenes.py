@@ -175,3 +175,22 @@ write('pf6-lava-lamp.json', {
                + [o for cx, cy, r in LAVA for o in pf4(cx, cy, r, 6)],
     'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
 })
+
+# the lava lamp, slow (version 6 still): a bubble only keeps its content and shape below about 0.015 of edge tilt (T 0.05 at
+# buoy 0.3 holds, round, area steady; T 0.15 leaves its content behind in a wake and shrinks away), so buoy 0.02 caps a
+# fully warm bubble there; heating and leak about 100 x slower to match; 200 steps a frame
+write('pf6-lava-lamp-slow.json', {
+    'name': 'Phase-field Bubbles 6: lava lamp (slow)',
+    'description': 'The lava lamp, slowed until bubbles hold together: warm ones rise from the heater along the bottom, cool '
+                   'at the top, and sink to warm again, staying round and keeping their size. Faster than this and a moving '
+                   'bubble leaves its content behind in a wake and shrinks away. Tint shows temperature. Paint warmth to move '
+                   'the heater or cooler; gx, gy turn gravity.',
+    'rule': 'builtin:24', 'size': 256, 'start': 'initial', 'stepsPerFrame': 200,
+    'globals': {'buoy': 0.02, 'heat': 0.00003, 'T_leak': 0.000003},
+    'walls': [[0, 0, 256, 4]],
+    'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.86, 'x1': 1, 'y1': 1}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': -1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.016, 'x1': 1, 'y1': 0.15}}]
+               + [o for cx, cy, r in LAVA for o in pf4(cx, cy, r, 6)],
+    'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
+})
