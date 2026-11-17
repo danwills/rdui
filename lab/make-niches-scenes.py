@@ -102,3 +102,18 @@ scene('hw-niches-circles.json', 'GS History+Wave Niches: walled circles',
       rule='builtin:17', noise=0.12,
       view={'reagent': 'c', 'low': 0, 'high': 1, 'tint': 'P_F', 'tintLow': 0.04, 'tintHigh': 0.068},
       more=[{'chem': 'd', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 0.37}, 'shape': {'type': 'everywhere'}}])
+
+# no walls, four behaviours from a map of the medium (lab/hw-niches-map.ts: one species alone on a feed/kill grid),
+# then nudged in the scene until all four were still there at 80k steps (worms at k 0.055, then 0.057, took over)
+HW_OPEN = [('gliders', 0.038, 0.057), ('spot rings', 0.05, 0.062), ('spot chains', 0.062, 0.058), ('blobs', 0.07, 0.06)]
+scene('hw-niches-open.json', 'GS History+Wave Niches: four behaviours',
+      'GS History+Wave Niches with four species that behave differently, in the open, no walls: gliders that roam the whole '
+      'field leaving branching trails (top left, F 0.038 k 0.057), and three that hold ground: rings of spots (top right, 0.05 '
+      '0.062), chains of spots (bottom left, 0.062 0.058; worms when alone) and big yellow blobs (bottom right, 0.07 0.06; '
+      'straight rods when alone). Picked from a map of what one species alone does across feed and kill, then balanced: all '
+      'four were still there at 80k steps, gliders and chains trading ground. Each starts as a patch of noise, as '
+      'History+Wave\'s own opening does. View c (the history) tinted by P_F (who made each trail); b1…b4 to see one alone.',
+      [(*HW_OPEN[0], 0.27, 0.27), (*HW_OPEN[1], 0.73, 0.27), (*HW_OPEN[2], 0.27, 0.73), (*HW_OPEN[3], 0.73, 0.73)],
+      walls=False, rule='builtin:17', noise=0.12,
+      view={'reagent': 'c', 'low': 0, 'high': 1, 'tint': 'P_F', 'tintLow': 0.03, 'tintHigh': 0.072},
+      more=[{'chem': 'd', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 0.37}, 'shape': {'type': 'everywhere'}}])

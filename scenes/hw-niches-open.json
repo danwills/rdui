@@ -1,0 +1,203 @@
+{
+  "name": "GS History+Wave Niches: four behaviours",
+  "description": "GS History+Wave Niches with four species that behave differently, in the open, no walls: gliders that roam the whole field leaving branching trails (top left, F 0.038 k 0.057), and three that hold ground: rings of spots (top right, 0.05 0.062), chains of spots (bottom left, 0.062 0.058; worms when alone) and big yellow blobs (bottom right, 0.07 0.06; straight rods when alone). Picked from a map of what one species alone does across feed and kill, then balanced: all four were still there at 80k steps, gliders and chains trading ground. Each starts as a patch of noise, as History+Wave's own opening does. View c (the history) tinted by P_F (who made each trail); b1…b4 to see one alone.",
+  "rule": "builtin:17",
+  "size": 384,
+  "start": "initial",
+  "stepsPerFrame": 20,
+  "globals": {
+    "F1": 0.038,
+    "k1": 0.057,
+    "F2": 0.05,
+    "k2": 0.062,
+    "F3": 0.062,
+    "k3": 0.058,
+    "F4": 0.07,
+    "k4": 0.06
+  },
+  "initial": [
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 1
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    },
+    {
+      "chem": "a1",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b1",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "a2",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b2",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.27,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "a3",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b3",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.27,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "a4",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": 0.6,
+        "high": 0.7001
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "b4",
+      "op": "overwrite",
+      "fill": {
+        "type": "white_noise",
+        "low": -0.2,
+        "high": 0.42
+      },
+      "shape": {
+        "type": "circle",
+        "cx": 0.73,
+        "cy": 0.73,
+        "r": 0.12
+      }
+    },
+    {
+      "chem": "d",
+      "op": "overwrite",
+      "fill": {
+        "type": "constant",
+        "value": 0.37
+      },
+      "shape": {
+        "type": "everywhere"
+      }
+    }
+  ],
+  "view": {
+    "reagent": "c",
+    "low": 0,
+    "high": 1,
+    "tint": "P_F",
+    "tintLow": 0.03,
+    "tintHigh": 0.072
+  }
+}
