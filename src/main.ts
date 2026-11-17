@@ -112,6 +112,11 @@ async function init() {
   let globals: Record<string, number> = defaultGlobals(rule);
   for (const n of rule.paintable) s.paint[n] = globals[n];
   s.custom = defaultCustom(rule.reagents, rule.view.customOff);
+  let customFor = ''; // the rule or scene the custom palette was set up for
+  // the custom palette as shown: eases toward s.custom over about s.colourBlend seconds
+  let shownCustom: CustomChannel[] = structuredClone(s.custom);
+  let shownGrade = [s.customContrast, s.customSaturation, s.customGamma];
+  let blendT = performance.now();
   // the custom palette's automatic fit: pending after its channels are reset to defaults (tries left)
   let customAutoFit = 20;
   // and once fitted, one randomise (new colours and powers): the default look
@@ -524,16 +529,21 @@ async function init() {
       s.fleckLow = rule.view.fleckLow ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 0 : Math.min(rule.view.low, 0));
       s.fleckHigh = rule.view.fleckHigh ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 1 : Math.max(rule.view.high, s.fleckLow + 1e-3));
       s.fleckGain = rule.view.fleckGain ?? 1;
-      s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents, rule.view.customOff);
-      if (!rule.view.custom) { customAutoFit = 20; customAutoRandomise = true; }
-      s.customContrast = rule.view.customContrast ?? 1.2;
-      s.customSaturation = rule.view.customSaturation ?? 1;
-      s.customGamma = rule.view.customGamma ?? 2.5;
+      // the custom palette is set up afresh only for a new rule or scene: reloading the same one (a resize,
+      // a reset) keeps its colours
+      if (ruleId !== customFor) {
+        s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents, rule.view.customOff);
+        if (!rule.view.custom) { customAutoFit = 20; customAutoRandomise = true; }
+        s.customContrast = rule.view.customContrast ?? 1.2;
+        s.customSaturation = rule.view.customSaturation ?? 1;
+        s.customGamma = rule.view.customGamma ?? 2.5;
+      }
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
     if (s.custom.length !== Math.min(rule.reagents.length, 12)) { s.custom = defaultCustom(rule.reagents, rule.view.customOff); customAutoFit = 20; customAutoRandomise = true; }
     if (s.tint >= rule.reagents.length) s.tint = -1;
+    customFor = ruleId;
     if (full.width === full.height) s.gridSize = full.width;
 
     // Probe rects stay valid on the same grid; their histories restart either way.
@@ -1202,10 +1212,7 @@ async function init() {
       fleckLow: s.fleckLow,
       fleckHigh: s.fleckHigh,
       fleckGain: s.fleckGain,
-      custom: s.custom,
-      customContrast: s.customContrast,
-      customSaturation: s.customSaturation,
-      customGamma: s.customGamma,
+      ...blendedCustom(),
       showWalls: s.showWalls,
       // param map / outline colours go red, green, blue, orange in this order: absorbing walls red, reflecting
       // walls green, potential V blue, damping gamma (or traps, once drawn) orange, whatever order a scene lists them in
@@ -1222,6 +1229,27 @@ async function init() {
   let stepsDone = 0;
   let lastStat = performance.now();
   let stats = '';
+
+  /**
+   * The custom palette eased toward its settings (colours, fits, powers and grading), so new colours
+   * blend in over about s.colourBlend seconds rather than jumping; a reagent switched on or off fades
+   * in or out. A change of reagents snaps.
+   */
+  function blendedCustom() {
+    const t = performance.now(), dt = (t - blendT) / 1000;
+    blendT = t;
+    const k = s.colourBlend > 0 ? 1 - Math.exp((-3 * dt) / s.colourBlend) : 1;
+    if (shownCustom.length !== s.custom.length) shownCustom = structuredClone(s.custom);
+    const ease = (a: number, b: number) => a + (b - a) * k;
+    shownCustom = shownCustom.map((c, r) => {
+      const to = s.custom[r];
+      // a channel switched off keeps its fit and fades its colour to black
+      const col = to.color.map((x) => (to.on ? x : 0));
+      return { on: c.on || to.on, low: ease(c.low, to.low), high: ease(c.high, to.high), power: ease(c.power, to.power), color: c.color.map((x, i) => ease(c.on ? x : 0, col[i])) as [number, number, number] };
+    }).map((c, r) => (!s.custom[r].on && Math.max(...c.color) < 1e-3 ? { ...c, on: false } : c));
+    shownGrade = [s.customContrast, s.customSaturation, s.customGamma].map((x, i) => ease(shownGrade[i], x));
+    return { custom: shownCustom, customContrast: shownGrade[0], customSaturation: shownGrade[1], customGamma: shownGrade[2] };
+  }
 
   function frame() {
     for (const b of strokes.splice(0)) sim.brush(b);
