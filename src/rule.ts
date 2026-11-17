@@ -2014,7 +2014,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
 };
 
 /**
@@ -2098,7 +2098,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
 };
 
 /**
@@ -2184,7 +2184,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
 };
 
 /**
@@ -2275,7 +2275,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
 };
 
 /**
@@ -2374,7 +2374,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi'] },
 };
 
 /**
@@ -2475,7 +2475,7 @@ delta_warmth = 0.0;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, 1, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'vx', 'vw'] },
 };
 
 /**
@@ -2576,7 +2576,7 @@ delta_psi = -psi_drift*x_gradient_psi;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'psi'] },
 };
 
 /**
