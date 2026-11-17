@@ -154,3 +154,24 @@ write('pf5-bubbles-foam.json', {
     'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}}]
                + [o for x, y, R, k in FOAM3 for o in pf4(x / 256, y / 256, 0.6 * R / 256, 12)],
 })
+
+# Phase-field Bubbles 6 (builtin:24): a lava lamp. One wall band along the top row (the field wraps, so it's the floor too),
+# a heater band just above it at the bottom (warmth +1), a cooler band below it at the top (warmth -1); bubbles start
+# neutral, three in the heater and three mid-way
+LAVA = [(0.15, 0.92, 0.06), (0.45, 0.92, 0.06), (0.75, 0.92, 0.07), (0.3, 0.55, 0.05), (0.6, 0.5, 0.06), (0.88, 0.6, 0.05)]
+write('pf6-lava-lamp.json', {
+    'name': 'Phase-field Bubbles 6: lava lamp',
+    'description': 'Warm bubbles rise and cool ones sink. A heater along the bottom warms any bubble there, a cooler along the '
+                   'top cools it, and heat leaks away slowly between: bubbles rise from the heater, cool at the top, sink, warm '
+                   'and rise again, bumping rather than merging. Work in progress: they rise (slowly: tens of thousands of '
+                   'steps), deforming into cups and leaving faint trails. Tint shows temperature (blue cold, orange warm). Paint warmth '
+                   'to move the heater or cooler, or make a warm patch mid-way; gx, gy turn gravity.',
+    'rule': 'builtin:24', 'size': 256, 'start': 'initial', 'stepsPerFrame': 40,
+    'globals': {},
+    'walls': [[0, 0, 256, 4]],
+    'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.86, 'x1': 1, 'y1': 1}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': -1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.016, 'x1': 1, 'y1': 0.15}}]
+               + [o for cx, cy, r in LAVA for o in pf4(cx, cy, r, 6)],
+    'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
+})
