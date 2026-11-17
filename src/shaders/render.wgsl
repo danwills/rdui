@@ -31,6 +31,7 @@ struct View {
   fleck: vec4<f32>,       // fleck palettes: the range (low, high) a, b and c are mapped through first; z, the intensity lightness and chroma are scaled by
   custom: array<vec4<f32>, 24>, // custom palette, per reagent: (low, high, power, on), (r, g, b, -)
   customGrade: vec4<f32>,       // custom palette: contrast, saturation, gamma applied to the sum
+  showWalls: vec4<f32>,         // x: 1 draws walls, 0 hides them
 };
 
 @group(0) @binding(0) var<uniform> view: View;
@@ -348,7 +349,7 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
   }
   let aa = max(fwidth(cover), 1e-4);
   let wallAmt = smoothstep(0.5 - aa, 0.5 + aa, cover);
-  if (wallAmt > 0.0) {
+  if (wallAmt > 0.0 && view.showWalls.x > 0.5) {
     let stripe = smoothstep(0.42, 0.58, abs(fract((pos.x + pos.y) / 10.0) - 0.5) * 2.0);
     let sealedCol = mix(vec3<f32>(0.32, 0.33, 0.36), vec3<f32>(0.4, 0.41, 0.44), stripe);
     // a feed wall: greenish stripes the other way

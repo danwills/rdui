@@ -92,7 +92,7 @@ export interface RuleDef {
   seedNoise: number[];
   initial: Overlay[];
   /** Suggested view: reagent shown, its range, and steps per frame. */
-  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number; palette?: number; hueShape?: number; hueOffset?: number; fleckLow?: number; fleckHigh?: number; fleckGain?: number; custom?: CustomChannel[]; customContrast?: number; customSaturation?: number; customGamma?: number; mode?: 'reagent' | 'params' | 'outlines' };
+  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number; palette?: number; hueShape?: number; hueOffset?: number; fleckLow?: number; fleckHigh?: number; fleckGain?: number; custom?: CustomChannel[]; customContrast?: number; customSaturation?: number; customGamma?: number; customOff?: string[]; mode?: 'reagent' | 'params' | 'outlines' };
   /**
    * Membranes: for the listed reagents, neighbours whose `param` value differs
    * (a painted compartment id) are treated as no-flux, like walls but only for
@@ -2673,7 +2673,7 @@ delta_psi = -psi_drift*x_gradient_psi;`,
   seed: [1, 3, null, null, null, null, null, null, null, null, null, null],
   seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['T', 'gT', 'Tphi', 'psi'] },
 };
 
 export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13];

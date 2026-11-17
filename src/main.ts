@@ -34,12 +34,13 @@ function oklchToRgb(L: number, C: number, h: number): [number, number, number] {
  * The custom palette's starting point: every reagent on (untick the ones that only wash it out). Up to
  * three get orange, cyan and green; more get hues spread round the wheel, dimmed by how many are summed
  * so they don't burn out to white. Low and high are fitted to the field once it has some structure.
+ * A rule's view can name reagents to start off (customOff: helpers and hidden fields, like a lava lamp's heat).
  */
-function defaultCustom(n: number): CustomChannel[] {
+function defaultCustom(reagents: string[], off: string[] = []): CustomChannel[] {
   const colours: [number, number, number][] = [[1, 0.55, 0.2], [0.2, 0.75, 1], [0.6, 1, 0.3]];
-  const m = Math.min(n, 12), dim = Math.min(1, 2.2 / m);
+  const m = Math.min(reagents.length, 12), dim = Math.min(1, 2.2 / m);
   return Array.from({ length: m }, (_, r) => ({
-    on: true, low: 0, high: 1, power: 1,
+    on: !off.includes(reagents[r]), low: 0, high: 1, power: 1,
     color: m <= 3 ? colours[r] : oklchToRgb(0.72, 0.15, 0.08 + r / m).map((x) => x * dim) as [number, number, number],
   }));
 }
@@ -110,7 +111,7 @@ async function init() {
   let note = ''; // shown under the rule picker (scene description)
   let globals: Record<string, number> = defaultGlobals(rule);
   for (const n of rule.paintable) s.paint[n] = globals[n];
-  s.custom = defaultCustom(rule.reagents.length);
+  s.custom = defaultCustom(rule.reagents, rule.view.customOff);
   // the custom palette's automatic fit: pending after its channels are reset to defaults (tries left)
   let customAutoFit = 20;
   // and once fitted, one randomise (new colours and powers): the default look
@@ -523,7 +524,7 @@ async function init() {
       s.fleckLow = rule.view.fleckLow ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 0 : Math.min(rule.view.low, 0));
       s.fleckHigh = rule.view.fleckHigh ?? (rule.view.palette === 5 || rule.view.palette === 6 ? 1 : Math.max(rule.view.high, s.fleckLow + 1e-3));
       s.fleckGain = rule.view.fleckGain ?? 1;
-      s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents.length);
+      s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents, rule.view.customOff);
       if (!rule.view.custom) { customAutoFit = 20; customAutoRandomise = true; }
       s.customContrast = rule.view.customContrast ?? 1.2;
       s.customSaturation = rule.view.customSaturation ?? 1;
@@ -531,7 +532,7 @@ async function init() {
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
-    if (s.custom.length !== Math.min(rule.reagents.length, 12)) { s.custom = defaultCustom(rule.reagents.length); customAutoFit = 20; customAutoRandomise = true; }
+    if (s.custom.length !== Math.min(rule.reagents.length, 12)) { s.custom = defaultCustom(rule.reagents, rule.view.customOff); customAutoFit = 20; customAutoRandomise = true; }
     if (s.tint >= rule.reagents.length) s.tint = -1;
     if (full.width === full.height) s.gridSize = full.width;
 
@@ -1205,6 +1206,7 @@ async function init() {
       customContrast: s.customContrast,
       customSaturation: s.customSaturation,
       customGamma: s.customGamma,
+      showWalls: s.showWalls,
       // param map / outline colours go red, green, blue, orange in this order: absorbing walls red, reflecting
       // walls green, potential V blue, damping gamma (or traps, once drawn) orange, whatever order a scene lists them in
       paramSlots: [...rule.paintable].sort((a, b) => colourRank(a) - colourRank(b)).slice(0, 4).map((n) => {
