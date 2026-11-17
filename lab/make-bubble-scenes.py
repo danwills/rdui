@@ -280,3 +280,10 @@ write('pf12-lava-lamp-swirl.json', {
                + [o for cx, cy, R, temp in LAVA_DENSE for o in pf6(cx, cy, 0.9 * R / 256, 10, temp)],
     'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
 })
+
+# the swirling lamp on version 13 (dots heated and cooled too)
+sc13 = json.load(open('scenes/pf12-lava-lamp-swirl.json'))
+sc13.update({'name': 'Phase-field Bubbles 13: lava lamp (swirling)', 'rule': 'builtin:31',
+             'description': sc13['description'].replace('Tint shows', 'Dots warm and cool too (in version 12 they kept the '
+                                                         'temperature they budded off with). Tint shows')})
+write('pf13-lava-lamp-swirl.json', sc13)

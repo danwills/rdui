@@ -25,6 +25,10 @@ export default async function (cfg: { scene: string; at: number[]; set?: Record<
       if (temp > 0.1) r.warm++; else if (temp < -0.1) r.cool++; else r.neutral++;
     }
     log(`t=${T}: ${bs.length} bubbles  ` + rows.map((r) => `${r.name}: ${r.warm} warm ${r.cool} cool ${r.neutral} neutral`).join(' | '));
+    // dots (under 60 cells) stuck the wrong way round: warm ones in the top third, cool ones in the bottom
+    const dot = (b: { x: number; y: number }) => s[(Math.round(b.y) * N + Math.round(b.x)) * S4 + ix('T')];
+    const dots = bs.filter((b) => b.area < 60);
+    log(`  dots: ${dots.length}, warm at the top ${dots.filter((b) => b.y < N / 3 && dot(b) > 0.1).length}, cool at the bottom ${dots.filter((b) => b.y >= 2 * N / 3 && dot(b) < -0.1).length}`);
     if (cfg.tag) await saveFrame(`${cfg.tag}-${T}.png`, lab, { ri: ix('phi'), lo: 0, hi: 1, ti: ix('T'), tlo: -1, thi: 1, scale: 1, caption: `t=${T}` });
   }
 }
