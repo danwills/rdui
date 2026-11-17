@@ -1,0 +1,142 @@
+{
+ "name": "Gray-Scott: docking bubbles",
+ "description": "Where the bubble hunt got to, part 1: what works. Plain Gray-Scott at the edge of its ring regime (F 0.058, k 0.0645): each stamped disk hollows into a round membrane round an empty inside, and where two meet they press flat against each other, keeping a gap, and never merge: docking for free. What it lacks is a size: the rings keep growing (slowing as they go), so by 60k steps the four have pressed into a foam of squarish cells, and later they buckle; k a hair higher (0.0646) kills them instead. Stamp more with the Seed brush: a filled disk of radius 18 or more (smaller ones, and thin rings, open into rods).",
+ "rule": "builtin:0",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 20,
+ "globals": {
+  "F": 0.058,
+  "k": 0.0645
+ },
+ "initial": [
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.3,
+    "r": 0.08
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.25
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.3,
+    "r": 0.08
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.62,
+    "cy": 0.28,
+    "r": 0.075
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.25
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.62,
+    "cy": 0.28,
+    "r": 0.075
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.68,
+    "cy": 0.64,
+    "r": 0.085
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.25
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.68,
+    "cy": 0.64,
+    "r": 0.085
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.32,
+    "cy": 0.66,
+    "r": 0.08
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.25
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.32,
+    "cy": 0.66,
+    "r": 0.08
+   }
+  }
+ ],
+ "view": {
+  "reagent": "b",
+  "low": 0,
+  "high": 0.4
+ }
+}
