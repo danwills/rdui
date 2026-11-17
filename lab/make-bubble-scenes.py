@@ -219,3 +219,43 @@ write('pf6-lava-lamp-many.json', {
                + [o for cx, cy, R, temp in LAVA_MANY for o in pf6(cx, cy, 0.9 * R / 256, 6, temp)],
     'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
 })
+
+# the lava lamp, lively (version 7: heating on the solid inside only, so fewer dots bud off): heater and cooler each a
+# quarter of the lamp (twice as wide), heating twice as strong, buoyancy 0.018 (from 0.015); the many scene's bubbles
+def lively(rule, name, fname, desc):
+    write(fname, {
+        'name': name, 'description': desc,
+        'rule': rule, 'size': 256, 'start': 'initial', 'stepsPerFrame': 200,
+        'globals': {'buoy': 0.018, 'heat': 0.0002, 'T_leak': 0},
+        'walls': [[0, 0, 256, 4]],
+        'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}},
+                    {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.75, 'x1': 1, 'y1': 1}},
+                    {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': -1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.016, 'x1': 1, 'y1': 0.25}}]
+                   + [o for cx, cy, R, temp in LAVA_MANY for o in pf6(cx, cy, 0.9 * R / 256, 6, temp)],
+        'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
+    })
+lively('builtin:25', 'Phase-field Bubbles 7: lava lamp (lively)', 'pf7-lava-lamp-lively.json',
+       'A livelier lava lamp: the heater along the bottom and the cooler along the top each a quarter of the lamp, twice as '
+       'strong, and bubbles a little more buoyant. Many bubbles, big, medium and small, each starting at its own temperature: '
+       'warm ones rise, cool at the top, sink, and warm again, bumping rather than merging. Version 7 heats only a bubble\'s '
+       'solid inside, so fewer dots bud off. Tint shows temperature.')
+
+# the lava lamp, crowded (version 9): 33 bubbles of three sizes (lab/foam-layout-sizes.py 256 _ 0 18:6 13:14 9:20,
+# those clear of the wall band), random starting temperatures, the lively scene's heater, cooler and buoyancy; content 10
+# (6 filled under half the lamp)
+LAVA_DENSE = [[0.133, 0.848, 18.0, -0.1], [0.766, 0.254, 18.0, 0.12], [0.496, 0.449, 18.0, 0.85], [0.652, 0.789, 18.0, -0.07], [0.836, 0.434, 18.0, 0.02], [0.445, 0.723, 13.0, 0.17], [0.027, 0.543, 13.0, -0.63], [0.938, 0.383, 13.0, 0.02], [0.215, 0.422, 13.0, 0.26], [0.027, 0.223, 13.0, 0.59], [0.234, 0.23, 13.0, -0.81], [0.836, 0.555, 13.0, -0.39], [0.641, 0.188, 13.0, -0.82], [0.992, 0.859, 13.0, 0.62], [0.121, 0.332, 13.0, 0.39], [0.723, 0.711, 9.0, -0.92], [0.828, 0.672, 9.0, 0.96], [0.305, 0.586, 9.0, 0.93], [0.883, 0.848, 9.0, 0.31], [0.504, 0.59, 9.0, 0.23], [0.172, 0.547, 9.0, -0.69], [0.375, 0.438, 9.0, -0.97], [0.508, 0.777, 9.0, 0.06], [0.043, 0.703, 9.0, -0.88], [0.395, 0.172, 9.0, -0.62], [0.77, 0.539, 9.0, -0.52], [0.859, 0.23, 9.0, -0.94], [0.785, 0.82, 9.0, -0.07], [0.887, 0.742, 9.0, -0.12], [0.57, 0.199, 9.0, 0.68], [0.355, 0.348, 9.0, 0.04], [0.613, 0.457, 9.0, 0.28], [0.254, 0.84, 9.0, -0.0]]
+write('pf9-lava-lamp-crowded.json', {
+    'name': 'Phase-field Bubbles 9: lava lamp (crowded)',
+    'description': 'A crowded lava lamp: many bubbles, big, medium and small, each starting at its own temperature, with a '
+                   'wide heater along the bottom and cooler along the top. Warm ones rise, cool at the top, sink and warm '
+                   'again, jostling and squashing past each other; small dots bud off now and then. Content is conserved exactly. Tint shows '
+                   'temperature.',
+    'rule': 'builtin:27', 'size': 256, 'start': 'initial', 'stepsPerFrame': 200,
+    'globals': {'buoy': 0.018, 'heat': 0.0002, 'T_leak': 0},
+    'walls': [[0, 0, 256, 4]],
+    'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.75, 'x1': 1, 'y1': 1}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': -1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.016, 'x1': 1, 'y1': 0.25}}]
+               + [o for cx, cy, R, temp in LAVA_DENSE for o in pf6(cx, cy, 0.9 * R / 256, 10, temp)],
+    'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
+})
