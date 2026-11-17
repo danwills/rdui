@@ -259,3 +259,24 @@ write('pf9-lava-lamp-crowded.json', {
                + [o for cx, cy, R, temp in LAVA_DENSE for o in pf6(cx, cy, 0.9 * R / 256, 10, temp)],
     'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
 })
+
+# the lava lamp, swirling (version 12): the crowded scene's bubbles, plus curl noise: psi a sum of 40 soft bumps of +1 or -1
+# (radius 12-30 cells, soft over most of it), scattered at random
+rng_psi = __import__('random').Random(5)
+PSI = [(round(rng_psi.uniform(0, 1), 3), round(rng_psi.uniform(0, 1), 3), round(rng_psi.uniform(12, 30)), rng_psi.choice([-1, 1])) for _ in range(40)]
+write('pf12-lava-lamp-swirl.json', {
+    'name': 'Phase-field Bubbles 12: lava lamp (swirling)',
+    'description': 'The crowded lava lamp with gentle swirls: as well as rising warm and sinking cool, bubbles are carried '
+                   'along a slowly changing swirling flow (curl noise, psi), so they wander and slip round each other rather '
+                   'than meeting head-on. Paint psi to make your own swirls (bubbles go round its peaks and dips). Tint shows '
+                   'temperature.',
+    'rule': 'builtin:30', 'size': 256, 'start': 'initial', 'stepsPerFrame': 200,
+    'globals': {'buoy': 0.018, 'heat': 0.0002, 'T_leak': 0},
+    'walls': [[0, 0, 256, 4]],
+    'initial': [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.75, 'x1': 1, 'y1': 1}},
+                {'chem': 'warmth', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': -1}, 'shape': {'type': 'rectangle', 'x0': 0, 'y0': 0.016, 'x1': 1, 'y1': 0.25}}]
+               + [{'chem': 'psi', 'op': 'add', 'fill': {'type': 'bump', 'value': v, 'edge': 0.6 * r}, 'shape': {'type': 'circle', 'cx': x, 'cy': y, 'r': r / 256}} for x, y, r, v in PSI]
+               + [o for cx, cy, R, temp in LAVA_DENSE for o in pf6(cx, cy, 0.9 * R / 256, 10, temp)],
+    'view': {'reagent': 'phi', 'low': 0, 'high': 1, 'tint': 'T', 'tintLow': -1, 'tintHigh': 1},
+})

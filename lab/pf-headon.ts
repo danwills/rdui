@@ -11,7 +11,11 @@ export default async function (cfg: { rule: string; T?: number; r?: number; set?
   // (x a hair off centre for the lower one, as nothing in nature lines up exactly)
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const i = (y * N + x) * S4; state[i + ix('u')] = 1;
-    for (const [cx, cy, temp] of [[128.5, 180, T], [128, 76, -T]]) if (Math.hypot(x - cx, y - cy) <= r) { state[i + ix('phi')] = 1; state[i + ix('m')] = 6; state[i + ix('T')] = temp; }
+    // (with a sway, version 11: phases a quarter turn apart)
+    for (const [cx, cy, temp, ph] of [[128.5, 180, T, 0], [128, 76, -T, Math.PI / 2]]) if (Math.hypot(x - cx, y - cy) <= r) {
+      state[i + ix('phi')] = 1; state[i + ix('m')] = 6; state[i + ix('T')] = temp;
+      if (ix('vx') >= 0) { state[i + ix('vx')] = Math.cos(ph); state[i + ix('vw')] = Math.sin(ph); }
+    }
   }
   lab.sim.writeRegion(0, 0, N, N, undefined, state);
   for (let t = 0; t < (cfg.steps ?? 400000); ) {

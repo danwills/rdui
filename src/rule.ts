@@ -2377,12 +2377,214 @@ delta_warmth = 0.0;`,
   view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10];
+/**
+ * Phase-field Bubbles 11 (lava lamp, swaying): version 9, with each bubble swaying gently side to side as it goes, as lava
+ * lamp blobs do, so they rarely meet head-on and jam (version 10's steering couldn't get them past each other). Each carries
+ * a slow oscillator (vx, vw), turning at sway_rate, held at unit size (a Stuart-Landau oscillator, so it neither dies out nor
+ * grows) and spread through its inside, so the whole bubble sways together and cells it moves into take up its phase; its
+ * sideways drift is vx. Bubbles start at their own phases (the scene's), so they sway out of step. Outside bubbles it fades.
+ * (Room for it: the view-only membrane field is gone.) Measured: too slow to matter; below the speed at which a bubble
+ * keeps its content, a sway moves it only a few cells each way (head-on: 12 cells apart sideways in 400k steps, still jammed).
+ */export const PF_BUBBLES_11: RuleDef = {
+  name: 'Phase-field Bubbles 11 (lava lamp, swaying)',
+  description: 'A lava lamp of bubbles. Each carries heat T (one temperature per bubble) and is buoyant: warm ones rise, '
+    + 'cool ones sink (buoy; gravity along gx, gy, y up: (0, −1) is down). Warmth (paintable) heats a bubble where it\'s positive and cools it '
+    + 'where negative, and heat leaks away slowly (T_leak): with a heater at the bottom and a cooler at the top they '
+    + 'circulate. Work in progress: rising bubbles deform into cups and leave faint trails. As in version 5: bubbles as one phase field φ (1 inside, 0 outside), whose edges move by their own curvature (smoothing '
+    + 'bulges rather than buckling) and by the pressure of the content m inside, so size follows content. As in Gray-Scott, '
+    + 'bubbles eat a substrate u fed in from outside, and an edge needs substrate to advance: between two bubbles it\'s '
+    + 'eaten from both sides, holding both edges back; and the content\'s push out needs substrate too, so even crammed '
+    + 'bubbles can\'t be pushed into each other: neighbours keep a gap rather than merging, and a bubble cut in two '
+    + '(Erase across it) stays two. Seed paints a bubble '
+    + '(content 3). View mem (the membrane) tinted by m; u shows the substrate.',
+  reagents: ['phi', 'm', 'u', 'g', 'gm', 'mphi', 'T', 'gT', 'Tphi', 'warmth', 'vx', 'vw'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.2 },
+    { name: 'D_phi', value: 0.1, min: 0, max: 0.24 },
+    { name: 'well', value: 0.2, min: 0.005, max: 1 },
+    { name: 'D_m', value: 0.2, min: 0, max: 0.24 },
+    { name: 'm_inward', value: 0.2, min: 0, max: 1 },
+    { name: 'leak', value: 0.002, min: 0, max: 0.05 },
+    { name: 'sway', value: 0.01, min: 0, max: 0.05 },
+    { name: 'sway_rate', value: 0.00013, min: 0, max: 0.002 },
+    { name: 'D_sway', value: 0.2, min: 0, max: 0.24 },
+    { name: 'move_max', value: 0.022, min: 0, max: 0.1 },
+    { name: 'pressure', value: 0.3, min: 0, max: 2 },
+    { name: 'target', value: 1, min: 0.1, max: 4 },
+    { name: 'D_u', value: 0.2, min: 0, max: 0.24 },
+    { name: 'u_feed', value: 0.01, min: 0.001, max: 0.1 },
+    { name: 'u_eat', value: 0.3, min: 0, max: 1 },
+    { name: 'u_edge', value: 0.15, min: 0, max: 1 },
+    { name: 'starve', value: 3, min: 0, max: 20 },
+    { name: 'u_supply', value: 0.3, min: 0.01, max: 1 },
+    { name: 'buoy', value: 0.3, min: 0, max: 0.45 },
+    { name: 'gx', value: 0, min: -1, max: 1 },
+    { name: 'gy', value: -1, min: -1, max: 1 },
+    { name: 'heat', value: 0.0003, min: 0, max: 0.005 },
+    { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
+    { name: 'T_max', value: 1, min: 0.1, max: 4 },
+  ],
+  paintable: [],
+  formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
+// u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
+// where the substrate is short of a lone edge's share (between two bubbles, eaten from both sides); capped so the double
+// well keeps two phases. Content pushes only where phi is already an edge (over 0.1): the little that seeps into phi's faint
+// tail outside would otherwise grow specks there
+float P = pressure*(m - target)*smoothstep(0.05, 0.15, phi);
+// And buoyancy moves the edge: tilted out where it faces the way the bubble's going (warm: against gravity gx, gy, y up
+// as the gradients, so (0, -1) is down; cool: with it), in where it faces away: the front grows, the back shrinks, so
+// the bubble moves, its edge keeping its shape (carrying phi along instead rippled ahead of a sharp edge, and the well
+// grew the ripples into droplets). Where it faces: grad phi points in, so -grad phi/|grad phi| is the outward normal.
+float Tb = clamp(T, -T_max, T_max);
+float gl = sqrt(x_gradient_phi*x_gradient_phi + y_gradient_phi*y_gradient_phi);
+// (only on the edge proper, phi over 0.1: in its faint tail the direction is noise, and the push grew droplets there)
+float facing = -(x_gradient_phi*(-gx) + y_gradient_phi*(-gy))/max(gl, 0.02)*smoothstep(0.05, 0.15, phi);
+// Sway: the edge tilted out where it faces the way the bubble is swaying (its outward normal's x, times vx), in where
+// it faces away; with buoyancy, capped at move_max (faster, a bubble leaves its content behind)
+float nx = -x_gradient_phi/max(gl, 0.02)*smoothstep(0.05, 0.15, phi);
+float move = clamp(buoy*Tb*facing + sway*vx*nx, -move_max, move_max);
+float lambda = clamp(max(P, 0.0)*min(u/u_supply, 1.0) + min(P, 0.0) - starve*max(u_edge - u, 0.0) + move, -0.45, 0.45);
+// Allen-Cahn: diffusion and the double well (stable at 0 and 1) make an edge a few cells wide that moves by its curvature;
+// lambda tilts the well, moving it out (lambda > 0) or in
+delta_phi = D_phi*laplacian_phi + well*phi*(1.0 - phi)*(phi - 0.5 + lambda);
+// the substrate: fed toward 1, eaten inside bubbles, spreading
+delta_u = D_u*laplacian_u + u_feed*(1.0 - u) - u_eat*phi*u;
+// content spreads inside, held in at the edge: div(g grad m), g a smooth step in phi (0 below 0.02: open a little into
+// the edge's outer tail, so the inward pull below has diffusion to damp it there, else it rings into a checkerboard), as
+// (lap(g m) + g lap m - m lap g)/2, which sums to zero over the grid; and drawn up phi's slope (flux m_inward m grad phi,
+// as (lap(m phi) - phi lap m + m lap phi)/2, also summing to zero), so content at a retreating edge goes in with it
+delta_m = D_m*0.5*(laplacian_gm + g*laplacian_m - m*laplacian_g) - m_inward*0.5*(laplacian_mphi - phi*laplacian_m + m*laplacian_phi);
+// (never fully shut: leak lets content seep through the open lamp, very slowly)
+delta_g = (max(smoothstep(0.02, 0.5, phi), leak) - g)/timestep;
+delta_gm = (g*m - gm)/timestep;
+delta_mphi = (m*phi - mphi)/timestep;
+// the sway: an oscillator turning at sway_rate, held at unit size inside a bubble, spread through it (so the whole bubble
+// sways together, and cells it moves into take up its phase); outside, it fades
+float r2 = vx*vx + vw*vw;
+delta_vx = g*(D_sway*laplacian_vx - sway_rate*vw + 0.002*(1.0 - r2)*vx) - (1.0 - g)*0.01*vx;
+delta_vw = g*(D_sway*laplacian_vw + sway_rate*vx + 0.002*(1.0 - r2)*vw) - (1.0 - g)*0.01*vw;
+// heat: spread inside and pulled in at a retreating edge, as content; heated or cooled by the warmth on the bubble's solid
+// inside only (phi over a half; out in the edge's tail, where heat mixes slowest, it overheated cells that budded off as
+// dots), leaking slowly toward 0 (neutral, neither rising nor sinking)
+delta_T = D_m*0.5*(laplacian_gT + g*laplacian_T - T*laplacian_g) - m_inward*0.5*(laplacian_Tphi - phi*laplacian_T + T*laplacian_phi) + smoothstep(0.5, 0.9, phi)*heat*warmth - g*T_leak*T;
+delta_gT = (g*T - gT)/timestep;
+delta_Tphi = (T*phi - Tphi)/timestep;
+// the environment: still, as painted
+delta_warmth = 0.0;`,
+  rest: [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  seed: [1, 3, null, null, null, null, null, null, null, null, 1, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+};
+
+/**
+ * Phase-field Bubbles 12 (lava lamp, swirling): version 9, with the bubbles carried by a gentle swirling flow as well as
+ * buoyancy, so they wander and slip round each other rather than meeting head-on and jamming (version 10's steering
+ * couldn't get them past, and version 11's sway was too slow to matter). The flow is curl noise: the curl of a stream
+ * function psi, (dpsi/dy, -dpsi/dx), which only swirls (nothing piles up or thins out), set by the scene and paintable.
+ * psi slides slowly sideways (psi_drift), so the swirls change as it goes. A bubble is carried by tilting its edge out
+ * where it faces along the flow and in where it faces against it; with buoyancy, capped below the speed at which a bubble
+ * leaves its content behind.
+ */export const PF_BUBBLES_12: RuleDef = {
+  name: 'Phase-field Bubbles 12 (lava lamp, swirling)',
+  description: 'A lava lamp of bubbles. Each carries heat T (one temperature per bubble) and is buoyant: warm ones rise, '
+    + 'cool ones sink (buoy; gravity along gx, gy, y up: (0, −1) is down). Warmth (paintable) heats a bubble where it\'s positive and cools it '
+    + 'where negative, and heat leaks away slowly (T_leak): with a heater at the bottom and a cooler at the top they '
+    + 'circulate. Work in progress: rising bubbles deform into cups and leave faint trails. As in version 5: bubbles as one phase field φ (1 inside, 0 outside), whose edges move by their own curvature (smoothing '
+    + 'bulges rather than buckling) and by the pressure of the content m inside, so size follows content. As in Gray-Scott, '
+    + 'bubbles eat a substrate u fed in from outside, and an edge needs substrate to advance: between two bubbles it\'s '
+    + 'eaten from both sides, holding both edges back; and the content\'s push out needs substrate too, so even crammed '
+    + 'bubbles can\'t be pushed into each other: neighbours keep a gap rather than merging, and a bubble cut in two '
+    + '(Erase across it) stays two. Seed paints a bubble '
+    + '(content 3). View mem (the membrane) tinted by m; u shows the substrate.',
+  reagents: ['phi', 'm', 'u', 'g', 'gm', 'mphi', 'mem', 'T', 'gT', 'Tphi', 'warmth', 'psi'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.2 },
+    { name: 'D_phi', value: 0.1, min: 0, max: 0.24 },
+    { name: 'well', value: 0.2, min: 0.005, max: 1 },
+    { name: 'D_m', value: 0.2, min: 0, max: 0.24 },
+    { name: 'm_inward', value: 0.2, min: 0, max: 1 },
+    { name: 'leak', value: 0.002, min: 0, max: 0.05 },
+    { name: 'swirl', value: 0.25, min: 0, max: 2 },
+    { name: 'psi_drift', value: 0.0005, min: 0, max: 0.01 },
+    { name: 'move_max', value: 0.022, min: 0, max: 0.1 },
+    { name: 'pressure', value: 0.3, min: 0, max: 2 },
+    { name: 'target', value: 1, min: 0.1, max: 4 },
+    { name: 'D_u', value: 0.2, min: 0, max: 0.24 },
+    { name: 'u_feed', value: 0.01, min: 0.001, max: 0.1 },
+    { name: 'u_eat', value: 0.3, min: 0, max: 1 },
+    { name: 'u_edge', value: 0.15, min: 0, max: 1 },
+    { name: 'starve', value: 3, min: 0, max: 20 },
+    { name: 'u_supply', value: 0.3, min: 0.01, max: 1 },
+    { name: 'buoy', value: 0.3, min: 0, max: 0.45 },
+    { name: 'gx', value: 0, min: -1, max: 1 },
+    { name: 'gy', value: -1, min: -1, max: 1 },
+    { name: 'heat', value: 0.0003, min: 0, max: 0.005 },
+    { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
+    { name: 'T_max', value: 1, min: 0.1, max: 4 },
+  ],
+  paintable: [],
+  formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
+// u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
+// where the substrate is short of a lone edge's share (between two bubbles, eaten from both sides); capped so the double
+// well keeps two phases. Content pushes only where phi is already an edge (over 0.1): the little that seeps into phi's faint
+// tail outside would otherwise grow specks there
+float P = pressure*(m - target)*smoothstep(0.05, 0.15, phi);
+// And buoyancy moves the edge: tilted out where it faces the way the bubble's going (warm: against gravity gx, gy, y up
+// as the gradients, so (0, -1) is down; cool: with it), in where it faces away: the front grows, the back shrinks, so
+// the bubble moves, its edge keeping its shape (carrying phi along instead rippled ahead of a sharp edge, and the well
+// grew the ripples into droplets). Where it faces: grad phi points in, so -grad phi/|grad phi| is the outward normal.
+float Tb = clamp(T, -T_max, T_max);
+float gl = sqrt(x_gradient_phi*x_gradient_phi + y_gradient_phi*y_gradient_phi);
+// (only on the edge proper, phi over 0.1: in its faint tail the direction is noise, and the push grew droplets there)
+float facing = -(x_gradient_phi*(-gx) + y_gradient_phi*(-gy))/max(gl, 0.02)*smoothstep(0.05, 0.15, phi);
+// The swirl: the flow (dpsi/dy, -dpsi/dx), the edge tilted out where it faces along it (its outward normal
+// -grad phi/|grad phi| dotted with the flow), in where it faces against it; on the edge proper only; with buoyancy, capped
+// at move_max (faster, a bubble leaves its content behind)
+float edge_on = smoothstep(0.05, 0.15, phi)/max(gl, 0.02);
+float along = -(x_gradient_phi*y_gradient_psi - y_gradient_phi*x_gradient_psi)*edge_on;
+float move = clamp(buoy*Tb*facing + swirl*along, -move_max, move_max);
+float lambda = clamp(max(P, 0.0)*min(u/u_supply, 1.0) + min(P, 0.0) - starve*max(u_edge - u, 0.0) + move, -0.45, 0.45);
+// Allen-Cahn: diffusion and the double well (stable at 0 and 1) make an edge a few cells wide that moves by its curvature;
+// lambda tilts the well, moving it out (lambda > 0) or in
+delta_phi = D_phi*laplacian_phi + well*phi*(1.0 - phi)*(phi - 0.5 + lambda);
+// the substrate: fed toward 1, eaten inside bubbles, spreading
+delta_u = D_u*laplacian_u + u_feed*(1.0 - u) - u_eat*phi*u;
+// content spreads inside, held in at the edge: div(g grad m), g a smooth step in phi (0 below 0.02: open a little into
+// the edge's outer tail, so the inward pull below has diffusion to damp it there, else it rings into a checkerboard), as
+// (lap(g m) + g lap m - m lap g)/2, which sums to zero over the grid; and drawn up phi's slope (flux m_inward m grad phi,
+// as (lap(m phi) - phi lap m + m lap phi)/2, also summing to zero), so content at a retreating edge goes in with it
+delta_m = D_m*0.5*(laplacian_gm + g*laplacian_m - m*laplacian_g) - m_inward*0.5*(laplacian_mphi - phi*laplacian_m + m*laplacian_phi);
+// (never fully shut: leak lets content seep through the open lamp, very slowly)
+delta_g = (max(smoothstep(0.02, 0.5, phi), leak) - g)/timestep;
+delta_gm = (g*m - gm)/timestep;
+delta_mphi = (m*phi - mphi)/timestep;
+// the membrane, for the view: where phi crosses
+delta_mem = (4.0*phi*(1.0 - phi) - mem)/timestep;
+// heat: spread inside and pulled in at a retreating edge, as content; heated or cooled by the warmth on the bubble's solid
+// inside only (phi over a half; out in the edge's tail, where heat mixes slowest, it overheated cells that budded off as
+// dots), leaking slowly toward 0 (neutral, neither rising nor sinking)
+delta_T = D_m*0.5*(laplacian_gT + g*laplacian_T - T*laplacian_g) - m_inward*0.5*(laplacian_Tphi - phi*laplacian_T + T*laplacian_phi) + smoothstep(0.5, 0.9, phi)*heat*warmth - g*T_leak*T;
+delta_gT = (g*T - gT)/timestep;
+delta_Tphi = (T*phi - Tphi)/timestep;
+// the environment: still, as painted
+delta_warmth = 0.0;
+// the swirls' stream function, sliding slowly sideways (so the swirls change as it goes)
+delta_psi = -psi_drift*x_gradient_psi;`,
+  rest: [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  seed: [1, 3, null, null, null, null, null, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  initial: [{ chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } }],
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'T' },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Gray-Scott', [GRAY_SCOTT, GRAY_SCOTT_ZOOM, GS_FLECK, GS_BUBBLES]],
-  ['Bubbles', [PF_BUBBLES_1, PF_BUBBLES, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10]],
+  ['Bubbles', [PF_BUBBLES_1, PF_BUBBLES, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12]],
   ['History + Wave', [GS_HISTORY_WAVE, GS_HW_MEMORY]],
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
