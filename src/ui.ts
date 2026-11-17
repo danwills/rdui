@@ -477,8 +477,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const trapBox = checkbox('traps', 'wallsTrap', 'the Wall tool draws traps (click for a round one): a shallow well with friction and gain that catches a soliton, parks it and sets it to the standard power', () => { if (s.wallsTrap) s.wallsReflect = s.wallsAbsorb = false; sync(); });
   // ordinary walls (rules without wall distance fields): sealed, or feeding fresh rest values
   const feedBox = checkbox('walls feed', 'wallsFeed', 'the Wall tool draws walls that hold the rest values (for Gray-Scott a = 1, b = 0: fresh substrate) and let them diffuse out, instead of sealed walls nothing crosses. Feed walls show green. FFT rules always feed: their diffusion can\'t be sealed');
-  const showWallsBox = checkbox('show walls', 'showWalls', 'untick to hide walls (they still work, just unseen)');
-  const wallBoxes = el('div', { class: 'checks' }, reflectBox, absorbBox, trapBox, feedBox);
+  // in both Tool and View, kept in step
+  const showWallsBox = () => checkbox('show walls', 'showWalls', 'untick to hide walls (they still work, just unseen)', sync);
+  const wallBoxes = el('div', { class: 'checks' }, reflectBox, absorbBox, trapBox, feedBox, showWallsBox());
   syncers.push(() => {
     const r = rc.rule(), p = r.paintable;
     const fft = r.laplacian === 'spectral' || r.laplacian === 'spectral-exact';
@@ -794,7 +795,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     ),
     section('View',
       select('mode', 'viewMode', () => [['reagent', 'reagent'], ['outlines', 'reagent + param outlines'], ['params', 'parameter map']]).row,
-      el('div', { class: 'checks' }, showWallsBox),
+      el('div', { class: 'checks' }, showWallsBox()),
       showRows,
       tintRows,
       hueRows,
