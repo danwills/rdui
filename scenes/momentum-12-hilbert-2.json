@@ -1,0 +1,320 @@
+{
+ "name": "Contraptions 13: Hilbert track (order 2) (Momentum Bubbles 12)",
+ "description": "A Hilbert-curve track (order 2, 16 gates, each aiming at the next) at 512\u00b2: a dot starts at rest in the bottom-left gate, which launches it; it follows the curve, and ends in a bowl in the last square, which aims everything at its middle (gripping less towards it), where dots gather. Gates: brake, accel 0.002, aim_speed 0.03. Gates show as the aim channel in the custom palette.",
+ "rule": "builtin:51",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 40,
+ "globals": {
+  "aim_speed": 0.03,
+  "brake": 0.002,
+  "accel": 0.002
+ },
+ "initial": [
+  {
+   "chem": "u",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.125,
+    "cy": 0.875,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.375,
+    "cy": 0.875,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.375,
+    "cy": 0.625,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.125,
+    "cy": 0.625,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.125,
+    "cy": 0.375,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.125,
+    "cy": 0.125,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.375,
+    "cy": 0.125,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.375,
+    "cy": 0.375,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.625,
+    "cy": 0.375,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.625,
+    "cy": 0.125,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.875,
+    "cy": 0.125,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.875,
+    "cy": 0.375,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.875,
+    "cy": 0.625,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.625,
+    "cy": 0.625,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.625,
+    "cy": 0.875,
+    "r": 0.095
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "overwrite",
+   "fill": {
+    "type": "ramp",
+    "from": 1,
+    "to": -1,
+    "axis": "x"
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.7625,
+    "y0": 0.7625,
+    "x1": 0.9875,
+    "y1": 0.9875
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "overwrite",
+   "fill": {
+    "type": "ramp",
+    "from": -1,
+    "to": 1,
+    "axis": "y"
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.7625,
+    "y0": 0.7625,
+    "x1": 0.9875,
+    "y1": 0.9875
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.125,
+    "cy": 0.875,
+    "r": 0.0390625
+   }
+  },
+  {
+   "chem": "m",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 10,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.125,
+    "cy": 0.875,
+    "r": 0.0390625
+   }
+  }
+ ],
+ "view": {
+  "reagent": "phi",
+  "low": 0,
+  "high": 1
+ }
+}

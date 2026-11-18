@@ -43,4 +43,4 @@ const files = import.meta.glob('../scenes/*.json', { eager: true, import: 'defau
 
 export const SCENES = Object.entries(files)
   .map(([path, scene]) => ({ id: path.split('/').pop()!.replace(/\.json$/, ''), scene }))
-  .sort((a, b) => a.scene.name.localeCompare(b.scene.name));
+  .sort((a, b) => a.scene.name.localeCompare(b.scene.name, undefined, { numeric: true }));

@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles 11: square track",
+ "name": "Contraptions 6: square track (Momentum Bubbles 11)",
  "description": "Four catch-and-launch gates at the corners of a square, each sending the dots it catches on to the next (right, down, left, up). A dot shot in from the left goes round. Gates show as the aim channel in the custom palette. Push more dots at a gate to add them.",
  "rule": "builtin:50",
  "size": 256,

@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles 12: square track (anticlockwise, slower)",
+ "name": "Contraptions 9: square track (anticlockwise, slower) (Momentum Bubbles 12)",
  "description": "The round-gate square track running anticlockwise, slower (aim_speed 0.04) and with gentle gates (brake and accel 0.003, so a dot coasts into a gate's middle before it turns, rather than being caught at the edge and shorn): a dot starts in the middle of the bottom side heading east into the bottom-right gate, and goes round and round on a rounded square, ~10000 steps a lap, keeping its shape and speed (60000 steps tested). Gates show as the aim channel in the custom palette.",
  "rule": "builtin:51",
  "size": 256,

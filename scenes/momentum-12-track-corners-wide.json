@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles 12: square track (big corner gates, wider)",
+ "name": "Contraptions 11: square track (big corner gates, wider) (Momentum Bubbles 12)",
  "description": "The big-corner-gate track with gentler gates (brake, accel 0.0015): dots coast further into each gate before they turn, so the loop runs wider (about 120 cells across rather than 90), ~13000 steps a lap, keeping their shape (40000 steps tested). Gates show as the aim channel in the custom palette.",
  "rule": "builtin:51",
  "size": 256,

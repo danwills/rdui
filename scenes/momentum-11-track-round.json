@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles 11: square track (round gates)",
+ "name": "Contraptions 7: square track (round gates) (Momentum Bubbles 11)",
  "description": "The square track with bigger, round, soft-edged gates (radius 0.1, edges softened over 3 cells), each roomy enough to hold a whole dot, at the corners of a wider square (0.3 to 0.7). A dot starts at the bottom of the image heading up into the bottom-left gate, and goes round. Gates show as the aim channel in the custom palette.",
  "rule": "builtin:50",
  "size": 256,

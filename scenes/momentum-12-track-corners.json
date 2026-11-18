@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles 12: square track (big corner gates)",
+ "name": "Contraptions 10: square track (big corner gates) (Momentum Bubbles 12)",
  "description": "The anticlockwise track with big gates (radius 0.2) out in the frame's corners, just touching its edges; gentle gates (brake, accel 0.003), aim_speed 0.04. A dot starts in the middle of the bottom side heading east into the bottom-right gate and goes round the gap between the gates, turning as it clips each one's inner edge (~12000 steps a lap; it sheds a little now and then). Gates show as the aim channel in the custom palette.",
  "rule": "builtin:51",
  "size": 256,

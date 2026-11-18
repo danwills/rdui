@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles 8: corner",
+ "name": "Contraptions 4: corner (Momentum Bubbles 8)",
  "description": "A dot heading right meets an aim region pointing down (ay \u22121, shown as the tint): it turns and leaves heading straight down. It keeps only about a third of its speed (see the rule's notes); push it again (Push) to see it go round faster.",
  "rule": "builtin:47",
  "size": 256,

@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles 12: square track (round gates)",
+ "name": "Contraptions 8: square track (round gates) (Momentum Bubbles 12)",
  "description": "The round-gate square track on Momentum Bubbles 12 (soft gate edges grip gently rather than aiming slower): a dot from the bottom goes up, right and down at about 0.05 px a step, but it clips each gate's edge, so it shears at each corner and tears at the third. Gates show as the aim channel in the custom palette.",
  "rule": "builtin:51",
  "size": 256,

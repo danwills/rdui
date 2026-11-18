@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles: three",
+ "name": "Contraptions 1: three (Momentum Bubbles 1)",
  "description": "Three bubbles, each holding its own momentum p (tint: px): one still, one going right, one going up-left. They move because of what they hold (velocity p/m), slowly: about 1 px per 1200 steps, kept clean (no trail of dots) by the top speed move_max 0.014.",
  "rule": "builtin:40",
  "size": 256,

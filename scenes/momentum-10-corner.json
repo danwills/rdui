@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles 10: corner",
+ "name": "Contraptions 5: corner (Momentum Bubbles 10)",
  "description": "A dot heading right meets a region aimed down (ay \u22121, the tint): it's caught at the region's edge (its sideways motion braked) and launched straight down at the region's speed, as fast as it came in. Push dots into the region from any side: they all leave downward at the same speed.",
  "rule": "builtin:49",
  "size": 256,

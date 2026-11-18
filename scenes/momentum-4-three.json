@@ -1,5 +1,5 @@
 {
- "name": "Momentum Bubbles 4: three",
+ "name": "Contraptions 3: three (Momentum Bubbles 4)",
  "description": "The three bubbles, with the speed limit (v_max 0.1 cells a step, each way): Push as hard as you like (strength up to 10) and a bubble goes at most 0.1 px a step, keeping the extra momentum, rather than blowing up as version 3 does past ~0.2.",
  "rule": "builtin:43",
  "size": 256,
