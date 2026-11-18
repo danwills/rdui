@@ -2,7 +2,7 @@ import './style.css';
 import { recordSection } from './record';
 import { inPageTooltips } from './tooltip';
 import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type CustomChannel, type ViewOptions } from './sim';
-import { buildPanel, defaultSettings, fmt, HUE_DEFAULTS, hueOffsetFor, TOOLS, type RuleChoice, type Settings } from './ui';
+import { buildPanel, defaultSettings, el, fmt, HUE_DEFAULTS, hueOffsetFor, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
 import { StampLibrary, newStampId, stampThumbnail, transformStamp, type Stamp } from './stamps';
 import { Overlay, type Ghost } from './overlay';
@@ -835,20 +835,47 @@ async function init() {
   const probePanel = probeSection(probes, () => ({ index: s.reagent, name: rule.reagents[s.reagent] }));
   probes.onSample = probePanel.update;
 
+  /** Start the rule or scene over (and look out for a blow-up afresh). */
+  function restart() {
+    blowSim = null;
+    probes.resetHolds();
+    if (/^(scene|saved|builtin|user|pattern):/.test(ruleId)) void selectRule(ruleId);
+    else {
+      const f = initialData(sim.width, sim.height);
+      sim.load(f.state, f.params);
+    }
+  }
+  // the field blowing up (Inf or NaN anywhere): checked twice a second while running, and a note over the sim offers a
+  // restart or a pause (once per blow-up: it stays away for that field once answered)
+  const blowNote = el('div', { class: 'blow-note', hidden: '' });
+  stage.append(blowNote);
+  let blowSim: Simulation | null = null; // the sim the note was shown (or answered) for
+  const hideBlow = () => (blowNote.hidden = true);
+  function showBlow() {
+    blowSim = sim;
+    const btn = (label: string, f: () => void) => {
+      const b = el('button', {}, label);
+      b.addEventListener('click', () => { hideBlow(); f(); });
+      return b;
+    };
+    blowNote.replaceChildren(
+      el('div', {}, 'The field has blown up (Inf or NaN): a parameter or brush has taken it past what the rule can hold. Step back and restart?'),
+      el('div', { class: 'buttons' },
+        btn('Restart', restart),
+        btn('Pause', () => { s.running = false; ui.sync(); }),
+        btn('Keep going', () => {}),
+      ),
+    );
+    blowNote.hidden = false;
+  }
   const ui = buildPanel(panel, s, {
     fillParams: () => sim.fillParams(paintValues()),
     reset: () => {
+      blowSim = null;
       const f = initialData(sim.width, sim.height);
       sim.load(f.state, f.params);
     },
-    restart: () => {
-      probes.resetHolds();
-      if (/^(scene|saved|builtin|user|pattern):/.test(ruleId)) void selectRule(ruleId);
-      else {
-        const f = initialData(sim.width, sim.height);
-        sim.load(f.state, f.params);
-      }
-    },
+    restart,
     clearChemistry: () => sim.clearChemistry(),
     clearAll: () => {
       // a blank field: rest chemistry, no walls, every param at its global value
@@ -1425,6 +1452,11 @@ async function init() {
     if (now - lastStat > 500) {
       const dt = (now - lastStat) / 1000;
       stats = `${(frames / dt).toFixed(0)} fps · ${(stepsDone / dt).toFixed(0)} steps/s · ${sim.width}×${sim.height} · ${rule.name}`;
+      if (s.running && blowSim !== sim) {
+        const checked = sim;
+        void checked.blownUp().then((bad) => { if (bad && checked === sim && blowSim !== sim) showBlow(); });
+      }
+      if (blowSim !== sim) hideBlow(); // a new field (restart, rule change, resize) clears the note
       const fi = fitInfo();
       if (fi) stats += `\n${fi}`;
       frames = stepsDone = 0;

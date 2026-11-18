@@ -309,3 +309,24 @@ section > h2 { display: none; }
 .row.strength { grid-template-columns: 76px 1fr 64px 22px; }
 .row.strength .num { width: 60px; justify-self: end; }
 button.mini.on { opacity: 1; color: #ff9a6a; border-color: var(--line); }
+.row.strength.negative > span, .row.strength.negative .num { color: #ff9a6a; }
+.row.strength.negative input[type=range] { accent-color: #ff9a6a; }
+
+/* the field blew up (Inf/NaN): offer a restart or a pause */
+.blow-note {
+  position: absolute;
+  left: 50%;
+  top: 16px;
+  transform: translateX(-50%);
+  max-width: min(440px, calc(100% - 32px));
+  padding: 10px 12px;
+  background: #2a1714;
+  border: 1px solid #8a3a2a;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+  z-index: 20;
+}
+.blow-note .buttons { margin-top: 8px; display: flex; gap: 6px; }
+.blow-note[hidden] { display: none; }

@@ -474,6 +474,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       input.value = String(Math.max(MIN, Math.log10(Math.abs(s.strength) || 10 ** MIN)));
       if (document.activeElement !== num) num.value = fmt(s.strength);
       flip.classList.toggle('on', s.strength < 0);
+      row.classList.toggle('negative', s.strength < 0);
     });
     const row = el('label', { class: 'row strength', title: SETTING_HINTS.strength ?? 'strength' }, el('span', {}, 'Strength'), input, num, flip);
     ladder(row, { get: () => s.strength, set: put, range: [0, 1], clamp: [-1, 1], reset: () => put(defaultSettings().strength) });
@@ -886,7 +887,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   ], actions.setFeatureSize);
 
   root.append(
-    el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox'), el('span', { class: 'sub build' }, __BUILD__), button('🎲', () => { s.palette = 7; actions.randomiseCustom(); }, 'new colours: randomise the custom palette (switching to it if another is showing)'), button('⛶', () => actions.toggleUI(), 'hide the panel: just the sim, fullscreen · H (Back or Esc returns)'),
+    el('header', {}, el('h1', {}, 'rdui'), el('span', { class: 'sub' }, 'reaction-diffusion sandbox'), el('span', { class: 'sub build' }, __BUILD__), button('🎲', () => { s.palette = 7; actions.randomiseCustom(); }, 'new colours: randomise the custom palette (switching to it if another is showing)'), button('⟲', () => actions.restart(), 'restart: start this rule or scene over'), button('⛶', () => actions.toggleUI(), 'hide the panel: just the sim, fullscreen · H (Back or Esc returns)'),
       Object.assign(button('', () => actions.toggleUI('fill'), 'hide the panel and fill the screen with the sim (cropped, no black bars) · Back or Esc returns'), { className: 'narrow', innerHTML: '<span>⛶</span>' }),
       button('◧', () => actions.toggleUI('split'), 'hide the panel: the sim and live analysis (3D histogram, histograms, history) side by side, or stacked on a phone · Back or Esc returns')),
     section('Tool', toolRow, toolHint, wallBoxes,

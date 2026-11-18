@@ -146,6 +146,8 @@ export class Simulation {
   private smoothSrc?: { state: GPUBuffer; params: GPUBuffer };
   private renderPipeline: GPURenderPipeline;
   private colormaps: GPUBuffer;
+  /** The blow-up check (made on first use): a flag set by any Inf or NaN in the field, and its readback. */
+  private finite?: { pipeline: GPUComputePipeline; flag: GPUBuffer; read: GPUBuffer; count: GPUBuffer; busy: boolean };
 
   private stepGroups: [GPUBindGroup, GPUBindGroup];
   private brushGroups: [GPUBindGroup, GPUBindGroup];
@@ -588,7 +590,59 @@ export class Simulation {
     }
   }
 
+  /**
+   * Whether the field has blown up: true if any reagent anywhere is Inf or NaN (its exponent bits all set), null if a
+   * check is already under way or the read failed. One pass over the state and a 4-byte readback: cheap enough to run
+   * a few times a second.
+   */
+  async blownUp(): Promise<boolean | null> {
+    if (!this.finite) {
+      const code = `@group(0) @binding(0) var<storage, read> src: array<vec4<u32>>;
+@group(0) @binding(1) var<storage, read_write> flag: atomic<u32>;
+@group(0) @binding(2) var<uniform> count: vec4<u32>;
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+  for (var i = gid.x; i < count.x; i += 65536u) {
+    if (any((src[i] & vec4<u32>(0x7f800000u)) == vec4<u32>(0x7f800000u))) { atomicStore(&flag, 1u); return; }
+  }
+}`;
+      const pipeline = this.device.createComputePipeline({ layout: 'auto', compute: { module: this.device.createShaderModule({ code, label: 'finite' }), entryPoint: 'main' } });
+      const flag = this.device.createBuffer({ size: 4, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST });
+      const read = this.device.createBuffer({ size: 4, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST });
+      const count = this.device.createBuffer({ size: 16, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+      this.device.queue.writeBuffer(count, 0, new Uint32Array([this.width * this.height * this.layout.S, 0, 0, 0]));
+      this.finite = { pipeline, flag, read, count, busy: false };
+    }
+    const f = this.finite;
+    if (f.busy) return null;
+    f.busy = true;
+    try {
+      this.device.queue.writeBuffer(f.flag, 0, new Uint32Array([0]));
+      const group = this.device.createBindGroup({
+        layout: f.pipeline.getBindGroupLayout(0),
+        entries: [{ binding: 0, resource: { buffer: this.state[this.current] } }, { binding: 1, resource: { buffer: f.flag } }, { binding: 2, resource: { buffer: f.count } }],
+      });
+      const enc = this.device.createCommandEncoder();
+      const pass = enc.beginComputePass();
+      pass.setPipeline(f.pipeline);
+      pass.setBindGroup(0, group);
+      pass.dispatchWorkgroups(1024);
+      pass.end();
+      enc.copyBufferToBuffer(f.flag, 0, f.read, 0, 4);
+      this.device.queue.submit([enc.finish()]);
+      await f.read.mapAsync(GPUMapMode.READ);
+      const bad = new Uint32Array(f.read.getMappedRange())[0] !== 0;
+      f.read.unmap();
+      return bad;
+    } catch {
+      return null; // device lost or sim destroyed mid-read
+    } finally {
+      f.busy = false;
+    }
+  }
+
   destroy() {
+    if (this.finite) for (const b of [this.finite.flag, this.finite.read, this.finite.count]) b.destroy();
     this.smoothSrc?.state.destroy();
     this.smoothSrc?.params.destroy();
     for (const b of [...this.state, this.params, this.infoUniform, this.globalsUniform, this.brushUniform, this.viewUniform, this.probeBuffer]) {
