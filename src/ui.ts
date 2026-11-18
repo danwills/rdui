@@ -239,7 +239,23 @@ export function fmt(v: number) {
  * A labelled range slider plus an editable number. `range` can grow when a
  * typed value falls outside it.
  */
-function valueRow(label: string, get: () => number, set: (v: number) => void, range: [number, number], extra?: Node, title = label) {
+/** Says in a row's tooltip that a middle click puts its default back. */
+const resetTip = (row: HTMLElement) => (row.title = row.title ? `${row.title} · middle-click: default` : 'middle-click: default');
+
+/** Middle-click puts a row's value back to its default, for rows without a value ladder (which does this itself). */
+function middleReset(row: HTMLElement, reset: () => void) {
+  resetTip(row);
+  const stop = (e: MouseEvent) => { if (e.button === 1) e.preventDefault(); };
+  row.addEventListener('mousedown', stop);
+  row.addEventListener('mouseup', stop);
+  row.addEventListener('auxclick', (e) => {
+    if (e.button !== 1) return;
+    e.preventDefault();
+    reset();
+  });
+}
+
+function valueRow(label: string, get: () => number, set: (v: number) => void, range: [number, number], extra?: Node, title = label, def?: () => number) {
   const input = el('input', { type: 'range', step: 'any' });
   const num = el('input', { type: 'text', class: 'num', inputmode: 'decimal' });
   const lo = () => Math.min(range[0], get());
@@ -263,7 +279,8 @@ function valueRow(label: string, get: () => number, set: (v: number) => void, ra
   refresh();
   const row = el('label', { class: 'row param', title }, el('span', {}, label), input, num);
   if (extra) row.append(extra);
-  ladder(row, { get, set: (v) => { set(v); refresh(); }, range });
+  ladder(row, { get, set: (v) => { set(v); refresh(); }, range, reset: def && (() => { set(def()); refresh(); }) });
+  if (def) resetTip(row);
   return { row, refresh };
 }
 
@@ -359,7 +376,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const syncers: (() => void)[] = [];
   const sync = () => syncers.forEach((f) => f());
 
-  function slider(label: string, key: keyof Settings, min: number, max: number, step: number, digits: number, onChange?: () => void) {
+  function slider(label: string, key: keyof Settings, min: number, max: number, step: number, digits: number, onChange?: () => void, def = () => defaultSettings()[key] as number) {
     const input = el('input', { type: 'range', min: String(min), max: String(max), step: String(step) });
     const out = el('output');
     input.addEventListener('input', () => {
@@ -377,7 +394,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       get: () => s[key] as number,
       set: (v) => { (s[key] as number) = v; onChange?.(); sync(); },
       range: [min, max], clamp: [min, max],
+      reset: () => { (s[key] as number) = def(); onChange?.(); sync(); },
     });
+    resetTip(row);
     return row;
   }
 
@@ -413,7 +432,10 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       input.value = String(Math.min(1, Math.log(Math.max(1, s[key])) / L));
       if (document.activeElement !== num) num.value = String(s[key]);
     });
-    return el('label', { class: 'row log', title: SETTING_HINTS[key] ?? label }, el('span', {}, titleCase(label)), input, num);
+    const row = el('label', { class: 'row log', title: SETTING_HINTS[key] ?? label }, el('span', {}, titleCase(label)), input, num);
+    // the rule's own speed, else the app's
+    middleReset(row, () => put(rc.rule().view.stepsPerFrame ?? defaultSettings()[key]));
+    return row;
   }
 
   function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'showStats' | 'customWander', title: string, then?: () => void) {
@@ -514,7 +536,10 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   }
 
   function rangeRow(label: string, key: 'low' | 'high' | 'tintLow' | 'tintHigh' | 'fleckLow' | 'fleckHigh', range: [number, number]) {
-    const r = valueRow(titleCase(label), () => s[key], (v) => (s[key] = v), range, undefined, SETTING_HINTS[key] ?? label);
+    // the rule's view range for low and high, the usual tint range; the fleck range has no simple default
+    const v = () => rc.rule().view;
+    const def = { low: () => v().low, high: () => v().high, tintLow: () => 0, tintHigh: () => (s.tint >= 0 ? 0.4 : 1) }[key as string];
+    const r = valueRow(titleCase(label), () => s[key], (x) => (s[key] = x), range, undefined, SETTING_HINTS[key] ?? label, def);
     syncers.push(r.refresh);
     return r.row;
   }
@@ -664,7 +689,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       const r = valueRow(name, () => s.paint[name], (v) => {
         s.paint[name] = v;
         sync();
-      }, [spec.min, spec.max], unpaint, `${paramHint(rule, spec)} · painted with the Params tool`);
+      }, [spec.min, spec.max], unpaint, `${paramHint(rule, spec)} · painted with the Params tool`, () => spec.value);
       ruleSyncers.push(r.refresh);
       paintBox.append(r.row);
     }
@@ -678,7 +703,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       const r = valueRow(spec.name, () => globals[spec.name], (v) => {
         globals[spec.name] = v;
         actions.setGlobal(spec.name, v);
-      }, [spec.min, spec.max], undefined, paramHint(rule, spec));
+      }, [spec.min, spec.max], undefined, paramHint(rule, spec), () => spec.value);
       wallBox.append(r.row);
     }
 
@@ -691,7 +716,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       const r = valueRow(spec.name, () => globals[spec.name], (v) => {
         globals[spec.name] = v;
         actions.setGlobal(spec.name, v);
-      }, [spec.min, spec.max], paint, paramHint(rule, spec));
+      }, [spec.min, spec.max], paint, paramHint(rule, spec), () => spec.value);
       globalBox.append(r.row);
     }
 
@@ -766,7 +791,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const customBox = el('div', {});
   const gradeRows = el('div', {}, slider('blend (s)', 'colourBlend', 0, 10, 0.1, 1),
     el('div', { class: 'checks' }, checkbox('wander', 'customWander', 'randomise the colours by themselves every so often (each blending in over blend)')),
-    slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2), slider('contrast', 'customContrast', 0.5, 3, 0.01, 2), slider('saturation', 'customSaturation', 0, 3, 0.01, 2));
+    slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2, undefined, () => rc.rule().view.customGamma ?? 2.5),
+      slider('contrast', 'customContrast', 0.5, 3, 0.01, 2, undefined, () => rc.rule().view.customContrast ?? 1.2),
+      slider('saturation', 'customSaturation', 0, 3, 0.01, 2, undefined, () => rc.rule().view.customSaturation ?? 1));
   let customKey = '';
   const toHex = (c: number[]) => '#' + c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('');
   const fillCustom = () => {
@@ -786,9 +813,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         ch().color = c;
         colour.style.background = toHex(c);
       }, holdForDropper));
-      const lo = valueRow('Low', () => ch().low, (v) => (ch().low = v), [-1, 1], undefined, `${name}'s value that shows no colour`);
-      const hi = valueRow('High', () => ch().high, (v) => (ch().high = v), [0, 2], undefined, `${name}'s value that shows its full colour`);
-      const pw = valueRow('Power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4], undefined, `${name}'s curve from low to high: above 1 shows only its peaks, below 1 lifts the faint parts`);
+      const lo = valueRow('Low', () => ch().low, (v) => (ch().low = v), [-1, 1], undefined, `${name}'s value that shows no colour`, () => 0);
+      const hi = valueRow('High', () => ch().high, (v) => (ch().high = v), [0, 2], undefined, `${name}'s value that shows its full colour`, () => 1);
+      const pw = valueRow('Power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4], undefined, `${name}'s curve from low to high: above 1 shows only its peaks, below 1 lifts the faint parts`, () => 1);
       refreshers.push(() => { on.checked = ch().on; colour.style.background = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
       const fit = button('fit', () => actions.fitCustom(r), `fit ${name}'s low and high to the field (1st to 99th percentile)`);
       fit.classList.add('mini');

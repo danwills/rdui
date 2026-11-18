@@ -1,5 +1,5 @@
 // The value ladder: hold the middle mouse button on a slider row (or long-press it on a touch
-// screen) and a ladder of step sizes pops up, 100 at the top down to 0.0001. The row under the
+// screen; a quick middle click instead puts the row's default back) and a ladder of step sizes pops up, 100 at the top down to 0.0001. The row under the
 // pointer is the step; dragging left or right takes steps off or adds them. Changing row carries
 // on from the value reached (as Houdini's ladder). Letting go keeps the value; Esc puts it back.
 // Drags don't stop at the screen's edge: a mouse is locked (hidden, read as movement), and a finger
@@ -12,11 +12,14 @@ export interface LadderTarget {
   range: [number, number];
   /** Hard limits, for sliders that can't go past their ends. */
   clamp?: [number, number];
+  /** A middle click (let go before the ladder opens) puts the default back. */
+  reset?: () => void;
 }
 
 const STEPS = [100, 10, 1, 0.1, 0.01, 0.001, 0.0001];
 const LONG_PRESS = 450; // ms
 const SLOP = 8; // px a long-press may wander
+const MOUSE_HOLD = 200; // ms a middle button is held (or 3 px moved) before the ladder opens; let go sooner, it's a click
 const EDGE = 40; // px from the screen's side where a drag keeps going by itself
 const targets = new WeakMap<Element, LadderTarget>();
 let claimed = -1; // the pointer whose gesture opened a ladder (the slider guard leaves it alone)
@@ -49,6 +52,7 @@ function install() {
   if (installed) return;
   installed = true;
   let pending: { id: number; x: number; y: number; timer: number } | null = null;
+  let mousePending: { id: number; x: number; y: number; t: LadderTarget; timer: number; start: PointerEvent } | null = null;
   const cancelPending = () => {
     if (pending) clearTimeout(pending.timer);
     pending = null;
@@ -62,16 +66,29 @@ function install() {
     if (e.pointerType === 'mouse') {
       if (e.button !== 1) return;
       e.preventDefault(); // no autoscroll or paste
-      open(hit[1], e);
+      const start = e;
+      mousePending = { id: e.pointerId, x: e.clientX, y: e.clientY, t: hit[1], timer: window.setTimeout(() => { mousePending = null; open(hit[1], start); }, MOUSE_HOLD), start };
     } else {
       const start = e;
       pending = { id: e.pointerId, x: e.clientX, y: e.clientY, timer: window.setTimeout(() => { pending = null; open(hit[1], start); }, LONG_PRESS) };
     }
   }, true);
   document.addEventListener('pointermove', (e) => {
+    if (mousePending && e.pointerId === mousePending.id && Math.hypot(e.clientX - mousePending.x, e.clientY - mousePending.y) > 3) {
+      const m = mousePending;
+      clearTimeout(m.timer);
+      mousePending = null;
+      open(m.t, m.start);
+    }
     if (pending && e.pointerId === pending.id && Math.hypot(e.clientX - pending.x, e.clientY - pending.y) > SLOP) cancelPending();
   }, true);
   for (const type of ['pointerup', 'pointercancel']) document.addEventListener(type, (e) => {
+    if (mousePending && (e as PointerEvent).pointerId === mousePending.id) {
+      const m = mousePending;
+      clearTimeout(m.timer);
+      mousePending = null;
+      if (type === 'pointerup') m.t.reset?.();
+    }
     if (pending && (e as PointerEvent).pointerId === pending.id) cancelPending();
   }, true);
   // a middle click on a row isn't a paste or an autoscroll; a long-press isn't a context menu
