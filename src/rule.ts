@@ -16,7 +16,8 @@
 import type { CustomChannel } from './sim';
 import type { Second } from './spectral';
 
-export const MAX_REAGENTS = 12;
+/** Most reagents a rule may have: the brush, smooth and render shaders' per-reagent arrays hold this many (in vec4s of 4). */
+export const MAX_REAGENTS = 32;
 export const MAX_PAINTABLE = 7;
 
 export interface ParamSpec {

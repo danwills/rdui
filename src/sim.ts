@@ -2,7 +2,7 @@ import brushWGSL from './shaders/brush.wgsl?raw';
 import smoothWGSL from './shaders/smooth.wgsl?raw';
 import { COLORMAP_RGB } from './colormaps';
 import renderWGSL from './shaders/render.wgsl?raw';
-import type { CompiledRule, Layout } from './rule';
+import { MAX_REAGENTS, type CompiledRule, type Layout } from './rule';
 import { Spectral } from './spectral';
 
 /** Global params that shape the spectral kernel (see `kernel_` in rule.ts). */
@@ -11,6 +11,13 @@ const KERNEL_PARAMS = [['kernel_sigma', 'sigma1'], ['kernel_b', 'b'], ['kernel_s
 const KERNEL_RADIUS = 'lap_size';
 /** Global params that set the heat mode's diffusion (see `heat1_` in rule.ts). */
 const HEAT_PARAMS = ['heat_D1', 'heat_D2', 'zoom', 'timestep'];
+
+// Uniform layouts (in floats), sized for MAX_REAGENTS: brush.wgsl / smooth.wgsl's Brush (12 header floats, then the
+// per-reagent seed, mask, noise and rest arrays, then 8 param slots) and render.wgsl's View (custom palette: 2 vec4s a reagent)
+const B_SEED = 12, B_MASK = B_SEED + MAX_REAGENTS, B_NOISE = B_MASK + MAX_REAGENTS, B_REST = B_NOISE + MAX_REAGENTS, B_PAINT = B_REST + MAX_REAGENTS;
+const BRUSH_BYTES = (B_PAINT + 8) * 4;
+const V_CUSTOM = 40, V_GRADE = V_CUSTOM + 8 * MAX_REAGENTS;
+const VIEW_BYTES = (V_GRADE + 8) * 4;
 
 export const BrushMode = {
   Seed: 0,
@@ -180,8 +187,8 @@ export class Simulation {
     const uniform = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
     this.infoUniform = device.createBuffer({ size: 16, usage: uniform });
     this.globalsUniform = device.createBuffer({ size: compiled.globalVec4s * 16, usage: uniform });
-    this.brushUniform = device.createBuffer({ size: 272, usage: uniform });
-    this.viewUniform = device.createBuffer({ size: 576, usage: uniform });
+    this.brushUniform = device.createBuffer({ size: BRUSH_BYTES, usage: uniform });
+    this.viewUniform = device.createBuffer({ size: VIEW_BYTES, usage: uniform });
     this.colormaps = colormapBuffer(device);
     this.writeInfo();
     this.globals = new Float32Array(compiled.globalVec4s * 4);
@@ -350,7 +357,7 @@ export class Simulation {
 
   brush(b: BrushStroke) {
     const rule = this.compiled.rule;
-    const buf = new ArrayBuffer(272);
+    const buf = new ArrayBuffer(BRUSH_BYTES);
     const f = new Float32Array(buf);
     const u = new Uint32Array(buf);
     f[0] = b.ax; f[1] = b.ay; f[2] = b.bx; f[3] = b.by;
@@ -364,10 +371,10 @@ export class Simulation {
     f[11] = b.base ?? 0;
     rule.reagents.forEach((_, r) => {
       const seed = rule.seed[r];
-      f[12 + r] = seed ?? 0;
-      f[24 + r] = seed === null || seed === undefined ? 0 : 1;
-      f[36 + r] = rule.seedNoise[r] ?? 0;
-      f[48 + r] = rule.rest[r] ?? 0;
+      f[B_SEED + r] = seed ?? 0;
+      f[B_MASK + r] = seed === null || seed === undefined ? 0 : 1;
+      f[B_NOISE + r] = rule.seedNoise[r] ?? 0;
+      f[B_REST + r] = rule.rest[r] ?? 0;
     });
     if (b.mode === BrushMode.Push) {
       // the momentum's reagents, its mass (-1: none), and the velocity along the stroke (y up, as the rules' y)
@@ -379,16 +386,16 @@ export class Simulation {
       const sp = mo.speed * Math.sign(b.strength) * Math.max(1, Math.abs(b.strength));
       f[6] = Math.min(1, Math.abs(b.strength));
       const v = b.clear || len < 1e-6 ? [0, 0] : [(sp * dx) / len, (-sp * dy) / len];
-      f[12] = v[0]; f[13] = v[1];
-      f[14] = ix(mo.x); f[15] = ix(mo.y); f[16] = ix(mo.mass);
+      f[B_SEED] = v[0]; f[B_SEED + 1] = v[1];
+      f[B_SEED + 2] = ix(mo.x); f[B_SEED + 3] = ix(mo.y); f[B_SEED + 4] = ix(mo.mass);
       // a click (no direction) leaves the momentum be, unless braking
       if (!b.clear && len < 1e-6) return;
     }
     if (b.mode === BrushMode.Smooth) {
       // which param slots to blur: all but the wall flag and a membrane's compartment ids
       const names = this.layout.paramNames;
-      names.forEach((n, i) => (f[60 + i] = i > 0 && n !== rule.membrane?.param ? 1 : 0));
-    } else b.paint.forEach((v, i) => (f[60 + 1 + i] = v));
+      names.forEach((n, i) => (f[B_PAINT + i] = i > 0 && n !== rule.membrane?.param ? 1 : 0));
+    } else b.paint.forEach((v, i) => (f[B_PAINT + 1 + i] = v));
 
     // Smooth: strength 0.5 is one full pass (the blend at 1); above it, more passes per dab, up to 8 at 1
     const smooth = b.mode === BrushMode.Smooth;
@@ -464,7 +471,7 @@ export class Simulation {
   }
 
   render(enc: GPUCommandEncoder, target: GPUTextureView, canvasW: number, canvasH: number, v: ViewOptions) {
-    const buf = new ArrayBuffer(576);
+    const buf = new ArrayBuffer(VIEW_BYTES);
     const u = new Uint32Array(buf);
     const f = new Float32Array(buf);
     u[0] = this.width; u[1] = this.height;
@@ -484,11 +491,11 @@ export class Simulation {
       u[32 + k] = p.distance ? 1 : 0;
     });
     f[36] = v.fleckLow ?? 0; f[37] = v.fleckHigh ?? 1; f[38] = v.fleckGain ?? 1;
-    v.custom?.slice(0, 12).forEach((c, r) => {
-      f.set([c.low, c.high, c.power, c.on ? 1 : 0, ...c.color, 0], 40 + 8 * r);
+    v.custom?.slice(0, MAX_REAGENTS).forEach((c, r) => {
+      f.set([c.low, c.high, c.power, c.on ? 1 : 0, ...c.color, 0], V_CUSTOM + 8 * r);
     });
-    f[136] = v.customContrast ?? 1; f[137] = v.customSaturation ?? 1; f[138] = v.customGamma ?? 1;
-    f[140] = v.showWalls === false ? 0 : 1;
+    f[V_GRADE] = v.customContrast ?? 1; f[V_GRADE + 1] = v.customSaturation ?? 1; f[V_GRADE + 2] = v.customGamma ?? 1;
+    f[V_GRADE + 4] = v.showWalls === false ? 0 : 1;
     this.device.queue.writeBuffer(this.viewUniform, 0, buf);
 
     const pass = enc.beginRenderPass({

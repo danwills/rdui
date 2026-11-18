@@ -1,6 +1,6 @@
 import { PRESETS } from './presets';
 import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, openLoupe } from './fkmap';
-import { paramHint, type RuleDef } from './rule';
+import { MAX_REAGENTS, paramHint, type RuleDef } from './rule';
 import type { CustomChannel } from './sim';
 import { PALETTES, paletteCss } from './palettes';
 import { ladder, onLadderClaim } from './ladder';
@@ -849,7 +849,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     customKey = key;
     const refreshers: (() => void)[] = [];
     const rows: Node[] = [];
-    names.slice(0, 12).forEach((name, r) => {
+    names.slice(0, MAX_REAGENTS).forEach((name, r) => {
       const ch = () => s.custom[r];
       if (!ch()) return;
       const on = el('input', { type: 'checkbox' });

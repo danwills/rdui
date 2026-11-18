@@ -29,7 +29,7 @@ struct View {
   paramBase: vec4<f32>,   // unpainted value of each (outlines mode); for a wall distance field, the wall growth
   paramKind: vec4<u32>,   // 1 = a wall distance field (signed distance in cells, negative inside)
   fleck: vec4<f32>,       // fleck palettes: the range (low, high) a, b and c are mapped through first; z, the intensity lightness and chroma are scaled by
-  custom: array<vec4<f32>, 24>, // custom palette, per reagent: (low, high, power, on), (r, g, b, -)
+  custom: array<vec4<f32>, 64>, // custom palette, per reagent (up to 32): (low, high, power, on), (r, g, b, -)
   customGrade: vec4<f32>,       // custom palette: contrast, saturation, gamma applied to the sum
   showWalls: vec4<f32>,         // x: 1 draws walls, 0 hides them
 };

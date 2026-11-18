@@ -23,10 +23,10 @@ struct Brush {
   slot: f32,
   clear: f32,     // 1 = blur the reagents too
   base: f32,
-  seed: array<vec4<f32>, 3>,
-  seedMask: array<vec4<f32>, 3>,
-  seedNoise: array<vec4<f32>, 3>,
-  rest: array<vec4<f32>, 3>,      // the value new wall cells take
+  seed: array<vec4<f32>, 8>,
+  seedMask: array<vec4<f32>, 8>,
+  seedNoise: array<vec4<f32>, 8>,
+  rest: array<vec4<f32>, 8>,      // the value new wall cells take
   paint: array<vec4<f32>, 2>,     // 1 per param slot to blur (0: leave alone, e.g. a compartment id)
 };
 
@@ -96,7 +96,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   var wallsWide = 0.0;
   var rim = 0.0; // wall cells in a ring 1.5 cells wide around the small disc: none means a speck within it
   var pSum: array<vec4<f32>, 2>;
-  var sSum: array<vec4<f32>, 3>;
+  var sSum: array<vec4<f32>, 8>;
   for (var dy = -R; dy <= R; dy++) {
     for (var dx = -R; dx <= R; dx++) {
       let r2 = f32(dx * dx + dy * dy);

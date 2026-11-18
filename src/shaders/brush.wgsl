@@ -15,10 +15,10 @@ struct Brush {
   slot: f32,      // MODE_SET_PARAM: flat param slot
   clear: f32,     // MODE_SET_PARAM: 1 = reset chemistry to rest
   base: f32,      // MODE_SET_PARAM: the param's unpainted value; MODE_WALL: 2 = a feed wall (else sealed)
-  seed: array<vec4<f32>, 3>,      // seed target per reagent (up to 12)
-  seedMask: array<vec4<f32>, 3>,  // 1 where the seed brush touches that reagent
-  seedNoise: array<vec4<f32>, 3>, // noise amplitude added to the seed target
-  rest: array<vec4<f32>, 3>,      // erase / wall value per reagent
+  seed: array<vec4<f32>, 8>,      // seed target per reagent (up to MAX_REAGENTS, 32)
+  seedMask: array<vec4<f32>, 8>,  // 1 where the seed brush touches that reagent
+  seedNoise: array<vec4<f32>, 8>, // noise amplitude added to the seed target
+  rest: array<vec4<f32>, 8>,      // erase / wall value per reagent
   paint: array<vec4<f32>, 2>,     // per-cell param slot values (slot 0 = wall, ignored)
 };
 
