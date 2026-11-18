@@ -3605,7 +3605,103 @@ export const SMOKE_HISTORY_WAVE = smokeHistory(true);
 /** As SMOKE_HISTORY_WAVE, with the magnified strength capped (m_cap) so the random start doesn't set the wave ringing. */
 export const SMOKE_HISTORY_WAVE_2 = smokeHistory(true, true);
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2];
+/**
+ * Momentum Bubbles (contraptions, step one; Dan's idea): Phase-field Bubbles 13's bubbles without heat or swirl, each
+ * carrying a momentum p = (px, py) (a complex number px + i·py; y up, as the gradients), kept in and spread inside as its
+ * content and heat are (gated px, py and pulled in with a retreating edge). Nothing hidden: a bubble moves because of
+ * what it holds, at velocity p/m (momentum over content), so bubbles that join add their momenta and go at their
+ * content-weighted mean velocity. It moves as buoyancy moved the lava lamp's: the edge tilted out where it faces along
+ * the velocity, in where it faces away, capped at move_max (faster, a bubble leaves its content behind). p_drag slows
+ * every bubble alike (0: they go for ever).
+ */
+export const MOMENTUM_BUBBLES: RuleDef = {
+  name: 'Momentum Bubbles',
+  description: 'Bubbles that carry momentum. Each holds a momentum p = (px, py) (think px + i·py; y up) spread through it '
+    + 'as its content m is, and moves at velocity p/m: so nothing is hidden, a bubble goes because of what it holds, and '
+    + 'two that join add their momenta. Otherwise as Phase-field Bubbles 13 without heat: the edge moves by curvature and '
+    + 'content pressure, bubbles eat a substrate u and keep a gap rather than merge. Seed paints a still bubble; '
+    + 'scenes stamp moving ones. View phi tinted by px.',
+  reagents: ['phi', 'm', 'u', 'g', 'gm', 'mphi', 'px', 'py', 'gpx', 'gpy', 'pxphi', 'pyphi'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.2 },
+    { name: 'D_phi', value: 0.1, min: 0, max: 0.24 },
+    { name: 'well', value: 0.2, min: 0.005, max: 1 },
+    { name: 'D_m', value: 0.2, min: 0, max: 0.24 },
+    { name: 'm_inward', value: 0.2, min: 0, max: 1 },
+    { name: 'leak', value: 0.002, min: 0, max: 0.05 },
+    { name: 'pressure', value: 0.3, min: 0, max: 2 },
+    { name: 'target', value: 1, min: 0.1, max: 4 },
+    { name: 'D_u', value: 0.2, min: 0, max: 0.24 },
+    { name: 'u_feed', value: 0.01, min: 0.001, max: 0.1 },
+    { name: 'u_eat', value: 0.3, min: 0, max: 1 },
+    { name: 'u_edge', value: 0.15, min: 0, max: 1 },
+    { name: 'starve', value: 3, min: 0, max: 20 },
+    { name: 'u_supply', value: 0.3, min: 0.01, max: 1 },
+    { name: 'p_gain', value: 1, min: 0, max: 4 },
+    { name: 'move_max', value: 0.014, min: 0, max: 0.1 },
+    { name: 'p_drag', value: 0, min: 0, max: 0.001 },
+  ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content and momentum spread inside a bubble',
+    m_inward: 'How strongly content and momentum are drawn in with a retreating edge, so a moving bubble keeps them',
+    leak: 'How much content (and momentum) seeps through the open sea; lets small bubbles slowly lose content to big ones',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+    p_gain: 'How far a bubble\'s velocity (p/m) tilts its edge: how fast a given momentum moves it',
+    move_max: 'Top speed (as edge tilt); above ~0.015 a bubble leaves its content behind in a trail of dots',
+    p_drag: 'How fast every bubble\'s momentum fades: 0 and they go for ever',
+  },
+  paintable: [],
+  formula: `// the drive at the edge, as Phase-field Bubbles 13: content pressure (pushing out only with substrate, pulling in
+// always), held back where the substrate is short (between two bubbles), on the edge proper only (phi over 0.1)
+float P = pressure*(m - target)*smoothstep(0.05, 0.15, phi);
+// Momentum moves the edge: the velocity p/m dotted with the outward normal (-grad phi/|grad phi|; y up, as p), so the
+// front grows and the back shrinks; on the edge proper only, capped at move_max
+float gl = sqrt(x_gradient_phi*x_gradient_phi + y_gradient_phi*y_gradient_phi);
+float edge_on = smoothstep(0.05, 0.15, phi)/max(gl, 0.02);
+float mm = max(m, 0.1);
+float move = clamp(-p_gain*(x_gradient_phi*px + y_gradient_phi*py)/mm*edge_on, -move_max, move_max);
+float lambda = clamp(max(P, 0.0)*min(u/u_supply, 1.0) + min(P, 0.0) - starve*max(u_edge - u, 0.0) + move, -0.45, 0.45);
+delta_phi = D_phi*laplacian_phi + well*phi*(1.0 - phi)*(phi - 0.5 + lambda);
+delta_u = D_u*laplacian_u + u_feed*(1.0 - u) - u_eat*phi*u;
+// content: spread inside, held in at the edge, drawn up phi's slope with a retreating edge (both summing to zero)
+delta_m = D_m*0.5*(laplacian_gm + g*laplacian_m - m*laplacian_g) - m_inward*0.5*(laplacian_mphi - phi*laplacian_m + m*laplacian_phi);
+delta_g = (max(smoothstep(0.02, 0.5, phi), leak) - g)/timestep;
+delta_gm = (g*m - gm)/timestep;
+delta_mphi = (m*phi - mphi)/timestep;
+// momentum: carried exactly as content is (so it goes where the content goes, and adds when bubbles join), fading by p_drag
+delta_px = D_m*0.5*(laplacian_gpx + g*laplacian_px - px*laplacian_g) - m_inward*0.5*(laplacian_pxphi - phi*laplacian_px + px*laplacian_phi) - p_drag*px;
+delta_py = D_m*0.5*(laplacian_gpy + g*laplacian_py - py*laplacian_g) - m_inward*0.5*(laplacian_pyphi - phi*laplacian_py + py*laplacian_phi) - p_drag*py;
+delta_gpx = (g*px - gpx)/timestep;
+delta_gpy = (g*py - gpy)/timestep;
+delta_pxphi = (px*phi - pxphi)/timestep;
+delta_pyphi = (py*phi - pyphi)/timestep;`,
+  rest: [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  seed: [1, 3, null, null, null, null, null, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  initial: [
+    { chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    // three bubbles: still, going right, going up-left
+    ...([[0.5, 0.5, 0, 0], [0.25, 0.3, 0.06, 0], [0.75, 0.75, -0.04, 0.04]] as const).flatMap(([cx, cy, vx, vy]): Overlay[] => [
+      { chem: 'phi', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'circle', cx, cy, r: 0.05 } },
+      { chem: 'm', op: 'overwrite', fill: { type: 'constant', value: 10 }, shape: { type: 'circle', cx, cy, r: 0.05 } },
+      { chem: 'px', op: 'overwrite', fill: { type: 'constant', value: vx * 10 }, shape: { type: 'circle', cx, cy, r: 0.05 } },
+      { chem: 'py', op: 'overwrite', fill: { type: 'constant', value: vy * 10 }, shape: { type: 'circle', cx, cy, r: 0.05 } },
+    ]),
+  ],
+  size: { width: 256, height: 256 },
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'px', stepsPerFrame: 200, customOff: ['g', 'gm', 'mphi', 'gpx', 'gpy', 'pxphi', 'pyphi'] },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3616,6 +3712,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
+  ['Contraptions', [MOMENTUM_BUBBLES]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 

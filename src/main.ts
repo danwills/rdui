@@ -1,6 +1,6 @@
 import './style.css';
 import { recordSection } from './record';
-import { inPageTooltips } from './tooltip';
+import { inPageTooltips, noteAt } from './tooltip';
 import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type CustomChannel, type ViewOptions } from './sim';
 import { buildPanel, defaultSettings, el, fmt, HUE_DEFAULTS, hueOffsetFor, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
@@ -1226,7 +1226,8 @@ async function init() {
     drag.x = x;
     drag.y = y;
   });
-  canvas.addEventListener('pointerup', () => {
+  canvas.addEventListener('pointerup', (e) => {
+    if (drag && !drag.alt && s.tool === 'smooth') smoothNudge(e.clientX, e.clientY);
     drag = null;
     if (shapeDrag) {
       const d = shapeDrag;
@@ -1264,6 +1265,22 @@ async function init() {
     s.radius = Math.min(1e6, Math.max(1, Math.round(s.radius * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
     ui.sync();
   }, { passive: false });
+
+  // Smooth's left-drag only rounds off walls and blurs painted params: after a few left-drags on a field with neither
+  // (it changes nothing to see), a note by the pointer suggests the right-drag, which blurs the pattern; once per rule
+  let smoothLeft = 0, smoothHinted = '';
+  async function smoothNudge(x: number, y: number) {
+    if (smoothHinted === ruleId || ++smoothLeft < 3) return;
+    smoothLeft = 0;
+    const { params } = await sim.readRegion(0, 0, sim.width, sim.height);
+    const P4 = sim.layout.P * 4, np = rule.paintable.length;
+    for (let i = 0; i < params.length; i += P4) {
+      if (params[i] > 0.5) return; // a wall
+      for (let k = 1; k <= np; k++) if (params[i + k] !== params[k]) return; // painted params
+    }
+    smoothHinted = ruleId;
+    noteAt(x, y, 'Left-drag smooths walls and painted parameters, and there are none here. Right-drag to blur the pattern itself.');
+  }
 
   async function eyedrop(x: number, y: number) {
     const c = await sim.probe(Math.floor(x), Math.floor(y));

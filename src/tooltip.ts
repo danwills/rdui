@@ -60,3 +60,21 @@ export function inPageTooltips() {
   });
   for (const ev of ['pointerdown', 'wheel', 'keydown', 'blur'] as const) addEventListener(ev, hide, { capture: true, passive: true });
 }
+
+/** A note by the pointer, in the tooltips' style (drawn in the page, as they are), gone after `ms` or at the next press. */
+export function noteAt(x: number, y: number, text: string, ms = 6000) {
+  const note = document.createElement('div');
+  note.className = 'tip';
+  note.textContent = text;
+  document.body.append(note);
+  const r = note.getBoundingClientRect();
+  note.style.left = `${Math.max(4, Math.min(x + 14, innerWidth - r.width - 4))}px`;
+  note.style.top = `${Math.max(4, Math.min(y + 18, innerHeight - r.height - 4))}px`;
+  const done = () => {
+    note.remove();
+    clearTimeout(timer);
+    document.removeEventListener('pointerdown', done, true);
+  };
+  const timer = window.setTimeout(done, ms);
+  document.addEventListener('pointerdown', done, true);
+}
