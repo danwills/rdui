@@ -323,3 +323,16 @@ soft_lamp('Phase-field Bubbles 13: lava lamp (side bars, no wall)', 'pf13-lava-l
           'The soft-band lava lamp with the bands as bars down the sides: a heater on the right and a cooler on the left, '
           'neutral between. Gravity still pulls down and there\'s no wall, so warm bubbles climb the right and cool ones sink '
           'down the left, round and round the wrapping field, crossing over in the swirls. Tint shows temperature.')
+
+# the soft lamp with spots instead of bands: a soft round heater low on the right and a cooler high on the left (a flat
+# centre, a smooth tanh rim), so warm bubbles rise up the right, drift over and sink down the left: a loop
+def soft_spot(value, cx, cy):
+    return {'chem': 'warmth', 'op': 'add', 'fill': {'type': 'bump', 'value': value, 'edge': 16}, 'shape': {'type': 'circle', 'cx': cx, 'cy': cy, 'r': 0.16}}
+sc = json.load(open('scenes/pf13-lava-lamp-swirl.json'))
+rest = [o for o in sc['initial'] if o['chem'] != 'warmth']
+sc.update({'name': 'Phase-field Bubbles 13: lava lamp (soft spots, no wall)',
+           'description': 'The swirling lava lamp with no wall and a soft round heater low on the right and a cooler high on the '
+                          'left, the rest neutral, to stir up a loop: warm bubbles rise up the right, drift over, cool and sink '
+                          'down the left. The field wraps top to bottom. Tint shows temperature.',
+           'walls': [], 'initial': rest[:1] + [soft_spot(1, 0.72, 0.8), soft_spot(-1, 0.28, 0.2)] + rest[1:]})
+write('pf13-lava-lamp-spots.json', sc)
