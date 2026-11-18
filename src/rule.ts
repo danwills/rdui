@@ -3732,7 +3732,47 @@ delta_m = -carry*div_m + D_m`)
     .replace('delta_py = D_m', 'delta_py = -carry*div_py + D_m'),
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2];
+/**
+ * Momentum Bubbles 3 (carried whole): version 2, with the bubble itself (phi) carried along at its velocity too
+ * (carry_phi), so its back edge goes as fast as its front rather than trailing a soft comet tail. Upwind differences (each
+ * cell takes from the side the flow comes from): central ones ripple at a sharp edge, and the well grows ripples into droplets.
+ * Content and momentum go donor-cell too, ungated, so they go where phi goes. ~75x version 1's speed; bubbles that meet
+ * join, adding their momenta. The edge tilt (p_gain) is off by default.
+ */
+export const MOMENTUM_BUBBLES_3: RuleDef = {
+  ...MOMENTUM_BUBBLES_2,
+  name: 'Momentum Bubbles 3 (carried whole)',
+  view: { ...MOMENTUM_BUBBLES.view, stepsPerFrame: 20 },
+  description: MOMENTUM_BUBBLES.description.replace('Bubbles that carry momentum.', 'Bubbles that carry momentum, carried along whole, insides (carry) and edge (carry_phi).'),
+  // the edge's tilt (p_gain) is off: carried whole, the bubble needs no other push
+  params: [...MOMENTUM_BUBBLES_2.params.map((p) => (p.name === 'p_gain' ? { ...p, value: 0 } : p)), { name: 'carry_phi', value: 1, min: 0, max: 4 }],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_2.paramHints,
+    carry_phi: 'How fast the bubble itself (phi) is carried along at its velocity: 1 keeps its back edge up with its insides, so it leaves no tail; 0 leaves only the insides carried',
+  },
+  formula: MOMENTUM_BUBBLES.formula
+    .replace('delta_phi = D_phi*laplacian_phi', `// the velocity p/m (y up, as p), here and next door
+float vx = px/max(m, 0.1);
+float vy = py/max(m, 0.1);
+float evx = east_px/max(east_m, 0.1);
+float wvx = west_px/max(west_m, 0.1);
+float nvy = north_py/max(north_m, 0.1);
+float svy = south_py/max(south_m, 0.1);
+// the bubble carried along at it, upwind
+float adv = max(vx, 0.0)*(phi - west_phi) + min(vx, 0.0)*(east_phi - phi) + max(vy, 0.0)*(phi - south_phi) + min(vy, 0.0)*(north_phi - phi);
+delta_phi = -carry_phi*adv + D_phi*laplacian_phi`)
+    .replace('delta_m = D_m', `// content and momentum carried at it, through each cell's faces, each face taking from the cell the flow comes from
+// (donor cell): the totals are kept exactly, and the content goes where phi goes (gating by g stranded it at the back,
+// where phi had gone and g closed)
+float div_m = max(vx, 0.0)*m + min(evx, 0.0)*east_m - max(wvx, 0.0)*west_m - min(vx, 0.0)*m + max(vy, 0.0)*m + min(nvy, 0.0)*north_m - max(svy, 0.0)*south_m - min(vy, 0.0)*m;
+float div_px = max(vx, 0.0)*px + min(evx, 0.0)*east_px - max(wvx, 0.0)*west_px - min(vx, 0.0)*px + max(vy, 0.0)*px + min(nvy, 0.0)*north_px - max(svy, 0.0)*south_px - min(vy, 0.0)*px;
+float div_py = max(vx, 0.0)*py + min(evx, 0.0)*east_py - max(wvx, 0.0)*west_py - min(vx, 0.0)*py + max(vy, 0.0)*py + min(nvy, 0.0)*north_py - max(svy, 0.0)*south_py - min(vy, 0.0)*py;
+delta_m = -carry*div_m + D_m`)
+    .replace('delta_px = D_m', 'delta_px = -carry*div_px + D_m')
+    .replace('delta_py = D_m', 'delta_py = -carry*div_py + D_m'),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3743,7 +3783,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 

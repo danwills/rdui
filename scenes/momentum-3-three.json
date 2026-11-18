@@ -1,0 +1,16 @@
+{
+ "name": "Momentum Bubbles 3: three",
+ "description": "Three bubbles carried along whole by the momentum they hold (tint: px): one still, one going right, one up-left. They move about 0.06 px a step (their velocity p/m); when the up-left one meets the still one they join, adding their momenta, and drift off together.",
+ "rule": "builtin:42",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 20,
+ "view": {
+  "reagent": "phi",
+  "low": 0,
+  "high": 1,
+  "tint": "px",
+  "tintLow": -0.6,
+  "tintHigh": 0.6
+ }
+}
