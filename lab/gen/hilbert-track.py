@@ -43,7 +43,7 @@ for k in range(ndots):
     cy = fy + k * 3 * dr
     init += [Bump('phi', 1, fx, cy, dr), Bump('m', 10, fx, cy, dr)]  # feathered
 json.dump({'name': f'Contraptions {N}: Hilbert track (order {order}) (Momentum Bubbles 12)',
-           'description': f'A Hilbert-curve track (order {order}, {n * n - 1} gates, each aiming at the next) at {size}²: a dot starts at rest in the bottom-left gate, which launches it; it follows the curve, and ends in a bowl in the last square, which aims everything at its middle (gripping less towards it), where dots gather (one swings out to the frame's edge once on the way in, then settles). Dots are 20 cells across in radius, feathered. Gates: brake, accel {BK}, aim_speed {A}. Gates show as the aim channel in the custom palette.',
+           'description': f'A Hilbert-curve track (order {order}, {n * n - 1} gates, each aiming at the next) at {size}²: a dot starts at rest in the bottom-left gate, which launches it; it follows the curve, and ends in a bowl in the last square, which aims everything at its middle (gripping less towards it), where dots gather (one swings out to the frame’s edge once on the way in, then settles). Dots are radius 20 cells, feathered. Gates: brake, accel {BK}, aim_speed {A}. Gates show as the aim channel in the custom palette.',
            'rule': 'builtin:51', 'size': size, 'start': 'initial', 'stepsPerFrame': 40,
            'globals': {'aim_speed': A, 'brake': BK, 'accel': BK},
            'initial': init, 'view': {'reagent': 'phi', 'low': 0, 'high': 1}}, open(out, 'w'), indent=1)
