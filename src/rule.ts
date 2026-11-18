@@ -3518,7 +3518,7 @@ delta_c = delta_c - stir_c*(fx*x_gradient_c - fy*y_gradient_c) + stir_smooth*0.5
  * ~1e-7), fades and spreads. h can feed back: speeding the smoke's growth (h_to_amp) or its turning (h_to_cs). Reach as
  * Smoke (wide), 1 by default (the plain kernel).
  */
-function smokeHistory(wave: boolean): RuleDef {
+function smokeHistory(wave: boolean, cap = false): RuleDef {
   const waveFormula = wave
     ? `
 // a damped wave (displacement w, velocity wv) the smoke's strength drives; w moves with the new velocity (as in
@@ -3527,7 +3527,7 @@ delta_wv = wave_c2*laplacian_w - wave_damp*wv - wave_spring*w + m_to_wave*m;
 delta_w = wv + delta_wv;`
     : '';
   return {
-    name: wave ? 'Smoke + History + Wave' : 'Smoke + History',
+    name: (wave ? 'Smoke + History + Wave' : 'Smoke + History') + (cap ? ' 2' : ''),
     description:
       'Smoke with a history h of its strength: h builds up where the smoke is strong (its magnitude, magnified by mag_gain), '
       + 'fades and spreads, so it shows where the smoke has been. h can feed back on the smoke\'s growth (h_to_amp) and turning (h_to_cs).'
@@ -3539,6 +3539,7 @@ delta_w = wv + delta_wv;`
       { name: 'reach', value: 1, min: 1, max: 12 },
       { name: 'smoke_clamp', value: 10, min: 0.01, max: 10 },
       { name: 'mag_gain', value: 1e6, min: 0, max: 1e7 },
+      ...(cap ? [{ name: 'm_cap', value: 5e4, min: 1, max: 1e6 }] : []),
       { name: 'h_gain', value: 0.01, min: 0, max: 0.1 },
       { name: 'h_decay', value: 0.01, min: 0, max: 0.1 },
       { name: 'D_h', value: 0.05, min: 0, max: 0.3 },
@@ -3559,6 +3560,7 @@ delta_w = wv + delta_wv;`
       ...SMOKE_HINTS,
       reach: 'How far the smoke\'s neighbours reach, in cells (as Smoke (wide)): 1 is the plain kernel; larger makes larger smoke',
       smoke_clamp: 'Most the smoke (a and b) may reach: keeps feedback from running away',
+      ...(cap ? { m_cap: 'Most the magnified strength may count for: the random start is ~1e6, far stronger than smoke runs, and would kick the history and wave hard (the wave then rings for ~3500 steps)' } : {}),
       mag_gain: 'How much the smoke\'s strength is magnified before the history (and wave) take it up: smoke lives at ~1e-7',
       h_gain: 'How fast the smoke\'s strength builds up the history h',
       h_decay: 'How fast the history h fades',
@@ -3580,7 +3582,7 @@ delta_w = wv + delta_wv;`
     discrete: true,
     reach: 'reach',
     formula: `// the smoke's strength, magnified (it lives at ~1e-7)
-float m = mag_gain*sqrt(a*a + b*b);
+float m = ${cap ? 'min(mag_gain*sqrt(a*a + b*b), m_cap)' : 'mag_gain*sqrt(a*a + b*b)'};
 // the history's feedback, saturating (0 to 1) so it can't run away
 float hn = h/(fabs(h) + h_half);
 float amp_l = amp + h_to_amp*hn${wave ? ' + wave_to_amp*w/(1.0 + fabs(w))' : ''};
@@ -3600,8 +3602,10 @@ delta_h = h_gain*m - h_decay*h + D_h*laplacian_h;${waveFormula}`,
 }
 export const SMOKE_HISTORY = smokeHistory(false);
 export const SMOKE_HISTORY_WAVE = smokeHistory(true);
+/** As SMOKE_HISTORY_WAVE, with the magnified strength capped (m_cap) so the random start doesn't set the wave ringing. */
+export const SMOKE_HISTORY_WAVE_2 = smokeHistory(true, true);
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE];
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3611,7 +3615,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
-  ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_GS, SMOKE_HW]],
+  ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 

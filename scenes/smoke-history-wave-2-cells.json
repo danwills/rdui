@@ -1,0 +1,17 @@
+{
+ "name": "Smoke + History + Wave 2: cells",
+ "description": "As Smoke + History + Wave: cells, with the smoke's strength capped (m_cap 5e4) where it drives the history and wave: the start kicks the wave ~3\u00d7 less, and it settles by ~2500 steps rather than ~3500.",
+ "rule": "builtin:39",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 3,
+ "globals": {
+  "h_push": 0.3,
+  "wave_to_amp": 0.001
+ },
+ "view": {
+  "reagent": "w",
+  "low": 0,
+  "high": 1
+ }
+}
