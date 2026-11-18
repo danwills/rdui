@@ -3701,7 +3701,38 @@ delta_pyphi = (py*phi - pyphi)/timestep;`,
   view: { reagent: 'phi', low: 0, high: 1, tint: 'px', stepsPerFrame: 200, customOff: ['g', 'gm', 'mphi', 'gpx', 'gpy', 'pxphi', 'pyphi'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES];
+/**
+ * Momentum Bubbles 2 (carried insides): version 1, with a bubble's content and momentum carried along at its velocity
+ * p/m (carry), conservatively: content by the flux g·p (content times velocity is p), momentum by g·p·p/m, both gated by
+ * g so nothing is carried out into the sea. The front gains content and pushes out, the back runs short and pulls in:
+ * the bubble goes because its insides go, not only by its edge's tilt, and can go faster without leaving dots.
+ * Central differences from the neighbours (rdui's north is up, as y in p).
+ */
+export const MOMENTUM_BUBBLES_2: RuleDef = {
+  ...MOMENTUM_BUBBLES,
+  name: 'Momentum Bubbles 2 (carried insides)',
+  description: MOMENTUM_BUBBLES.description.replace('Bubbles that carry momentum.', 'Bubbles that carry momentum, their insides carried along with them (carry).'),
+  params: [...MOMENTUM_BUBBLES.params, { name: 'carry', value: 1, min: 0, max: 4 }],
+  paramHints: {
+    ...MOMENTUM_BUBBLES.paramHints,
+    carry: 'How fast a bubble\'s content and momentum are carried along at its velocity (p/m): the front fills and pushes out, the back empties and pulls in, so the bubble goes because its insides go. 0 is version 1 (only the edge\'s tilt moves it)',
+  },
+  formula: MOMENTUM_BUBBLES.formula
+    .replace('delta_m = D_m', `// carried along at the velocity p/m inside the bubble: content by the flux g·p, momentum by g·p·p/m (central differences;
+// north is up, as y in p)
+float ie = east_g/max(east_m, 0.1);
+float iw = west_g/max(west_m, 0.1);
+float in_ = north_g/max(north_m, 0.1);
+float is_ = south_g/max(south_m, 0.1);
+float div_m = 0.5*(east_g*east_px - west_g*west_px) + 0.5*(north_g*north_py - south_g*south_py);
+float div_px = 0.5*(east_px*east_px*ie - west_px*west_px*iw) + 0.5*(north_px*north_py*in_ - south_px*south_py*is_);
+float div_py = 0.5*(east_py*east_px*ie - west_py*west_px*iw) + 0.5*(north_py*north_py*in_ - south_py*south_py*is_);
+delta_m = -carry*div_m + D_m`)
+    .replace('delta_px = D_m', 'delta_px = -carry*div_px + D_m')
+    .replace('delta_py = D_m', 'delta_py = -carry*div_py + D_m'),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3712,7 +3743,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
