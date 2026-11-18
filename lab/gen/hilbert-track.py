@@ -1,7 +1,7 @@
 # Writes a Momentum Bubbles Hilbert-curve track scene:
 #   [DOT=cells] python3 lab/gen/hilbert-track.py ORDER SIZE OUT [dots] [aim_speed] [brake] [N, its Contraptions number: one more than the newest] [end: bowl | trap | corner | loop] [full_at]
 # Contraptions 13: 2 512 OUT 1 0.03 0.002 13; 14: 2 512 OUT 3 0.03 0.002 14 trap 0.6; 15: DOT=14 3 512 OUT 3 0.025 0.002 15 corner 0.45;
-# 16: DOT=14 STRIDE=4 3 512 OUT 16 0.025 0.002 16 loop 0.45; 17: DOT=14 STRIDE=1 3 512 OUT 63 0.025 0.002 17 loop 0.45 (both with a sentence added to the description by hand)
+# 16: DOT=14 STRIDE=4 3 512 OUT 16 0.025 0.002 16 loop 0.45; 17: DOT=14 STRIDE=1 3 512 OUT 63 0.025 0.002 17 loop 0.45 ; 18: DOT=10 STRIDE=1 3 512 OUT 63 0.025 0.002 18 loop 0.45 (16-18 with a sentence added to the description, and 17 and 18 a word to the name, by hand)
 import json, os, sys
 def d2xy(n, d):
     x = y = 0; s = 1; t = d
