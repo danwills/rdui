@@ -164,3 +164,9 @@ src/
    moving the memory layer and letting the pattern regrow at the target; wave steering.
 7. **Framework** — a declarative API that composes widgets into live RD-backed UIs.
 8. **Mobile pass** — alt-action toggle, rotate buttons, pinch radius, slide-up panel.
+
+## License
+
+rdui is free software under the GNU General Public License, version 3 or (at your option)
+any later version (GPL-3.0-or-later): see [LICENSE](LICENSE). Credits for the third-party work it
+includes (Ready, the colour maps, mp4-muxer) are in [NOTICE](NOTICE).

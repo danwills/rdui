@@ -1,6 +1,7 @@
 {
   "name": "rdui",
   "version": "1.0.0",
+  "license": "GPL-3.0-or-later",
   "description": "Reaction-diffusion UI toolkit: contraptions and GUIs built from live RD simulations",
   "scripts": {
     "dev": "vite",

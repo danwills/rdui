@@ -1,0 +1,28 @@
+rdui: a WebGPU reaction-diffusion explorer
+Copyright (C) 2026 Dan Wills
+
+This program is free software: you can redistribute it and/or modify it under the terms of the
+GNU General Public License as published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License (in LICENSE) for more details.
+
+Third-party work included in rdui
+---------------------------------
+
+Ready (https://github.com/GollyGang/ready), GPL-3.0
+  rdui reads Ready's formula language and .vti pattern files, and follows its stencils. The
+  Phyllotaxis rule (src/rule.ts) is ported from Ready's Pennybacker2013 kernel, after
+  Pennybacker & Newell (2013). Some bundled patterns and seeds (patterns/ready, public/vti)
+  derive from Ready's pattern collection.
+
+Colour maps (src/colormaps.ts), via Ready's maps and Enki's colour map atlas:
+  - ColorBrewer (Cynthia A. Brewer, Mark Harrower and The Pennsylvania State University),
+    Apache License 2.0, https://colorbrewer2.org
+  - inferno (Nathaniel J. Smith, Stefan van der Walt and Eric Firing, matplotlib), CC0
+  - terrain (matplotlib), matplotlib license
+  - CET Perceptually Uniform Colour Maps (Peter Kovesi), CC BY 4.0, https://colorcet.com
+
+mp4-muxer (Vanilagy), MIT License, bundled into the built app for video export.
