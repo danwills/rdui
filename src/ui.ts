@@ -143,7 +143,7 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'params', label: 'Params', key: '3', hint: 'paint the paintable parameters · right-click samples' },
   { id: 'wall', label: 'Wall', key: '4', hint: 'no-flux barrier · right-drag removes' },
   { id: 'unwall', label: 'Unwall', key: '8', hint: 'remove walls (e.g. open a door)' },
-  { id: 'smooth', label: 'Smooth', key: '9', hint: 'round off walls and blur painted params · right-drag blurs the pattern too · walls thinner than about a sixth of the brush go' },
+  { id: 'smooth', label: 'Smooth', key: '9', hint: 'round off walls and blur painted params · right-drag blurs the pattern too · walls thinner than about a sixth of the brush go · strength 0.5 is one full pass a dab, up to 8 at 1' },
   { id: 'capture', label: 'Capture', key: '5', hint: 'drag a rectangle to capture it as a stamp' },
   { id: 'stamp', label: 'Stamp', key: '6', hint: 'click to place the selected stamp · Q/E rotate · X mirror' },
   { id: 'probe', label: 'Probe', key: '7', hint: 'drag a rectangle to measure it · right-click a probe removes it' },
@@ -364,7 +364,7 @@ const SETTING_HINTS: Partial<Record<keyof Settings, string>> = {
   customContrast: 'custom palette: contrast about mid-grey (1 = as is)',
   customSaturation: 'custom palette: colourfulness (0 grey, 1 as is, above 1 more vivid)',
   viewMode: 'what the field shows: the reagents, the reagents with painted params outlined, or the painted params alone',
-  radius: 'brush radius, in screen pixels · [ and ]',
+  radius: 'brush radius, in screen pixels · [ and ] · drag past the end or type for more: bigger than the field covers all of it',
   strength: 'how much each dab moves the field toward the target: 1 sets it outright, lower builds up gradually (down to 1e-7, for fields with tiny values); negative pushes away from it',
   hardness: 'the brush edge: 1 sharp, 0 soft and fading out',
   brushShape: 'freehand strokes, straight lines, or circles',
@@ -408,7 +408,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
    * on past the right end keeps going up the same scale (to `limit`), and the box
    * takes any value typed.
    */
-  function logSlider(label: string, key: 'stepsPerFrame', max: number, limit: number) {
+  function logSlider(label: string, key: 'stepsPerFrame' | 'radius', max: number, limit: number, reset: () => number) {
     const input = el('input', { type: 'range', min: '0', max: '1', step: 'any' });
     const num = el('input', { type: 'text', class: 'num', inputmode: 'numeric' });
     const L = Math.log(max);
@@ -436,8 +436,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       if (document.activeElement !== num) num.value = String(s[key]);
     });
     const row = el('label', { class: 'row log', title: SETTING_HINTS[key] ?? label }, el('span', {}, titleCase(label)), input, num);
-    // the rule's own speed, else the app's
-    middleReset(row, () => put(rc.rule().view.stepsPerFrame ?? defaultSettings()[key]));
+    middleReset(row, () => put(reset()));
     return row;
   }
 
@@ -891,7 +890,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       Object.assign(button('', () => actions.toggleUI('fill'), 'hide the panel and fill the screen with the sim (cropped, no black bars) · Back or Esc returns'), { className: 'narrow', innerHTML: '<span>⛶</span>' }),
       button('◧', () => actions.toggleUI('split'), 'hide the panel: the sim and live analysis (3D histogram, histograms, history) side by side, or stacked on a phone · Back or Esc returns')),
     section('Tool', toolRow, toolHint, wallBoxes,
-      slider('radius', 'radius', 1, 80, 1, 0),
+      // past 80 by dragging on or typing: a brush bigger than the field covers all of it
+      logSlider('radius', 'radius', 80, 1e6, () => defaultSettings().radius),
       strengthRow(),
       slider('hardness', 'hardness', 0, 1, 0.01, 2),
       select('shape', 'brushShape', () => [['free', 'freehand'], ['line', 'line (press, drag to the end)'], ['circle', 'circle (press the centre, drag out)']]).row,
@@ -899,7 +899,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel), ruleBody),
     section('Simulation',
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Restart', actions.restart, 'start the rule or scene over from scratch: its own parameters, opening, paint and stamps (Reset keeps your parameters)'), button('Clear chem', actions.clearChemistry, 'C')),
-      logSlider('steps/frame', 'stepsPerFrame', 64, 5000),
+      logSlider('steps/frame', 'stepsPerFrame', 64, 5000, () => rc.rule().view.stepsPerFrame ?? defaultSettings().stepsPerFrame), // the rule's own speed, else the app's
       checkbox('rules set steps/frame', 'ruleSpeed', 'untick to keep your own steps/frame when you load a rule or scene (e.g. to watch a fast one start slowly)'),
       select('grid', 'gridSize', () => [[128, '128²'], [256, '256²'], [512, '512²'], [1024, '1024²'], [2048, '2048²']], () => actions.resize(s.gridSize)).row,
       select('resolution', 'resScale', () => [[1, 'full'], [0.5, '½'], [0.25, '¼'], [0.125, '⅛']], () => actions.resize(s.gridSize)).row,

@@ -1233,7 +1233,7 @@ async function init() {
   canvas.addEventListener('pointerleave', () => (hover = null));
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    s.radius = Math.min(80, Math.max(1, Math.round(s.radius * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
+    s.radius = Math.min(1e6, Math.max(1, Math.round(s.radius * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
     ui.sync();
   }, { passive: false });
 
@@ -1298,8 +1298,9 @@ async function init() {
     if (tool) s.tool = tool.id;
     else if (e.key === ' ') { s.running = !s.running; e.preventDefault(); }
     else if (e.key === '.') { s.running = false; pendingSteps++; }
-    else if (e.key === '[') s.radius = Math.max(1, s.radius - 1);
-    else if (e.key === ']') s.radius = Math.min(80, s.radius + 1);
+    // a step of 15% (at least a cell), so big brushes don't take a hundred presses
+    else if (e.key === '[') s.radius = Math.max(1, Math.min(s.radius - 1, Math.round(s.radius / 1.15)));
+    else if (e.key === ']') s.radius = Math.min(1e6, Math.max(s.radius + 1, Math.round(s.radius * 1.15)));
     else if (e.key === 'f') sim.fillParams(paintValues());
     else if (e.key === 'r') { const f = initialData(sim.width, sim.height); sim.load(f.state, f.params); }
     else if (e.key === 'c') sim.clearChemistry();

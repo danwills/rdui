@@ -370,19 +370,25 @@ export class Simulation {
       const names = this.layout.paramNames;
       names.forEach((n, i) => (f[60 + i] = i > 0 && n !== rule.membrane?.param ? 1 : 0));
     } else b.paint.forEach((v, i) => (f[60 + 1 + i] = v));
-    this.device.queue.writeBuffer(this.brushUniform, 0, buf);
 
+    // Smooth: strength 0.5 is one full pass (the blend at 1); above it, more passes per dab, up to 8 at 1
+    const smooth = b.mode === BrushMode.Smooth;
+    if (smooth) f[6] = Math.max(-1, Math.min(1, 2 * b.strength));
+    const passes = smooth && b.strength > 0.5 ? 1 + Math.round((b.strength - 0.5) * 14) : 1;
+    this.device.queue.writeBuffer(this.brushUniform, 0, buf);
     const enc = this.device.createCommandEncoder();
-    if (b.mode === BrushMode.Smooth) {
-      const src = this.smoothBuffers();
-      enc.copyBufferToBuffer(this.state[this.current], 0, src.state, 0, src.state.size);
-      enc.copyBufferToBuffer(this.params, 0, src.params, 0, src.params.size);
+    for (let n = 0; n < passes; n++) {
+      if (smooth) {
+        const src = this.smoothBuffers();
+        enc.copyBufferToBuffer(this.state[this.current], 0, src.state, 0, src.state.size);
+        enc.copyBufferToBuffer(this.params, 0, src.params, 0, src.params.size);
+      }
+      const pass = enc.beginComputePass();
+      pass.setPipeline(smooth ? this.smoothPipeline! : this.brushPipeline);
+      pass.setBindGroup(0, smooth ? this.smoothGroups![this.current] : this.brushGroups[this.current]);
+      pass.dispatchWorkgroups(Math.ceil(this.width / WG), Math.ceil(this.height / WG));
+      pass.end();
     }
-    const pass = enc.beginComputePass();
-    pass.setPipeline(b.mode === BrushMode.Smooth ? this.smoothPipeline! : this.brushPipeline);
-    pass.setBindGroup(0, b.mode === BrushMode.Smooth ? this.smoothGroups![this.current] : this.brushGroups[this.current]);
-    pass.dispatchWorkgroups(Math.ceil(this.width / WG), Math.ceil(this.height / WG));
-    pass.end();
     this.device.queue.submit([enc.finish()]);
   }
 
