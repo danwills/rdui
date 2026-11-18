@@ -1,0 +1,20 @@
+{
+ "name": "Smoke + History+Wave: arcs",
+ "description": "Strong stirring (stir 0.5), cleanly done (stir_smooth 1): the worms are drawn out into long arcs that sweep along the smoke's flow over a smooth history.",
+ "rule": "builtin:36",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 10,
+ "globals": {
+  "stir": 0.5,
+  "stir_smooth": 1
+ },
+ "view": {
+  "reagent": "c",
+  "low": 0,
+  "high": 1,
+  "tint": "b",
+  "tintLow": 0,
+  "tintHigh": 0.4
+ }
+}

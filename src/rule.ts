@@ -3436,7 +3436,83 @@ delta_h = h_gain*v - h_decay*h + D_h*laplacian_h;`,
   view: { reagent: 'v', low: 0, high: 0.4, tint: 'd', stepsPerFrame: 4, customOff: ['a', 'b', 'c', 'h'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS];
+/** Smoke's kernel with its reagents renamed (a, b, c, d → the given four), for hybrids whose other half uses those names. */
+function renamedSmoke(smooth: boolean, [x, y, div, view]: [string, string, string, string]) {
+  const to: Record<string, string> = { a: x, b: y, c: div, d: view };
+  return smokeFormula(smooth)
+    .replace(/\b(delta|north|north_east|east|south_east|south|south_west|west|north_west)_([abcd])\b/g, (_, op, r) => `${op}_${to[r]}`)
+    .replace(/\b([abcd])\b/g, (r) => to[r]);
+}
+
+/**
+ * Smoke stirring GS History+Wave (a hybrid, Dan's idea): wide smoke (sx, sy; its divergence sdiv, its view sview) runs
+ * alongside Dan's History+Wave Gray-Scott (a, b, history c, wave d with velocity e; its formula and parameter names
+ * as in GS_HISTORY_WAVE). The smoke stirs: a, b and the history c are carried along its flow (averaged over the reach
+ * boxes so it's coherent across a feature), so trails are swept like smoke. The chemistry feeds the smoke: its growth
+ * rises with b, with the history c, and with the wave's displacement from its rest (b_to_smoke, c_to_smoke,
+ * wave_to_smoke). Smoke clamped to ±smoke_clamp.
+ */
+export const SMOKE_HW: RuleDef = {
+  name: 'Smoke + History+Wave',
+  description:
+    'A hybrid: wide smoke stirs Dan\'s GS History+Wave, and it feeds the smoke. The chemistry (a, b) and its history '
+    + 'trail c are carried along the smoke\'s flow (stir, stir_c), so trails are swept like smoke; the smoke grows faster '
+    + 'with b, with the history and with the wave (b_to_smoke, c_to_smoke, wave_to_smoke). The smoke\'s own reagents are '
+    + 'sx, sy (its flow), sdiv and sview.',
+  reagents: ['a', 'b', 'c', 'd', 'e', 'sx', 'sy', 'sdiv', 'sview'],
+  params: [
+    ...GS_HISTORY_WAVE.params,
+    ...SMOKE.params.map((p) => (p.name === 'd_gain' ? { ...p, name: 'sview_gain' } : p)),
+    { name: 'reach', value: 3, min: 1, max: 12 },
+    { name: 'smoke_clamp', value: 1, min: 0.01, max: 10 },
+    { name: 'stir', value: 0.2, min: 0, max: 1 },
+    { name: 'stir_c', value: 1, min: 0, max: 2 },
+    { name: 'stir_smooth', value: 1, min: 0, max: 2 },
+    { name: 'b_to_smoke', value: 0.01, min: -0.05, max: 0.05 },
+    { name: 'c_to_smoke', value: 0, min: -0.05, max: 0.05 },
+    { name: 'wave_to_smoke', value: 0, min: -0.05, max: 0.05 },
+  ],
+  paramHints: {
+    ...GS_HISTORY_WAVE.paramHints,
+    ...Object.fromEntries(Object.entries(SMOKE_HINTS).map(([k, v]) => [k === 'd_gain' ? 'sview_gain' : k, v.replace(/\bd\b/g, 'sview')])),
+    reach: 'How far the smoke\'s neighbours reach, in cells (as Smoke (wide)): its swirls, and the flow that stirs, come out about that many times larger',
+    smoke_clamp: 'Most the smoke (sx and sy) may reach: keeps the chemistry\'s feedback from running away',
+    stir: 'How fast the smoke carries a, b and the history along its flow, in cells a step: 0 leaves the chemistry unstirred',
+    stir_c: 'How much of the stirring the history c gets (1: as much as a and b; 0: trails stay where they were laid)',
+    stir_smooth: 'Smooths the stirred history as it moves (1: as much as an upwind scheme would): damps fine ripples the stirring can leave, at the cost of some sharpness',
+    b_to_smoke: 'How much b speeds the smoke\'s growth: smoke breeds round the spots',
+    c_to_smoke: 'How much the history c speeds the smoke\'s growth: smoke breeds along the trails',
+    wave_to_smoke: 'How much the wave (its displacement from rest) speeds the smoke\'s growth: smoke rides the wakes',
+  },
+  paintable: ['F', 'k', 'stir'],
+  discrete: true,
+  reach: 'reach',
+  formula: `${GS_HISTORY_WAVE.formula}
+// the smoke, its growth raised by the chemistry
+float amp_l = amp + b_to_smoke*b + c_to_smoke*c + wave_to_smoke*(d - wave_DC_value);
+${renamedSmoke(false, ['sx', 'sy', 'sdiv', 'sview']).replace(/amp\*/g, 'amp_l*').replace(/d_gain/g, 'sview_gain').replace('float d2 =', 'a2 = clamp(a2, -smoke_clamp, smoke_clamp);\nb2 = clamp(b2, -smoke_clamp, smoke_clamp);\nfloat d2 =')}
+// the chemistry and its history, carried along the smoke's flow (sx right, sy down; rdui's y_gradient points up), its
+// direction averaged over the nine reach boxes so it's coherent across a feature
+float ma = sx + north_sx + north_east_sx + east_sx + south_east_sx + south_sx + south_west_sx + west_sx + north_west_sx;
+float mb = sy + north_sy + north_east_sy + east_sy + south_east_sy + south_sy + south_west_sy + west_sy + north_west_sy;
+float fl = sqrt(ma*ma + mb*mb) + 1e-30;
+float fx = stir*ma/fl;
+float fy = stir*mb/fl;
+delta_a = delta_a - (fx*x_gradient_a - fy*y_gradient_a);
+delta_b = delta_b - (fx*x_gradient_b - fy*y_gradient_b);
+delta_c = delta_c - stir_c*(fx*x_gradient_c - fy*y_gradient_c) + stir_smooth*0.5*stir*stir_c*laplacian_c;`,
+  size: { width: 256, height: 256 },
+  rest: [0.65, 0, 0, 0, 0, 0, 0, 0, 0],
+  seed: [0.5, 0.25, null, null, null, null, null, null, null],
+  seedNoise: [0, 0.25, 0, 0, 0, 0, 0, 0, 0],
+  initial: [
+    ...GS_HISTORY_WAVE.initial,
+    ...(['sx', 'sy'] as const).map((chem): Overlay => ({ chem, op: 'overwrite', fill: { type: 'white_noise', low: -1, high: 1 }, shape: { type: 'everywhere' } })),
+  ],
+  view: { reagent: 'c', low: 0, high: 1, tint: 'b', stepsPerFrame: 10, customOff: ['d', 'e', 'sx', 'sy', 'sdiv', 'sview'] },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3446,7 +3522,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
-  ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS]],
+  ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
