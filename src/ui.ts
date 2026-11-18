@@ -72,6 +72,8 @@ export interface Settings {
   customContrast: number;
   customSaturation: number;
   customGamma: number;
+  /** Custom palette: room left above each fitted channel's 99th percentile, as a share of its range (peaks show below full, so overlaps don't burn out). */
+  customHeadroom: number;
   /** Custom palette (7): per reagent, fitted, powered, coloured and summed. */
   custom: CustomChannel[];
   stampId: string | null;
@@ -191,6 +193,7 @@ export function defaultSettings(): Settings {
     customContrast: 1.2,
     customSaturation: 1,
     customGamma: 2.5,
+    customHeadroom: 0.25,
     custom: [],
     stampId: null,
     stampRot: 0,
@@ -360,6 +363,7 @@ const SETTING_HINTS: Partial<Record<keyof Settings, string>> = {
   fleckGain: 'fleck palettes: scales lightness and colourfulness (below 1: less washed out)',
   colourBlend: 'custom palette: seconds new colours take to blend in (0 = at once)',
   wanderEvery: 'custom palette: seconds between wander\'s randomises',
+  customHeadroom: 'custom palette: room left above each reagent\'s brightest values when its range is fitted (Auto, settling, Fit, 🎲), as a share of its range: 0.25 shows the brightest 1% at 80%, so overlapping reagents don\'t burn out to white; takes effect at the next fit',
   customGamma: 'custom palette: the summed colour raised to this power first (above 1 darkens the mid-tones)',
   customContrast: 'custom palette: contrast about mid-grey (1 = as is)',
   customSaturation: 'custom palette: colourfulness (0 grey, 1 as is, above 1 more vivid)',
@@ -828,7 +832,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const customBox = el('div', {});
   const gradeRows = el('div', {}, slider('blend (s)', 'colourBlend', 0, 10, 0.1, 1),
     el('div', { class: 'checks' }, checkbox('wander', 'customWander', 'randomise the colours by themselves every so often (each blending in over blend)')),
-    slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2, undefined, () => rc.rule().view.customGamma ?? 2.5),
+    slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('headroom', 'customHeadroom', 0, 2, 0.01, 2), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2, undefined, () => rc.rule().view.customGamma ?? 2.5),
       slider('contrast', 'customContrast', 0.5, 3, 0.01, 2, undefined, () => rc.rule().view.customContrast ?? 1.2),
       slider('saturation', 'customSaturation', 0, 3, 0.01, 2, undefined, () => rc.rule().view.customSaturation ?? 1));
   let customKey = '';

@@ -316,11 +316,12 @@ async function init() {
       return v.sort((p, q) => p - q);
     });
   }
-  /** A channel's 1st-99th percentile, or null if (nearly) uniform for its size (Smoke lives at ~1e-7). */
+  /** A channel's 1st-99th percentile (plus headroom), or null if (nearly) uniform for its size (Smoke lives at ~1e-7). */
   function fitRange(v: number[]): [number, number] | null {
     if (!v.length) return null;
     const lo = v[Math.floor(v.length * 0.01)], hi = v[Math.floor(v.length * 0.99)];
-    return hi - lo > 1e-4 * Math.max(Math.abs(lo), Math.abs(hi)) && hi - lo > 1e-30 ? [lo, hi] : null;
+    // the high end leaves headroom above the field's peaks, so they (and reagents overlapping) don't burn out
+    return hi - lo > 1e-4 * Math.max(Math.abs(lo), Math.abs(hi)) && hi - lo > 1e-30 ? [lo, hi + s.customHeadroom * (hi - lo)] : null;
   }
   /** Fits a custom channel's low and high to its 1st-99th percentile at once; false if (nearly) uniform. */
   function fitChannel(c: CustomChannel, v: number[]) {
