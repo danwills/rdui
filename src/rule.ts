@@ -4071,7 +4071,67 @@ export const MOMENTUM_BUBBLES_12: RuleDef = {
   },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12];
+/**
+ * Momentum Bubbles 13 (trap): version 12, with a trap that collects bubbles and lets them go once it's full enough. The
+ * trap (a still field, stamped as a smooth round hill) brakes everything in it whichever way it's going (trap_brake)
+ * and draws it in up its slope (trap_pull), so bubbles slow, drift inward and stop. It senses how full it is: sense
+ * eases toward phi inside it while spreading fast within it (and not out of it), so each cell holds about the whole
+ * trap's share of bubble. full is a switch with two settled states: thrown once the share passes about full_at, and
+ * back only once it falls below again. While full the trap lets go (no braking or pull) and any aim stamped inside it
+ * (held off until then) launches what it collected. Found (Contraptions 14): three dots run a Hilbert track into the
+ * trap and merge there; at full_at 0.6 it flips once all three are in (~58000 steps), launches the blob east (round
+ * the frame into the first gate), flips back, and the blob runs the curve again and is caught again (~128000): a
+ * repeating collect-and-release. A piece (~1/4) stays behind at each release.
+ */
+export const MOMENTUM_BUBBLES_13: RuleDef = {
+  ...MOMENTUM_BUBBLES_12,
+  name: 'Momentum Bubbles 13 (trap)',
+  reagents: [...MOMENTUM_BUBBLES_12.reagents, 'trap', 'sense', 'tsense', 'full'],
+  rest: [...MOMENTUM_BUBBLES_12.rest, 0, 0, 0, 0],
+  seed: [...MOMENTUM_BUBBLES_12.seed, null, null, null, null],
+  seedNoise: [...MOMENTUM_BUBBLES_12.seedNoise, 0, 0, 0, 0],
+  params: [
+    ...MOMENTUM_BUBBLES_12.params,
+    { name: 'trap_brake', value: 0.003, min: 0, max: 0.05 },
+    { name: 'trap_pull', value: 0.001, min: 0, max: 0.01 },
+    { name: 'D_sense', value: 0.2, min: 0, max: 0.24 },
+    { name: 'sense_rate', value: 0.0002, min: 0, max: 0.005 },
+    { name: 'full_at', value: 0.25, min: 0, max: 1 },
+    { name: 'full_gain', value: 20, min: 1, max: 100 },
+    { name: 'full_rate', value: 0.02, min: 0, max: 0.2 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_12.paramHints,
+    trap_brake: 'How fast a trap brakes whatever is in it, whichever way it\'s going (times the trap\'s strength)',
+    trap_pull: 'How hard a trap draws bubbles in, up its slope toward its middle',
+    D_sense: 'How fast what a trap senses spreads through it (not out of it): faster makes every cell hold the whole trap\'s share',
+    sense_rate: 'How fast a trap\'s sense follows the bubbles in it: slower averages over more of the trap',
+    full_at: 'The share of a trap filled with bubble at which it switches to full and lets go',
+    full_gain: 'How sharply the full switch responds: it throws at about full_at + 0.5/full_gain and goes back at about full_at − 0.5/full_gain',
+    full_rate: 'How fast the full switch flips once thrown',
+  },
+  formula: MOMENTUM_BUBBLES_12.formula
+    .replace('float on = min(al, 1.0);', `// the trap: holding (until full), it brakes and draws in; any aim inside it (the release) acts once it's full
+float hold = trap*(1.0 - full);
+float on = min(al, 1.0)*(1.0 - hold);`)
+    .replace('delta_px = (1.0 - on)*renorm*rx', 'delta_px = (1.0 - on)*(1.0 - hold)*renorm*rx - trap_brake*hold*px + trap_pull*hold*m*x_gradient_trap')
+    .replace('delta_py = (1.0 - on)*renorm*ry', 'delta_py = (1.0 - on)*(1.0 - hold)*renorm*ry - trap_brake*hold*py + trap_pull*hold*m*y_gradient_trap')
+    .replace('+ on*brake*(pl - s);', '+ on*brake*(pl - s) - trap_brake*hold*s;')
+    + `
+// the trap: still, as stamped
+delta_trap = 0.0;
+// what it senses: the share of it the bubbles fill, spread fast within it (and not out of it), so each cell holds about
+// the whole trap's share
+delta_sense = D_sense*0.5*(laplacian_tsense + trap*laplacian_sense - sense*laplacian_trap) + sense_rate*trap*(phi - sense);
+delta_tsense = (trap*sense - tsense)/timestep;
+// full: a switch settling at 0 or 1, thrown once the share passes full_at, back once it falls below
+float lam = clamp(full_gain*(sense - full_at), -0.6, 0.6);
+// (and nudged off 0 or 1 once the share is past either way, as those are resting points too)
+delta_full = full_rate*trap*(full*(1.0 - full)*(full - 0.5 + lam) + max(lam - 0.5, 0.0)*(1.0 - full) + min(lam + 0.5, 0.0)*full);`,
+  view: { ...MOMENTUM_BUBBLES_12.view, customOff: [...MOMENTUM_BUBBLES_12.view.customOff!, 'tsense', 'sense'] },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -4082,7 +4142,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
