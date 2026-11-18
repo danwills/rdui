@@ -146,6 +146,8 @@ export interface RuleDef {
    * takes both channels.
    */
   laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
+  /** The formula is a whole step (a map, as Ready kernel rules are), so it is never split into substeps at small feature sizes. */
+  discrete?: boolean;
   /** Grid size the rule was authored for (imports). */
   size?: { width: number; height: number };
   /** Where it came from, e.g. a .vti file name. */
@@ -3276,15 +3278,7 @@ delta_b = (b2 - b)/timestep;
 delta_c = (c2 - c)/timestep;
 delta_d = (d2 - d)/timestep;`;
 
-/** Ready's starting pattern for the Smoke files: two bars and a disc of b, with a the same (y flipped for rdui). */
-const SMOKE_INITIAL: Overlay[] = ['b', 'a'].flatMap((chem) => [
-  { chem, op: 'overwrite', fill: { type: 'constant', value: 0.7 }, shape: { type: 'rectangle', x0: 0.2, y0: 0.2, x1: 0.4, y1: 0.8 } },
-  { chem, op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'rectangle', x0: 0.55, y0: 0.7, x1: 0.8, y1: 0.8 } },
-  { chem, op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'circle', cx: 0.7, cy: 0.2, r: 0.1 } },
-] as Overlay[]);
-
 const SMOKE_HINTS: Record<string, string> = {
-  timestep: 'Ready\'s kernel is a whole step per update: keep at 1 (lower takes part of each step)',
   cs: 'How hard the vector field turns where it curls: higher swirls more tightly',
   ws: 'How fast a spreads along x and b along y: higher smooths the smoke more',
   amp: 'Growth per step: above 1 the field strengthens until the turning and spreading hold it',
@@ -3302,7 +3296,6 @@ export const SMOKE: RuleDef = {
     + 'and wind round each other. Exact to the Ready kernel (Ready\'s y up, mirrored for rdui), not scaled by cell size.',
   reagents: ['a', 'b', 'c', 'd'],
   params: [
-    { name: 'timestep', value: 1, min: 0, max: 1 },
     { name: 'cs', value: 0.256, min: 0, max: 1 },
     { name: 'ws', value: 0.128, min: 0, max: 0.2 },
     { name: 'amp', value: 1.001, min: 0.99, max: 1.01 },
@@ -3313,14 +3306,15 @@ export const SMOKE: RuleDef = {
   ],
   paramHints: SMOKE_HINTS,
   paintable: ['cs', 'amp'],
+  discrete: true,
   formula: smokeFormula(false),
   size: { width: 1024, height: 512 },
   rest: [0, 0, 0, 0],
   seed: [1, 1, null, null],
   seedNoise: [0, 0, 0, 0],
-  initial: SMOKE_INITIAL,
+  initial: (['a', 'b'] as const).map((chem): Overlay => ({ chem, op: 'overwrite', fill: { type: 'white_noise', low: -1, high: 1 }, shape: { type: 'everywhere' } })),
   // as Ready showed it (its d): the smoke settles at a ~ 1e-7, magnified by d_gain
-  view: { reagent: 'd', low: -1.5, high: 4, stepsPerFrame: 16 },
+  view: { reagent: 'd', low: -1.5, high: 4, stepsPerFrame: 3 },
 };
 
 export const SMOKE_SMOOTH: RuleDef = {
@@ -3331,7 +3325,7 @@ export const SMOKE_SMOOTH: RuleDef = {
     + 'vector\'s direction rather than the signs of a and b, so it has no favoured axes, and a and b are clamped to ±1.',
   params: SMOKE.params.map((p) => p.name === 'lps' ? { ...p, value: 0.034 } : p.name === 'lps2' ? { ...p, value: -0.08 } : p),
   formula: smokeFormula(true),
-  view: { reagent: 'd', low: -300, high: 300, stepsPerFrame: 16 },
+  view: { reagent: 'd', low: -300, high: 300, stepsPerFrame: 3 },
 };
 
 export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH];

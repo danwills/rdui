@@ -1,0 +1,105 @@
+{
+ "name": "Smoke: Ready's start",
+ "description": "Smoke (Flux-Curl) from the starting shapes in Dan's smoke.vti (two bars and a disc): they flare, then mostly fade, leaving a little smoke. Seed to stir it up again.",
+ "rule": "builtin:32",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 3,
+ "globals": {},
+ "walls": [],
+ "initial": [
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.2,
+    "y0": 0.2,
+    "x1": 0.4,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.55,
+    "y0": 0.7,
+    "x1": 0.8,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.2,
+    "r": 0.1
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.2,
+    "y0": 0.2,
+    "x1": 0.4,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.55,
+    "y0": 0.7,
+    "x1": 0.8,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.2,
+    "r": 0.1
+   }
+  }
+ ],
+ "view": {
+  "reagent": "d",
+  "low": -1.5,
+  "high": 4
+ }
+}

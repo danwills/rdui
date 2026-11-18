@@ -115,7 +115,7 @@ const WG = 8;
  */
 /** Whether a rule's diffusion is unconditionally stable (exact spectral operators), so its grid can be made finer without shorter steps. */
 export function stableAtAnySpacing(c: CompiledRule) {
-  return ['heat', 'kernel', 'propagator'].includes(c.spectral?.second ?? '');
+  return !!c.rule.discrete || ['heat', 'kernel', 'propagator'].includes(c.spectral?.second ?? '');
 }
 
 export class Simulation {
