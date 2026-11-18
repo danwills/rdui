@@ -1,0 +1,17 @@
+{
+ "name": "Smoke + Gray-Scott: ribbons",
+ "description": "Strong stirring (stir 0.5): where the smoke flows the spots are drawn out into long parallel ribbons that wrap round its swirls; calm patches stay spotty.",
+ "rule": "builtin:35",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 4,
+ "globals": {
+  "stir": 0.5,
+  "v_to_amp": 0.01
+ },
+ "view": {
+  "reagent": "v",
+  "low": 0,
+  "high": 0.4
+ }
+}

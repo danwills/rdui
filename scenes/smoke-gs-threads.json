@@ -1,0 +1,17 @@
+{
+ "name": "Smoke + Gray-Scott: threads",
+ "description": "Strong feedback (v_to_amp 0.05): the smoke grows fastest round the spots, and stirs them hardest there; most go, and a few long threads sweep about the field.",
+ "rule": "builtin:35",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 4,
+ "globals": {
+  "stir": 0.3,
+  "v_to_amp": 0.05
+ },
+ "view": {
+  "reagent": "v",
+  "low": 0,
+  "high": 0.4
+ }
+}

@@ -3366,7 +3366,77 @@ export const SMOKE_WIDE: RuleDef = {
   view: { reagent: 'd', low: -4, high: 4, stepsPerFrame: 3, customAuto: true },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE];
+/**
+ * Smoke stirring Gray-Scott (a hybrid, Dan's idea): the Smoke kernel (a, b, c, d as in SMOKE) runs alongside Gray-Scott
+ * (u, v) and a history h of v. The smoke stirs the chemistry: u and v are carried along its flow's direction (normalised,
+ * so it works at any smoke amplitude) at `stir` cells a step. The chemistry feeds the smoke: its growth rises where v is
+ * (v_to_amp) and where v has been (h_to_amp), so smoke breeds round the spots and their trails. The smoke is clamped
+ * to ±smoke_clamp so the feedback can't run away. Ready's y is up, the smoke's b is down the screen: the flow is (a, b)
+ * in rdui's y-down terms, and rdui's y_gradient points up.
+ */
+export const SMOKE_GS: RuleDef = {
+  name: 'Smoke + Gray-Scott',
+  description:
+    'A hybrid: the Smoke kernel stirs Gray-Scott, and Gray-Scott feeds the smoke. u and v are carried along the smoke\'s flow '
+    + '(its direction, at `stir` cells a step); where v is, and where it has been (the history h), the smoke grows faster '
+    + '(v_to_amp, h_to_amp), so smoke breeds round the spots and their trails and stirs them in turn. The smoke is the wide '
+    + 'kind (reach), so its flow is coherent over several spots.',
+  reagents: ['a', 'b', 'c', 'd', 'u', 'v', 'h'],
+  params: [
+    ...SMOKE.params,
+    { name: 'reach', value: 4, min: 1, max: 12 },
+    { name: 'smoke_clamp', value: 1, min: 0.01, max: 10 },
+    { name: 'D_u', value: 0.3, min: 0, max: 0.37 },
+    { name: 'D_v', value: 0.15, min: 0, max: 0.37 },
+    { name: 'F', value: 0.0367, min: 0, max: 0.1 },
+    { name: 'k', value: 0.0649, min: 0.03, max: 0.075 },
+    { name: 'stir', value: 0.2, min: 0, max: 1 },
+    { name: 'v_to_amp', value: 0.01, min: -0.05, max: 0.05 },
+    { name: 'h_gain', value: 0.01, min: 0, max: 0.1 },
+    { name: 'h_decay', value: 0.002, min: 0, max: 0.05 },
+    { name: 'D_h', value: 0.05, min: 0, max: 0.3 },
+    { name: 'h_to_amp', value: 0, min: -0.05, max: 0.05 },
+  ],
+  paramHints: {
+    ...SMOKE_HINTS,
+    reach: 'How far the smoke\'s neighbours reach, in cells (as Smoke (wide)): its swirls, and the flow that stirs the chemistry, come out about that many times larger',
+    smoke_clamp: 'Most the smoke (a and b) may reach: keeps the chemistry\'s feedback from running away',
+    D_u: 'How fast the substrate u spreads', D_v: 'How fast the activator v spreads',
+    F: 'Gray-Scott feed: how fast u is topped up (and v washed out)', k: 'Gray-Scott kill: how fast v decays',
+    stir: 'How fast the smoke carries u and v along its flow, in cells a step: 0 leaves Gray-Scott unstirred',
+    v_to_amp: 'How much v speeds the smoke\'s growth: smoke breeds round the spots (negative: spots smother it)',
+    h_gain: 'How fast v builds up the history h', h_decay: 'How fast the history h fades', D_h: 'How fast the history h spreads',
+    h_to_amp: 'How much the history h speeds the smoke\'s growth: smoke breeds along the spots\' trails',
+  },
+  paintable: ['F', 'k', 'stir'],
+  discrete: true,
+  reach: 'reach',
+  formula: `float amp_l = amp + v_to_amp*v + h_to_amp*h;
+${smokeFormula(false).replace(/amp\*/g, 'amp_l*').replace('float d2 =', 'a2 = clamp(a2, -smoke_clamp, smoke_clamp);\nb2 = clamp(b2, -smoke_clamp, smoke_clamp);\nfloat d2 =')}
+// the chemistry, carried along the smoke's flow (a right, b down; rdui's y_gradient points up): its direction averaged
+// over the nine boxes the neighbours are (reach wide), so it's coherent across a spot rather than flipping cell to cell
+float ma = a + north_a + north_east_a + east_a + south_east_a + south_a + south_west_a + west_a + north_west_a;
+float mb = b + north_b + north_east_b + east_b + south_east_b + south_b + south_west_b + west_b + north_west_b;
+float fl = sqrt(ma*ma + mb*mb) + 1e-30;
+float fx = stir*ma/fl;
+float fy = stir*mb/fl;
+delta_u = D_u*laplacian_u - u*v*v + F*(1.0 - u) - (fx*x_gradient_u - fy*y_gradient_u);
+delta_v = D_v*laplacian_v + u*v*v - (F + k)*v - (fx*x_gradient_v - fy*y_gradient_v);
+delta_h = h_gain*v - h_decay*h + D_h*laplacian_h;`,
+  size: { width: 512, height: 512 },
+  rest: [0, 0, 0, 0, 1, 0, 0],
+  seed: [null, null, null, null, 0.5, 0.25, null],
+  seedNoise: [0, 0, 0, 0, 0, 0.25, 0],
+  initial: [
+    ...(['a', 'b'] as const).map((chem): Overlay => ({ chem, op: 'overwrite', fill: { type: 'white_noise', low: -1, high: 1 }, shape: { type: 'everywhere' } })),
+    { chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'u', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'spots', count: 40, minSize: 3, maxSize: 8, seed: 1 } },
+    { chem: 'v', op: 'overwrite', fill: { type: 'white_noise', low: 0.25, high: 0.35 }, shape: { type: 'spots', count: 40, minSize: 3, maxSize: 8, seed: 1 } },
+  ],
+  view: { reagent: 'v', low: 0, high: 0.4, tint: 'd', stepsPerFrame: 4, customOff: ['a', 'b', 'c', 'h'] },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3376,7 +3446,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
-  ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE]],
+  ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 

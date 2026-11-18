@@ -1,0 +1,17 @@
+{
+ "name": "Smoke + Gray-Scott: streaks",
+ "description": "Gentle stirring (stir 0.2) and no feedback: the mitosis spots drift with the smoke and line up into short streaks along its flow.",
+ "rule": "builtin:35",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 4,
+ "globals": {
+  "stir": 0.2,
+  "v_to_amp": 0
+ },
+ "view": {
+  "reagent": "v",
+  "low": 0,
+  "high": 0.4
+ }
+}
