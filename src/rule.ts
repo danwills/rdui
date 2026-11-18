@@ -234,8 +234,18 @@ export function translateFormula(formula: string, known: Set<string>): { code: s
 
 // --- shader generation
 
-/** Neighbourhood operators a formula can use on any reagent, as in Ready. */
-const STENCIL_OPS = ['laplacian', 'bilaplacian', 'x_gradient', 'y_gradient', 'gradient_mag_squared'];
+
+/**
+ * Single neighbours (rdui's own, not Ready's), as they look on screen: north_a is a in the cell above, and so on, for
+ * hand-written stencils (ports of Ready kernel rules). A wall neighbour reads as the cell itself, as in the others.
+ */
+const NEIGHBOURS: [string, number, number][] = [
+  ['north', 0, -1], ['north_east', 1, -1], ['east', 1, 0], ['south_east', 1, 1],
+  ['south', 0, 1], ['south_west', -1, 1], ['west', -1, 0], ['north_west', -1, -1],
+];
+
+/** Neighbourhood operators a formula can use on any reagent, as in Ready (plus the single neighbours). */
+const STENCIL_OPS = ['laplacian', 'bilaplacian', 'x_gradient', 'y_gradient', 'gradient_mag_squared', ...NEIGHBOURS.map((n) => n[0])];
 
 /** Ready's 21-point bilaplacian, RotationallySymmetric5x5(0, 1, 1, -2, -10, 36) / 3. */
 const BILAP_5X5 = [
@@ -255,6 +265,7 @@ const STENCILS: { op: string; v: string; points: [number, number, number][]; div
   { op: 'bilaplacian', v: 'BL', div: 3, dxPower: 4, points: BILAP_5X5.flatMap((row, j) => row.map((w, i) => [i - 2, j - 2, w] as [number, number, number])).filter((p) => p[2] !== 0) },
   { op: 'x_gradient', v: 'GX', div: 2, dxPower: 1, points: [[1, 0, 1], [-1, 0, -1]] },
   { op: 'y_gradient', v: 'GY', div: 2, dxPower: 1, points: [[0, -1, 1], [0, 1, -1]] },
+  ...NEIGHBOURS.map(([op, dx, dy]) => ({ op, v: `Q${op.split('_').map((w) => w[0].toUpperCase()).join('')}`, div: 1, dxPower: 0, points: [[dx, dy, 1]] as [number, number, number][] })),
 ];
 
 export interface CompiledRule {
@@ -3229,7 +3240,101 @@ delta_psi = -psi_drift*x_gradient_psi;`,
   view: { reagent: 'phi', low: 0, high: 1, tint: 'T', customOff: ['Tphi', 'warmth', 'psi'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13];
+/**
+ * Dan's Smoke (Ready, Patterns/Smoke, rule "Flux-Curl"): an OpenCL kernel rule, ported by hand with the single-neighbour
+ * operators. (a, b) is a vector field; each step it grows a little (amp), spreads a along x and b along y (ws), is pushed
+ * by the Laplacian of c, and is turned by an angle set by its own curl, cs·sign(curl)·|curl|^sp. c is minus its
+ * divergence; d is only for viewing (Ready's names: the kernel calls c p and d c). Ready's y axis points up, so its north is rdui's south (and so on): the stencils
+ * are mirrored to match, so a pattern runs as it did there. smoothMonoid is the later version: the Laplacian push
+ * follows the vector's direction (cos θ, sin θ) instead of the signs of a and b, and a and b are clamped to ±1.
+ */
+const smokeFormula = (smooth: boolean) => `// Ready's kernel, with its north/south swapped for rdui's y-down screen
+float s2 = 0.70710678;
+float curl = south_a - north_a - east_b + west_b + s2*(south_west_a + south_west_b) + s2*(south_east_a - south_east_b)
+  + s2*(north_west_b - north_west_a) - s2*(north_east_b + north_east_a);
+float turn = cs*sign(curl)*pow(fabs(curl), sp);
+float wds = 2.0 + 4.0*s2;
+float wa = west_a + east_a + s2*(north_west_a + north_east_a + south_east_a + south_west_a) - wds*a;
+float wb = north_b + south_b + s2*(north_west_b + north_east_b + south_east_b + south_west_b) - wds*b;
+float lap_c = (4.0*(north_c + south_c + east_c + west_c) + north_east_c + north_west_c + south_east_c + south_west_c - 20.0*c)/6.0;
+float c2 = north_b - south_b - east_a + west_a + s2*(south_west_a - south_west_b) - s2*(south_east_a + south_east_b)
+  + s2*(north_west_a + north_west_b) + s2*(north_east_b - north_east_a);
+${smooth
+    ? `float mag = sqrt(a*a + b*b);
+float th = atan2(b, a);
+float ta = amp*a + ws*wa - lps*cos(th)*lap_c + lps2*mag*cos(th)*c2;
+float tb = amp*b + ws*wb - lps*sin(th)*lap_c + lps2*mag*sin(th)*c2;`
+    : `float ta = amp*a + ws*wa - lps*sign(a)*lap_c + lps2*a*c2;
+float tb = amp*b + ws*wb - lps*sign(b)*lap_c + lps2*b*c2;`}
+float a2 = ta*cos(turn) - tb*sin(turn);
+float b2 = ta*sin(turn) + tb*cos(turn);
+${smooth ? `a2 = clamp(a2, -1.0, 1.0);
+b2 = clamp(b2, -1.0, 1.0);
+` : ''}float d2 = d_gain*(west_a + east_a + north_b + south_b + 2.0*s2*(north_west_a + north_west_b + south_east_a + south_east_b));
+delta_a = (a2 - a)/timestep;
+delta_b = (b2 - b)/timestep;
+delta_c = (c2 - c)/timestep;
+delta_d = (d2 - d)/timestep;`;
+
+/** Ready's starting pattern for the Smoke files: two bars and a disc of b, with a the same (y flipped for rdui). */
+const SMOKE_INITIAL: Overlay[] = ['b', 'a'].flatMap((chem) => [
+  { chem, op: 'overwrite', fill: { type: 'constant', value: 0.7 }, shape: { type: 'rectangle', x0: 0.2, y0: 0.2, x1: 0.4, y1: 0.8 } },
+  { chem, op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'rectangle', x0: 0.55, y0: 0.7, x1: 0.8, y1: 0.8 } },
+  { chem, op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'circle', cx: 0.7, cy: 0.2, r: 0.1 } },
+] as Overlay[]);
+
+const SMOKE_HINTS: Record<string, string> = {
+  timestep: 'Ready\'s kernel is a whole step per update: keep at 1 (lower takes part of each step)',
+  cs: 'How hard the vector field turns where it curls: higher swirls more tightly',
+  ws: 'How fast a spreads along x and b along y: higher smooths the smoke more',
+  amp: 'Growth per step: above 1 the field strengthens until the turning and spreading hold it',
+  sp: 'Power on the curl in the turning angle: low turns almost evenly wherever there is curl, high only where it is strong',
+  lps: 'How hard the field is pushed by the Laplacian of c (its divergence): higher makes sharper ridges',
+  lps2: 'How much the field grows (or, negative, shrinks) where it converges',
+  d_gain: 'Scale of d, the viewing channel (it doesn\'t act back): the smoke fades to tiny values, so it is shown magnified',
+};
+
+export const SMOKE: RuleDef = {
+  name: 'Smoke (Flux-Curl)',
+  description:
+    'Dan\'s Smoke from Ready (a kernel rule, ported): a vector field (a, b) that grows a little each step, spreads a along x and b '
+    + 'along y, is pushed by the Laplacian of its divergence c, and turns by an angle set by its own curl. Swirls of smoke roll up '
+    + 'and wind round each other. Exact to the Ready kernel (Ready\'s y up, mirrored for rdui), not scaled by cell size.',
+  reagents: ['a', 'b', 'c', 'd'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1 },
+    { name: 'cs', value: 0.256, min: 0, max: 1 },
+    { name: 'ws', value: 0.128, min: 0, max: 0.2 },
+    { name: 'amp', value: 1.001, min: 0.99, max: 1.01 },
+    { name: 'sp', value: 0.2, min: 0, max: 2 },
+    { name: 'lps', value: 0.04, min: 0, max: 0.1 },
+    { name: 'lps2', value: -0.01, min: -0.1, max: 0.1 },
+    { name: 'd_gain', value: 1e6, min: 0, max: 1e7 },
+  ],
+  paramHints: SMOKE_HINTS,
+  paintable: ['cs', 'amp'],
+  formula: smokeFormula(false),
+  size: { width: 1024, height: 512 },
+  rest: [0, 0, 0, 0],
+  seed: [1, 1, null, null],
+  seedNoise: [0, 0, 0, 0],
+  initial: SMOKE_INITIAL,
+  // as Ready showed it (its d): the smoke settles at a ~ 1e-7, magnified by d_gain
+  view: { reagent: 'd', low: -1.5, high: 4, stepsPerFrame: 16 },
+};
+
+export const SMOKE_SMOOTH: RuleDef = {
+  ...SMOKE,
+  name: 'Smoke (smooth monoid)',
+  description:
+    'Dan\'s later Smoke from Ready (smoke-smooth_monoid, ported): as Flux-Curl, but the push from the Laplacian of c follows the '
+    + 'vector\'s direction rather than the signs of a and b, so it has no favoured axes, and a and b are clamped to ±1.',
+  params: SMOKE.params.map((p) => p.name === 'lps' ? { ...p, value: 0.034 } : p.name === 'lps2' ? { ...p, value: -0.08 } : p),
+  formula: smokeFormula(true),
+  view: { reagent: 'd', low: -300, high: 300, stepsPerFrame: 16 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3239,6 +3344,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
+  ['Smoke', [SMOKE, SMOKE_SMOOTH]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 

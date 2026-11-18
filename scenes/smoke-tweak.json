@@ -1,0 +1,108 @@
+{
+ "name": "Smoke: tweak (on a bit)",
+ "description": "Dan's smoke-tweak_onabit from Ready: gentler turning (cs 0.1256) and much slower growth (amp 1.00029), so the smoke settles into faint, long wisps.",
+ "rule": "builtin:32",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 16,
+ "globals": {
+  "cs": 0.1256,
+  "amp": 1.00029
+ },
+ "walls": [],
+ "initial": [
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.2,
+    "y0": 0.2,
+    "x1": 0.4,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.55,
+    "y0": 0.7,
+    "x1": 0.8,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.2,
+    "r": 0.1
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.2,
+    "y0": 0.2,
+    "x1": 0.4,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.55,
+    "y0": 0.7,
+    "x1": 0.8,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.2,
+    "r": 0.1
+   }
+  }
+ ],
+ "view": {
+  "reagent": "d",
+  "low": -3,
+  "high": 2
+ }
+}

@@ -1,0 +1,112 @@
+{
+ "name": "Smoke: ribbons",
+ "description": "Dan's smoke-tweak_onabit_bigg_twiddlez_squareyThing_collapsers_sailing_ribbons from Ready: faster growth (amp 1.00529) and a near-linear turn (sp 1.028), so the field holds at full strength (a ~ \u00b12) in busy curling ribbons and vortices. d is shown at gain 1 (Ready used 1000).",
+ "rule": "builtin:32",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 16,
+ "globals": {
+  "cs": 0.1256,
+  "amp": 1.00529,
+  "sp": 1.028,
+  "lps": 0.0328,
+  "lps2": -0.002,
+  "d_gain": 1
+ },
+ "walls": [],
+ "initial": [
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.2,
+    "y0": 0.2,
+    "x1": 0.4,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.55,
+    "y0": 0.7,
+    "x1": 0.8,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.2,
+    "r": 0.1
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.2,
+    "y0": 0.2,
+    "x1": 0.4,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0.55,
+    "y0": 0.7,
+    "x1": 0.8,
+    "y1": 0.8
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.2,
+    "r": 0.1
+   }
+  }
+ ],
+ "view": {
+  "reagent": "d",
+  "low": -12,
+  "high": 13
+ }
+}
