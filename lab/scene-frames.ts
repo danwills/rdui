@@ -8,7 +8,7 @@ import { makeLab, log, saveFrame, blobs } from './lab';
 export default async function (cfg: { scene: string; at: number[]; ri?: string; lo?: number; hi?: number; rgb?: [string, string, string]; count?: string; ti?: string; tlo?: number; thi?: number; set?: Record<string, number> }) {
   const sc: Scene = await (await fetch(`/scenes/${cfg.scene}.json`)).json();
   const rule = R.BUILTIN_RULES[+sc.rule!.split(':')[1]];
-  const lab = await makeLab({ ...rule, initial: sc.initial! }, sc.size!, { ...sc.globals, ...cfg.set }, 'initial');
+  const lab = await makeLab({ ...rule, initial: sc.initial ?? rule.initial }, sc.size!, { ...sc.globals, ...cfg.set }, 'initial');
   const ix = (n: string) => lab.layout.reagents.indexOf(n);
   // the scene's walls, drawn as the app draws them
   for (const [x, y, w, h] of sc.walls ?? []) lab.sim.brush({ ax: x, ay: y + h / 2, bx: x + w, by: y + h / 2, radius: h / 2, mode: BrushMode.Wall, strength: 1, hardness: 1, paint: [] });
