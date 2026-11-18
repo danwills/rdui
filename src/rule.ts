@@ -3987,7 +3987,51 @@ delta_sphi = (s*phi - sphi)/timestep;`),
   view: { ...MOMENTUM_BUBBLES_8.view, customOff: [...MOMENTUM_BUBBLES_8.view.customOff!, 'gs', 'sphi'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9];
+/**
+ * Momentum Bubbles 10 (catch and launch): version 9, with aim regions driving a bubble toward a target velocity rather
+ * than turning it: a is the exit velocity (aim_speed·a: its direction where to go, its length how fast; Dan's complex
+ * number). Motion off the aim's direction is braked (brake), whichever way a bubble came from; along it, a bubble going
+ * faster than the target is braked too, and one going slower is pushed (accel, gently). With accel gentler than brake a
+ * bubble is caught first and launched after, so it leaves the same way at the same speed however it came in. Inside a
+ * region the speed s follows the bubble's actual speed (its rescaling of p is off there). Found: a dot heading right
+ * into a region aimed down is caught at the region's edge and leaves straight down at 0.06 (momentum 124 in, 124
+ * out); one going right at 0.1 through a region aimed right leaves at 0.065. Afterwards dots still soften (as version 9).
+ */
+export const MOMENTUM_BUBBLES_10: RuleDef = {
+  ...MOMENTUM_BUBBLES_9,
+  name: 'Momentum Bubbles 10 (catch and launch)',
+  description: MOMENTUM_BUBBLES_9.description.replace(/ Aim \(ax, ay; y up\):.*?stall\)\./, ' Aim (ax, ay; y up): still regions that set the velocity of bubbles passing through: '
+    + 'motion off its direction is braked, motion along it brought to aim_speed × |a|, so bubbles are caught and launched.'),
+  params: [
+    ...MOMENTUM_BUBBLES_9.params.filter((q) => q.name !== 'aim_rate' && q.name !== 'aim_drag'),
+    { name: 'aim_speed', value: 0.06, min: 0, max: 0.1 },
+    { name: 'brake', value: 0.05, min: 0, max: 0.5 },
+    { name: 'accel', value: 0.005, min: 0, max: 0.1 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_9.paramHints,
+    aim_speed: 'Exit speed (cells a step) for an aim of length 1: a region sends bubbles along a at aim_speed × |a|',
+    brake: 'How fast a region brakes motion off its direction, and motion along it that\'s too fast',
+    accel: 'How fast a region pushes a bubble going too slowly along its direction up to speed: gentler than brake, so bubbles are caught before they\'re launched',
+  },
+  formula: MOMENTUM_BUBBLES_9.formula
+    .replace('float rx = s*px/max(pl, 1e-3) - px;', `// aim: the target velocity aim_speed·a (y up); in a region (on, from |a|), motion off its direction braked, along it
+// braked if too fast, pushed (accel) if too slow
+float on = min(al/0.1, 1.0);
+float ux = ax/max(al, 1e-6);
+float uy = ay/max(al, 1e-6);
+float along = px*ux + py*uy;
+float perpx = px - along*ux;
+float perpy = py - along*uy;
+float dal = along - m*aim_speed*al;
+float d_along = -(brake*max(dal, 0.0) + accel*min(dal, 0.0));
+float rx = s*px/max(pl, 1e-3) - px;`)
+    .replace('delta_px = renorm*rx + aim_rate*al*(tx - px) - aim_drag*al*px - carry*div_px', 'delta_px = (1.0 - on)*renorm*rx + on*(-brake*perpx + d_along*ux) - carry*div_px')
+    .replace('delta_py = renorm*ry + aim_rate*al*(ty - py) - aim_drag*al*py - carry*div_py', 'delta_py = (1.0 - on)*renorm*ry + on*(-brake*perpy + d_along*uy) - carry*div_py')
+    .replace('+ s_relax*(pl - s);', '+ s_relax*(pl - s) + on*brake*(pl - s);'),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3998,7 +4042,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
