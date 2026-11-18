@@ -3,10 +3,10 @@ import { makeLab, log, saveFrame } from './lab';
 import { blobs } from './_mb';
 const circle = (chem: string, value: number, cx: number, cy: number, r: number): R.Overlay => ({ chem, op: 'overwrite', fill: { type: 'constant', value }, shape: { type: 'circle', cx, cy, r } });
 const rect = (chem: string, value: number, x0: number, y0: number, x1: number, y1: number): R.Overlay => ({ chem, op: 'overwrite', fill: { type: 'constant', value }, shape: { type: 'rectangle', x0, y0, x1, y1 } });
-export default async function (cfg: { set?: Record<string, number>; at: number[]; name: string; v?: number }) {
-  const W = 256, base = R.BUILTIN_RULES[47], v = cfg.v ?? 0.06;
+export default async function (cfg: { rule?: number; set?: Record<string, number>; at: number[]; name: string; v?: number }) {
+  const W = 256, base = R.BUILTIN_RULES[cfg.rule ?? 47], v = cfg.v ?? 0.06;
   // a dot heading right along the middle; an aim region (pointing down the screen: ay -1) ahead of it
-  const init: R.Overlay[] = [base.initial[0], circle('phi', 1, 0.15, 0.5, 0.04), circle('m', 10, 0.15, 0.5, 0.04), circle('px', 10 * v, 0.15, 0.5, 0.04),
+  const init: R.Overlay[] = [base.initial[0], circle('phi', 1, 0.15, 0.5, 0.04), circle('m', 10, 0.15, 0.5, 0.04), circle('px', 10 * v, 0.15, 0.5, 0.04), ...(base.reagents.includes('s') ? [circle('s', 10 * v, 0.15, 0.5, 0.04)] : []),
     rect('ay', -1, 0.45, 0.35, 0.65, 0.65)];
   const lab = await makeLab({ ...base, initial: init }, W, cfg.set ?? {}, 'initial');
   const S4 = lab.layout.S * 4, ix = (r: string) => lab.layout.reagents.indexOf(r);

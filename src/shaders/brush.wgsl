@@ -34,7 +34,7 @@ const MODE_WALL: u32 = 3u;
 const MODE_UNWALL: u32 = 4u;
 const MODE_SET_PARAM: u32 = 5u;
 const MODE_SDF: u32 = 6u;
-const MODE_PUSH: u32 = 8u; // seed[0].xy: velocity; seed[0].z, w, seed[1].x: the momentum's x, y and mass reagents (-1: no mass)
+const MODE_PUSH: u32 = 8u; // seed[0].xy: velocity; seed[0].z, w, seed[1].x, y: the momentum's x, y, mass and size reagents (-1: none)
 const SDF_REACH: f32 = 24.0; // an SDF stroke also writes distances this far outside its edge
 
 @group(0) @binding(0) var<uniform> brush: Brush;
@@ -181,6 +181,10 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         }
         state[sb + (rx >> 2u)][rx & 3u] = mix(state[sb + (rx >> 2u)][rx & 3u], mass * v.x, k);
         state[sb + (ry >> 2u)][ry & 3u] = mix(state[sb + (ry >> 2u)][ry & 3u], mass * v.y, k);
+        if (brush.seed[1].y >= 0.0) {
+          let rs = u32(brush.seed[1].y);
+          state[sb + (rs >> 2u)][rs & 3u] = mix(state[sb + (rs >> 2u)][rs & 3u], mass * length(v), k);
+        }
       }
     }
     default: {}

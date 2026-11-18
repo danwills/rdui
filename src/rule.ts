@@ -153,7 +153,7 @@ export interface RuleDef {
    * The reagents holding a momentum (x, y; y up, as the gradients) and, optionally, the mass it moves (velocity is
    * momentum over mass): the Push tool sets the momentum to mass × speed along a drag (right-drag brakes it to 0).
    */
-  momentum?: { x: string; y: string; mass?: string; speed: number };
+  momentum?: { x: string; y: string; mass?: string; speed: number; /** a reagent holding the momentum's size, set with it */ size?: string };
   /**
    * A parameter (not paintable) setting how far the single neighbours (north_a …) reach: each becomes the mean of a
    * box of cells that far away, so a hand-written stencil acts on features that many times larger (1 = the cells next door).
@@ -3939,7 +3939,55 @@ delta_px = aim_rate*al*(tx - px) - aim_drag*al*px - carry*div_px`)
   view: { ...MOMENTUM_BUBBLES_4.view, customOff: [...MOMENTUM_BUBBLES_4.view.customOff!, 'ay'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8];
+/**
+ * Momentum Bubbles 9 (speed kept): version 8, with the momentum's size carried as a reagent of its own, s (a bubble's
+ * speed, as content: s = m·|v|), carried and spread as content is, so it moves and joins with the bubble. p is rescaled
+ * toward s along its own direction (renorm): directions averaging inside a bubble (its front turned by an aim region,
+ * its back not yet) no longer shrink it, so a corner keeps the speed. Aim turns p toward s along a. When bubbles meet
+ * head on their p cancels but their s adds; s eases toward |p| (s_relax), so such a collision still loses speed, slowly.
+ * Push sets s with p. Found: the corner keeps the speed (momentum 124 in, 146 out). Moving bubbles still go soft and
+ * stretch (their content ends up in a widening rim, ~14% in the sea), as in versions 3 and 4, losing ~1/3 of what's
+ * inside in 3000 steps at 0.06 px a step; m_floor (the velocity's content floor) isn't the cause.
+ */
+export const MOMENTUM_BUBBLES_9: RuleDef = {
+  ...MOMENTUM_BUBBLES_8,
+  name: 'Momentum Bubbles 9 (speed kept)',
+  description: MOMENTUM_BUBBLES_8.description + ' The speed s (the momentum\'s size, carried as content is) keeps a turned bubble going as fast.',
+  reagents: [...MOMENTUM_BUBBLES_8.reagents, 's', 'gs', 'sphi'],
+  params: [
+    ...MOMENTUM_BUBBLES_8.params,
+    { name: 'renorm', value: 0.1, min: 0, max: 1 },
+    { name: 's_relax', value: 0.001, min: 0, max: 0.05 },
+    { name: 'm_floor', value: 0.1, min: 0.0001, max: 0.5 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_8.paramHints,
+    renorm: 'How fast the momentum is rescaled to the speed s along its own direction: directions mixing inside a bubble don\'t slow it',
+    m_floor: 'Content below which a cell\'s velocity (p/m) is reckoned as if it had this much: too high and a bubble\'s thin tail moves slower than the bubble and is left behind (a wake)',
+    s_relax: 'How fast the speed s eases toward the momentum\'s actual size: where momenta cancel (head-on collisions) the speed fades at this rate',
+  },
+  rest: [...MOMENTUM_BUBBLES_8.rest, 0, 0, 0],
+  seed: [...MOMENTUM_BUBBLES_8.seed, null, null, null],
+  seedNoise: [...MOMENTUM_BUBBLES_8.seedNoise, 0, 0, 0],
+  momentum: { ...MOMENTUM_BUBBLES_8.momentum!, size: 's' },
+  formula: MOMENTUM_BUBBLES_8.formula.replace(/max\((\w+), 0\.1\)/g, 'max($1, m_floor)')
+    .replace('float tx = pl*ax/max(al, 1e-6);\nfloat ty = pl*ay/max(al, 1e-6);', `float tx = s*ax/max(al, 1e-6);
+float ty = s*ay/max(al, 1e-6);
+// and rescaled to the speed s along its own direction
+float rx = s*px/max(pl, 1e-3) - px;
+float ry = s*py/max(pl, 1e-3) - py;`)
+    .replace('delta_px = aim_rate*al*(tx - px)', 'delta_px = renorm*rx + aim_rate*al*(tx - px)')
+    .replace('delta_py = aim_rate*al*(ty - py)', 'delta_py = renorm*ry + aim_rate*al*(ty - py)')
+    .replace(/$/, `
+// the speed: carried, spread and held in as content is; easing toward the momentum's size
+float div_s = max(vx, 0.0)*s + min(evx, 0.0)*east_s - max(wvx, 0.0)*west_s - min(vx, 0.0)*s + max(vy, 0.0)*s + min(nvy, 0.0)*north_s - max(svy, 0.0)*south_s - min(vy, 0.0)*s;
+delta_s = -carry*div_s + D_m*0.5*(laplacian_gs + g*laplacian_s - s*laplacian_g) - m_inward*0.5*(laplacian_sphi - phi*laplacian_s + s*laplacian_phi) + s_relax*(pl - s);
+delta_gs = (g*s - gs)/timestep;
+delta_sphi = (s*phi - sphi)/timestep;`),
+  view: { ...MOMENTUM_BUBBLES_8.view, customOff: [...MOMENTUM_BUBBLES_8.view.customOff!, 'gs', 'sphi'] },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3950,7 +3998,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 

@@ -387,7 +387,7 @@ export class Simulation {
       f[6] = Math.min(1, Math.abs(b.strength));
       const v = b.clear || len < 1e-6 ? [0, 0] : [(sp * dx) / len, (-sp * dy) / len];
       f[B_SEED] = v[0]; f[B_SEED + 1] = v[1];
-      f[B_SEED + 2] = ix(mo.x); f[B_SEED + 3] = ix(mo.y); f[B_SEED + 4] = ix(mo.mass);
+      f[B_SEED + 2] = ix(mo.x); f[B_SEED + 3] = ix(mo.y); f[B_SEED + 4] = ix(mo.mass); f[B_SEED + 5] = ix(mo.size);
       // a click (no direction) leaves the momentum be, unless braking
       if (!b.clear && len < 1e-6) return;
     }
