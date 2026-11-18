@@ -3705,7 +3705,8 @@ delta_pyphi = (py*phi - pyphi)/timestep;`,
     ]),
   ],
   size: { width: 256, height: 256 },
-  view: { reagent: 'phi', low: 0, high: 1, tint: 'px', stepsPerFrame: 200, customOff: ['g', 'gm', 'mphi', 'gpx', 'gpy', 'pxphi', 'pyphi'] },
+  // (custom palette exponent 1: dots, gates and faint channels all show; higher hides them)
+  view: { reagent: 'phi', low: 0, high: 1, tint: 'px', stepsPerFrame: 200, customGamma: 1, customOff: ['g', 'gm', 'mphi', 'gpx', 'gpy', 'pxphi', 'pyphi'] },
 };
 
 /**
