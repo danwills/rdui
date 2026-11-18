@@ -1373,7 +1373,15 @@ async function init() {
     return { custom: shownCustom, customContrast: shownGrade[0], customSaturation: shownGrade[1], customGamma: shownGrade[2] };
   }
 
+  let strengthTool = s.tool; // the tool s.strength belongs to
   function frame() {
+    // each tool keeps its own strength: changing tool (button, key or stamp) puts the old one's away and brings the new one's back
+    if (s.tool !== strengthTool) {
+      s.toolStrength[strengthTool] = s.strength;
+      s.strength = s.toolStrength[s.tool] ?? s.strength;
+      strengthTool = s.tool;
+      ui.sync();
+    }
     // wander: a randomise every wanderEvery seconds, while the custom palette shows
     if (!s.customWander || s.palette !== 7 || customAutoRandomise) wanderT = performance.now();
     else if (performance.now() - wanderT > s.wanderEvery * 1000) {
