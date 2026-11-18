@@ -148,6 +148,11 @@ export interface RuleDef {
   laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
   /** The formula is a whole step (a map, as Ready kernel rules are), so it is never split into substeps at small feature sizes. */
   discrete?: boolean;
+  /**
+   * A parameter (not paintable) setting how far the single neighbours (north_a …) reach: each becomes the mean of a
+   * box of cells that far away, so a hand-written stencil acts on features that many times larger (1 = the cells next door).
+   */
+  reach?: string;
   /** Grid size the rule was authored for (imports). */
   size?: { width: number; height: number };
   /** Where it came from, e.g. a .vti file name. */
@@ -413,9 +418,29 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     });
     for (const k of lapSlots) add(`  L${k} = L${k} / (6.0 * rd_dx * rd_dx);`);
   }
+  // with a reach, each single neighbour is the mean of a box of cells reach away (2·⌊reach/2⌋+1 wide), so the
+  // stencil sees features reach times larger; one pass over the area adds each cell to every box it falls in
+  const reachI = rule.reach ? rule.params.findIndex((p) => p.name === rule.reach) : -1;
+  if (rule.reach && (reachI < 0 || rule.paintable.includes(rule.reach))) throw new RuleError(`reach '${rule.reach}' must be an unpainted parameter`);
+  const wide = reachI >= 0 ? STENCILS.filter((st) => NEIGHBOURS.some((n) => n[0] === st.op) && needs(st.op).size) : [];
+  if (wide.length) {
+    const slots = [...new Set(wide.flatMap((st) => [...needs(st.op)]))];
+    add(`  let rd_R = max(1, i32(round(g[${reachI >> 2}].${COMP[reachI & 3]}))); let rd_h = rd_R / 2; let rd_E = rd_R + rd_h;`);
+    for (const st of wide) for (const k of slots) add(`  var ${st.v}${k} = vec4<f32>(0.0);`);
+    add(`  for (var j = -rd_E; j <= rd_E; j++) { for (var i = -rd_E; i <= rd_E; i++) {`);
+    add(`    let rn = cellIndex(x + i, y + j); let rw = isSealed(rn);`);
+    for (const k of slots) add(`    let rv${k} = select(src[rn * ${S}u + ${k}u], s${k}, rw);`);
+    for (const st of wide) {
+      const [, dx, dy] = NEIGHBOURS.find((n) => n[0] === st.op)!;
+      add(`    if (abs(i - ${dx} * rd_R) <= rd_h && abs(j - ${dy} * rd_R) <= rd_h) { ${slots.map((k) => `${st.v}${k} += rv${k};`).join(' ')} }`);
+    }
+    add(`  } }`);
+    add(`  let rd_box = f32((2 * rd_h + 1) * (2 * rd_h + 1));`);
+    for (const st of wide) for (const k of slots) add(`  ${st.v}${k} = ${st.v}${k} / rd_box;`);
+  }
   for (const st of STENCILS) {
     const slots = needs(st.op);
-    if (!slots.size) continue;
+    if (!slots.size || wide.includes(st)) continue;
     if (spectral && st.op === 'bilaplacian') {
       for (const k of slots) add(`  let ${st.v}${k} = bilapK[sb + ${k}u];`);
       continue;
@@ -3328,7 +3353,20 @@ export const SMOKE_SMOOTH: RuleDef = {
   view: { reagent: 'd', low: -300, high: 300, stepsPerFrame: 3 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH];
+export const SMOKE_WIDE: RuleDef = {
+  ...SMOKE,
+  name: 'Smoke (wide)',
+  description:
+    'Smoke (Flux-Curl) on a wider neighbourhood: each of the kernel\'s eight neighbours is the mean of a box of cells reach '
+    + 'away, so the smoke\'s features come out about reach times larger. The cell\'s own value is still its own, so the finest '
+    + 'grain is damped as before. At reach 1 it is the original rule exactly.',
+  params: [...SMOKE.params, { name: 'reach', value: 4, min: 1, max: 12 }],
+  paramHints: { ...SMOKE_HINTS, reach: 'How far the neighbours reach, in cells (each the mean of a box about that wide): features grow about in proportion; 1 is the original' },
+  reach: 'reach',
+  view: { reagent: 'd', low: -4, high: 4, stepsPerFrame: 3 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3338,7 +3376,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
-  ['Smoke', [SMOKE, SMOKE_SMOOTH]],
+  ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 

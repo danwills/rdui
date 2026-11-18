@@ -1,0 +1,49 @@
+{
+ "name": "Smoke (wide): ribbons",
+ "description": "The ribbons settings on the wide neighbourhood (reach 4): the same curling ribbons and vortices about four times larger, their ripples broad and smooth.",
+ "rule": "builtin:34",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 3,
+ "globals": {
+  "cs": 0.1256,
+  "amp": 1.00529,
+  "sp": 1.028,
+  "lps": 0.0328,
+  "lps2": -0.002,
+  "d_gain": 1,
+  "reach": 4
+ },
+ "walls": [],
+ "initial": [
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "white_noise",
+    "low": -1,
+    "high": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "white_noise",
+    "low": -1,
+    "high": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  }
+ ],
+ "view": {
+  "reagent": "d",
+  "low": -6,
+  "high": 6
+ }
+}
