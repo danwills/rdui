@@ -23,10 +23,12 @@ export function blobs(state: Float32Array, S4: number, W: number, H: number, ix:
   }
   return out;
 }
-export default async function (cfg: { rule?: number; set?: Record<string, number>; at: number[]; size?: number; name?: string }) {
+export default async function (cfg: { rule?: number; set?: Record<string, number>; at: number[]; size?: number; name?: string; bubbles?: number[][] }) {
   const W = cfg.size ?? 256;
   const r = R.BUILTIN_RULES[cfg.rule ?? 40];
-  const rr = cfg.rule === 31 ? { ...r, initial: R.MOMENTUM_BUBBLES.initial.filter((o) => ['phi', 'm', 'u'].includes(o.chem)) } : r;
+  // custom bubbles: [cx, cy, vx, vy, r?] (normalised, y down; v y up)
+  const custom = cfg.bubbles && { ...r, initial: [r.initial[0], ...cfg.bubbles.flatMap(([cx, cy, vx, vy, rad = 0.05]): R.Overlay[] => (['phi', 'm', 'px', 'py'] as const).map((chem) => ({ chem, op: 'overwrite', fill: { type: 'constant', value: chem === 'phi' ? 1 : chem === 'm' ? 10 : chem === 'px' ? vx * 10 : vy * 10 }, shape: { type: 'circle', cx, cy, r: rad } })))] };
+  const rr = custom ? custom : cfg.rule === 31 ? { ...r, initial: R.MOMENTUM_BUBBLES.initial.filter((o) => ['phi', 'm', 'u'].includes(o.chem)) } : r;
   const lab = await makeLab(rr, W, cfg.set ?? {}, 'initial');
   const S4 = lab.layout.S * 4, ix = (r: string) => lab.layout.reagents.indexOf(r);
   let t = 0;

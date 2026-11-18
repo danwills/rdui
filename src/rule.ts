@@ -3795,7 +3795,55 @@ export const MOMENTUM_BUBBLES_4: RuleDef = {
   formula: MOMENTUM_BUBBLES_3.formula.replace(/= (\w+)\/max\((\w+), 0\.1\);/g, '= clamp($1/max($2, 0.1), -v_max, v_max);'),
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4];
+/**
+ * Momentum Bubbles 5 (shoving): version 4, with each bubble's momentum pushed up the substrate's slope (u_push·g·grad u,
+ * y up): towards fresh substrate, away from crowding. A bubble alone has substrate all round, so the pushes cancel;
+ * between two pressed together it's eaten from both sides, so each is shoved away from the other (they bounce), and a
+ * crowd that has eaten its substrate down is flung apart when it's let out. It doesn't work: a bubble eats its own
+ * substrate, so u is low inside and higher just outside every edge, and the push drags the whole edge outward, tearing
+ * the bubble (0.03 and up) rather than moving it. See version 6.
+ */
+export const MOMENTUM_BUBBLES_5: RuleDef = {
+  ...MOMENTUM_BUBBLES_4,
+  name: 'Momentum Bubbles 5 (shoving)',
+  params: [...MOMENTUM_BUBBLES_4.params, { name: 'u_push', value: 0.01, min: 0, max: 0.1 }],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_4.paramHints,
+    u_push: 'How hard a bubble is pushed toward fresh substrate: bubbles pressed together (eating the gap between them) shove each other apart',
+  },
+  formula: MOMENTUM_BUBBLES_4.formula
+    .replace('delta_px = -carry*div_px', 'delta_px = u_push*g*x_gradient_u - carry*div_px')
+    .replace('delta_py = -carry*div_py', 'delta_py = u_push*g*y_gradient_u - carry*div_py'),
+};
+
+/**
+ * Momentum Bubbles 6 (shoving, from starved sea): version 4, with each bubble's momentum pushed away from starved sea:
+ * outside bubbles (1 − phi), where the substrate is below what an edge needs (u_edge), s = (1 − phi)·max(u_edge − u, 0),
+ * and the push is down its slope (−u_push·g·grad s, y up, from the neighbours). Round a lone bubble the sea is fed (s
+ * is 0), so nothing pushes; in the gap between two pressed together it's eaten from both sides, so each is shoved away.
+ * (Version 5 pushed up u's own slope, which is steep at every edge, and tore bubbles apart.) It doesn't work either:
+ * head-on bubbles still merge at 0.1, and break up above it; even apart they lose content faster than without it, so
+ * the sea right round a lone bubble is starved too (below u_edge), and the push still acts on every edge.
+ */
+export const MOMENTUM_BUBBLES_6: RuleDef = {
+  ...MOMENTUM_BUBBLES_4,
+  name: 'Momentum Bubbles 6 (shoving)',
+  params: [...MOMENTUM_BUBBLES_4.params, { name: 'u_push', value: 0.1, min: 0, max: 1 }],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_4.paramHints,
+    u_push: 'How hard bubbles are shoved away from starved sea (substrate below u_edge outside bubbles, as in the gap between two pressed together): they bounce rather than smoosh',
+  },
+  formula: MOMENTUM_BUBBLES_4.formula
+    .replace('delta_px = -carry*div_px', `// starved sea, here and next door, and the push down its slope
+float sE = (1.0 - east_phi)*max(u_edge - east_u, 0.0);
+float sW = (1.0 - west_phi)*max(u_edge - west_u, 0.0);
+float sN = (1.0 - north_phi)*max(u_edge - north_u, 0.0);
+float sS = (1.0 - south_phi)*max(u_edge - south_u, 0.0);
+delta_px = -u_push*g*0.5*(sE - sW) - carry*div_px`)
+    .replace('delta_py = -carry*div_py', 'delta_py = -u_push*g*0.5*(sN - sS) - carry*div_py'),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3806,7 +3854,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
