@@ -1,0 +1,142 @@
+{
+ "name": "Momentum Bubbles 12: square track (round gates)",
+ "description": "The round-gate square track on Momentum Bubbles 12 (soft gate edges grip gently rather than aiming slower): a dot from the bottom goes up, right and down at about 0.05 px a step, but it clips each gate's edge, so it shears at each corner and tears at the third. Gates show as the aim channel in the custom palette.",
+ "rule": "builtin:51",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 20,
+ "initial": [
+  {
+   "chem": "u",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.3,
+    "r": 0.1
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.3,
+    "r": 0.1
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.7,
+    "cy": 0.7,
+    "r": 0.1
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.7,
+    "r": 0.1
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.94,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 10
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.94,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "py",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.6
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.94,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "s",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.6
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.3,
+    "cy": 0.94,
+    "r": 0.05
+   }
+  }
+ ],
+ "view": {
+  "reagent": "phi",
+  "low": 0,
+  "high": 1
+ }
+}

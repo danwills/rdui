@@ -4049,7 +4049,28 @@ export const MOMENTUM_BUBBLES_11: RuleDef = {
   view: { ...MOMENTUM_BUBBLES_10.view, customOff: [...MOMENTUM_BUBBLES_10.view.customOff!.filter((r) => r !== 'ay'), 'ax', 'ay', 's', 'py'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11];
+/**
+ * Momentum Bubbles 12 (soft gates): version 11, with a gate's soft edge gripping more gently rather than aiming
+ * slower. Before, the target speed was aim_speed·|a| while the grip was full from |a| = 0.1, so a bubble crossing a
+ * gate's soft edge (|a| fading from 1 to 0) was braked toward almost nothing, losing about half its speed at each gate
+ * on the track. Now |a| (up to 1) sets the grip (every rate times it), and the target speed is aim_speed, faster only
+ * for |a| over 1. Found: on the round-gate track a dot keeps ~0.05 px a step round three corners (~5000 steps), but it
+ * clips each gate's edge rather than going through it, so only part of it turns: it shears into a sausage at each
+ * corner and tears at the third. Bubbles need to turn as a whole (momentum shared across a bubble faster).
+ */
+export const MOMENTUM_BUBBLES_12: RuleDef = {
+  ...MOMENTUM_BUBBLES_11,
+  name: 'Momentum Bubbles 12 (soft gates)',
+  formula: MOMENTUM_BUBBLES_11.formula
+    .replace('float on = min(al/0.1, 1.0);', '// the grip: up to 1 with |a| (a soft edge grips gently); the target speed aim_speed, faster for |a| over 1\nfloat on = min(al, 1.0);')
+    .replace('float dal = along - m*aim_speed*al;', 'float dal = along - m*aim_speed*max(al, 1.0);'),
+  paramHints: {
+    ...MOMENTUM_BUBBLES_11.paramHints,
+    aim_speed: 'Exit speed (cells a step): a region sends bubbles along a at aim_speed (faster where |a| is over 1; where it\'s under 1, as at a soft edge, it grips more gently)',
+  },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -4060,7 +4081,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
