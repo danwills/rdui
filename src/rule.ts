@@ -149,6 +149,11 @@ export interface RuleDef {
   /** The formula is a whole step (a map, as Ready kernel rules are), so it is never split into substeps at small feature sizes. */
   discrete?: boolean;
   /**
+   * The reagents holding a momentum (x, y; y up, as the gradients) and, optionally, the mass it moves (velocity is
+   * momentum over mass): the Push tool sets the momentum to mass × speed along a drag (right-drag brakes it to 0).
+   */
+  momentum?: { x: string; y: string; mass?: string; speed: number };
+  /**
    * A parameter (not paintable) setting how far the single neighbours (north_a …) reach: each becomes the mean of a
    * box of cells that far away, so a hand-written stencil acts on features that many times larger (1 = the cells next door).
    */
@@ -3660,6 +3665,7 @@ export const MOMENTUM_BUBBLES: RuleDef = {
     p_drag: 'How fast every bubble\'s momentum fades: 0 and they go for ever',
   },
   paintable: [],
+  momentum: { x: 'px', y: 'py', mass: 'm', speed: 0.06 },
   formula: `// the drive at the edge, as Phase-field Bubbles 13: content pressure (pushing out only with substrate, pulling in
 // always), held back where the substrate is short (between two bubbles), on the edge proper only (phi over 0.1)
 float P = pressure*(m - target)*smoothstep(0.05, 0.15, phi);

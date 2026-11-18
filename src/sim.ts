@@ -24,6 +24,8 @@ export const BrushMode = {
   Sdf: 6,
   /** Round off walls and blur painted params (and the chemistry too, with clear): see smooth.wgsl. */
   Smooth: 7,
+  /** Set the rule's momentum to mass × speed along the stroke (clear: brake it to 0): see RuleDef.momentum. */
+  Push: 8,
 } as const;
 export type BrushMode = (typeof BrushMode)[keyof typeof BrushMode];
 
@@ -367,6 +369,18 @@ export class Simulation {
       f[36 + r] = rule.seedNoise[r] ?? 0;
       f[48 + r] = rule.rest[r] ?? 0;
     });
+    if (b.mode === BrushMode.Push) {
+      // the momentum's reagents, its mass (-1: none), and the velocity along the stroke (y up, as the rules' y)
+      const mo = rule.momentum;
+      if (!mo) return;
+      const ix = (n?: string) => (n ? rule.reagents.indexOf(n) : -1);
+      const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
+      const v = b.clear || len < 1e-6 ? [0, 0] : [(mo.speed * dx) / len, (-mo.speed * dy) / len];
+      f[12] = v[0]; f[13] = v[1];
+      f[14] = ix(mo.x); f[15] = ix(mo.y); f[16] = ix(mo.mass);
+      // a click (no direction) leaves the momentum be, unless braking
+      if (!b.clear && len < 1e-6) return;
+    }
     if (b.mode === BrushMode.Smooth) {
       // which param slots to blur: all but the wall flag and a membrane's compartment ids
       const names = this.layout.paramNames;

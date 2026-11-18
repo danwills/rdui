@@ -1298,6 +1298,7 @@ async function init() {
       case 'wall': mode = alt ? BrushMode.Unwall : BrushMode.Wall; break;
       case 'unwall': mode = alt ? BrushMode.Wall : BrushMode.Unwall; break;
       case 'smooth': mode = BrushMode.Smooth; break;
+      case 'push': mode = rule.momentum ? BrushMode.Push : BrushMode.Seed; break;
       default: mode = alt ? BrushMode.Erase : BrushMode.Seed; break;
     }
     // wave media: the Wall tool draws reflecting or absorbing walls into the rule's wall distance fields
@@ -1322,7 +1323,7 @@ async function init() {
       radius: s.radius / cellScale, strength: s.strength, hardness: s.hardness,
       paint: paintValues(),
       ...(mode === BrushMode.Wall ? { base: s.wallsFeed || fft ? 2 : 1 } : {}),
-      ...(mode === BrushMode.Smooth ? { clear: alt } : {}),
+      ...(mode === BrushMode.Smooth || mode === BrushMode.Push ? { clear: alt } : {}),
     }];
   }
 

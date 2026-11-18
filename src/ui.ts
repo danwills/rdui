@@ -6,7 +6,7 @@ import { PALETTES, paletteCss } from './palettes';
 import { ladder, onLadderClaim } from './ladder';
 import { openColourPicker } from './colourpick';
 
-export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'smooth' | 'capture' | 'stamp' | 'probe';
+export type Tool = 'seed' | 'erase' | 'params' | 'wall' | 'unwall' | 'smooth' | 'push' | 'capture' | 'stamp' | 'probe';
 
 /** Fleck palettes' default hue shape and offset (Dan's picks), the offset per palette: HSV fleck (5), OKLCH fleck (6). */
 export const HUE_DEFAULTS = { shape: 1.2, offset: 0.6, offsets: { 5: 0.48, 6: 0.6 } as Record<number, number> };
@@ -146,6 +146,7 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'wall', label: 'Wall', key: '4', hint: 'no-flux barrier · right-drag removes' },
   { id: 'unwall', label: 'Unwall', key: '8', hint: 'remove walls (e.g. open a door)' },
   { id: 'smooth', label: 'Smooth', key: '9', hint: 'round off walls and blur painted params · right-drag blurs the pattern too · walls thinner than about a sixth of the brush go · strength 0.5 is one full pass a dab, up to 8 at 1' },
+  { id: 'push', label: 'Push', key: '0', hint: 'drag across a bubble to send it that way (its momentum set to its content × the rule\'s speed) · right-drag brakes it · strength: how far each dab goes · rules with momentum only' },
   { id: 'capture', label: 'Capture', key: '5', hint: 'drag a rectangle to capture it as a stamp' },
   { id: 'stamp', label: 'Stamp', key: '6', hint: 'click to place the selected stamp · Q/E rotate · X mirror' },
   { id: 'probe', label: 'Probe', key: '7', hint: 'drag a rectangle to measure it · right-click a probe removes it' },
@@ -619,6 +620,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       sync();
     }, `${t.hint} (${t.key})`);
     syncers.push(() => b.classList.toggle('active', s.tool === t.id));
+    // Push only for rules with momentum
+    if (t.id === 'push') syncers.push(() => (b.style.display = rc.rule().momentum ? '' : 'none'));
     toolRow.append(b);
   }
   syncers.push(() => (toolHint.textContent = TOOLS.find((t) => t.id === s.tool)!.hint));
