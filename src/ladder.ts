@@ -2,6 +2,8 @@
 // screen) and a ladder of step sizes pops up, 100 at the top down to 0.0001. The row under the
 // pointer is the step; dragging left or right takes steps off or adds them. Changing row carries
 // on from the value reached (as Houdini's ladder). Letting go keeps the value; Esc puts it back.
+// Drags don't stop at the screen's edge: a mouse is locked (hidden, read as movement), and a finger
+// (or a mouse the browser won't lock) held near the left or right edge keeps going, faster the nearer.
 
 export interface LadderTarget {
   get(): number;
@@ -15,6 +17,7 @@ export interface LadderTarget {
 const STEPS = [100, 10, 1, 0.1, 0.01, 0.001, 0.0001];
 const LONG_PRESS = 450; // ms
 const SLOP = 8; // px a long-press may wander
+const EDGE = 40; // px from the screen's side where a drag keeps going by itself
 const targets = new WeakMap<Element, LadderTarget>();
 let claimed = -1; // the pointer whose gesture opened a ladder (the slider guard leaves it alone)
 
@@ -87,7 +90,10 @@ function open(t: LadderTarget, start: PointerEvent) {
   const original = t.get();
   const span = Math.abs(t.range[1] - t.range[0]) || 1;
   let row = STEPS.reduce((best, s, i) => (Math.abs(Math.log10(s / (span / 100))) < Math.abs(Math.log10(STEPS[best] / (span / 100))) ? i : best), 0);
-  let base = original, baseX = start.clientX, value = original;
+  let base = original, value = original;
+  // where the drag has got to: the pointer, plus how far it has carried on past the screen's edge
+  // (locked: the mouse's movement, summed)
+  let x = start.clientX, y = start.clientY, lastX = start.clientX, drift = 0, baseX = x;
   const PX = touch ? 16 : 10; // px per step
 
   const rows = STEPS.map((s) => {
@@ -128,17 +134,48 @@ function open(t: LadderTarget, start: PointerEvent) {
   };
   show();
 
+  const update = () => {
+    const r = Math.min(STEPS.length - 1, Math.max(0, Math.floor((y - top - headH) / rh)));
+    if (r !== row) {
+      row = r;
+      base = value;
+      baseX = x;
+    }
+    apply(base + Math.trunc((x - baseX) / PX) * STEPS[row]);
+  };
+  const locked = () => document.pointerLockElement === box;
   const move = (e: PointerEvent) => {
     if (e.pointerId !== start.pointerId) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    const r = Math.min(STEPS.length - 1, Math.max(0, Math.floor((e.clientY - top - headH) / rh)));
-    if (r !== row) {
-      row = r;
-      base = value;
-      baseX = e.clientX;
+    if (locked()) {
+      // the rows stay in reach: no moving miles past the top or bottom one
+      x += e.movementX;
+      y = Math.min(top + headH + rh * STEPS.length - 1, Math.max(top + headH, y + e.movementY));
+    } else {
+      lastX = e.clientX;
+      x = e.clientX + drift;
+      y = e.clientY;
     }
-    apply(base + Math.trunc((e.clientX - baseX) / PX) * STEPS[row]);
+    update();
+  };
+  // unlocked, held near the screen's side: carry on that way, up to 8 px a frame
+  let raf = 0;
+  const edge = () => {
+    raf = requestAnimationFrame(edge);
+    if (locked()) return;
+    const d = lastX < EDGE ? lastX - EDGE : lastX > innerWidth - EDGE ? lastX - (innerWidth - EDGE) : 0;
+    if (!d) return;
+    drift += (d / EDGE) * 8;
+    x = lastX + drift;
+    update();
+  };
+  raf = requestAnimationFrame(edge);
+  // Esc (which the browser spends on unlocking) puts the value back, as it does unlocked
+  let wasLocked = false;
+  const lockChange = () => {
+    if (locked()) wasLocked = true;
+    else if (wasLocked) close(false);
   };
   // the slider under the finger mustn't move with the drag, nor its events reach the app
   const block = (e: Event) => e.stopImmediatePropagation();
@@ -149,6 +186,9 @@ function open(t: LadderTarget, start: PointerEvent) {
     window.removeEventListener('pointercancel', cancel, true);
     window.removeEventListener('keydown', key, true);
     document.removeEventListener('touchmove', noScroll);
+    document.removeEventListener('pointerlockchange', lockChange);
+    cancelAnimationFrame(raf);
+    if (locked()) document.exitPointerLock();
     // (the slider's own change comes a little after the finger lifts)
     setTimeout(() => {
       for (const type of ['input', 'change']) window.removeEventListener(type, block, true);
@@ -176,4 +216,7 @@ function open(t: LadderTarget, start: PointerEvent) {
   window.addEventListener('keydown', key, true);
   for (const type of ['input', 'change']) window.addEventListener(type, block, true);
   document.addEventListener('touchmove', noScroll, { passive: false });
+  document.addEventListener('pointerlockchange', lockChange);
+  // (a browser that won't lock falls back to the edge)
+  if (!touch) Promise.resolve(box.requestPointerLock?.()).catch(() => {});
 }
