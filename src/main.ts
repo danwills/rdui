@@ -1,5 +1,6 @@
 import './style.css';
 import { recordSection } from './record';
+import { inPageTooltips } from './tooltip';
 import { Simulation, stableAtAnySpacing, BrushMode, type BrushStroke, type CustomChannel, type ViewOptions } from './sim';
 import { buildPanel, defaultSettings, fmt, HUE_DEFAULTS, hueOffsetFor, TOOLS, type RuleChoice, type Settings } from './ui';
 import { ProbeSet, type Rect } from './probes';
@@ -76,6 +77,7 @@ interface ApplyOptions {
 }
 
 async function init() {
+  inPageTooltips();
   const canvas = document.querySelector<HTMLCanvasElement>('#view')!;
   const overlayCanvas = document.querySelector<HTMLCanvasElement>('#overlay')!;
   const stage = document.querySelector<HTMLElement>('#stage')!;

@@ -287,3 +287,20 @@ section > h2 { display: none; }
 .cp-swatch { width: 26px; height: 22px; border-radius: 4px; border: 1px solid var(--line); flex: none; }
 .explore.painting .explore-grid, .explore.painting .explore-cell, .explore.painting .explore-over { pointer-events: none; }
 .explore.painting canvas { touch-action: none; cursor: crosshair; }
+
+/* in-page tooltips (src/tooltip.ts): the browser's own are separate windows, which flicker on some desktops */
+.tip {
+  position: fixed;
+  z-index: 10000;
+  max-width: 320px;
+  padding: 5px 8px;
+  background: #1b2029;
+  color: var(--text);
+  border: 1px solid #3a4352;
+  border-radius: 4px;
+  font: 12px/1.4 system-ui, sans-serif;
+  white-space: pre-wrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.tip[hidden] { display: none; }
