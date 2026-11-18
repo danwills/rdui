@@ -4340,7 +4340,54 @@ export const MOMENTUM_BUBBLES_17: RuleDef = {
   view: { ...MOMENTUM_BUBBLES_15.view, customOff: [...MOMENTUM_BUBBLES_15.view.customOff!, 'tfull'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17];
+/**
+ * Momentum Bubbles 18 (launching trap): version 17, with a cleaner launch. In 17 the decision spread out from the
+ * trap's middle by diffusion, taking thousands of steps to reach its rim, so a launched blob was still held and drawn
+ * back there, stalled at the exit, tore, and gathered everything still arriving (asked for ~5 dots, it let go ~12). Here
+ * the decision (opened) floods out from the middle over all the trap within a few dozen steps (each cell the most open of
+ * its neighbours, less a little), so all of it lets go at once. What it launches is marked free, the mark carried with
+ * the bubble: while it lasts the trap neither holds nor draws it back, so the trap can shut again as soon as it has
+ * left the middle (its count falling faster than it rises, sense_fall), braking harder (trap_brake 0.01) what comes
+ * next, and the mark wears off once the bubble is out of the trap's reach (free_decay).
+ */
+export const MOMENTUM_BUBBLES_18: RuleDef = {
+  ...MOMENTUM_BUBBLES_17,
+  name: 'Momentum Bubbles 18 (launching trap)',
+  reagents: [...MOMENTUM_BUBBLES_17.reagents, 'opened', 'free', 'gfree'],
+  rest: [...MOMENTUM_BUBBLES_17.rest, 0, 0, 0],
+  seed: [...MOMENTUM_BUBBLES_17.seed, null, null, null],
+  seedNoise: [...MOMENTUM_BUBBLES_17.seedNoise, 0, 0, 0],
+  params: [
+    ...MOMENTUM_BUBBLES_17.params.map((q) => (q.name === 'trap_brake' ? { ...q, value: 0.01 } : q)),
+    { name: 'sense_fall', value: 0.02, min: 0, max: 0.1 },
+    { name: 'free_decay', value: 0.01, min: 0, max: 0.1 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_17.paramHints,
+    sense_fall: 'How fast a trap\'s count falls once its middle empties (faster than it rises, so it shuts soon after letting go)',
+    free_decay: 'How fast the free mark wears off a launched bubble once it\'s out of the trap\'s reach (inside it, 1/20 of this)',
+  },
+  view: { ...MOMENTUM_BUBBLES_17.view, customOff: [...MOMENTUM_BUBBLES_17.view.customOff!, 'gfree'] },
+  formula: MOMENTUM_BUBBLES_17.formula
+    // (held and released by opened, the decision flooded out from the middle)
+    // (and a bubble marked free, launched, not held)
+    .replace('float hold = reach*(1.0 - full);', 'float fr = min(free, 1.0);\nfloat hold = reach*(1.0 - opened)*(1.0 - fr);')
+    .replace('float on = min(al, 1.0)*(1.0 - reach*(1.0 - full));', 'float on = min(al, 1.0)*(1.0 - reach*(1.0 - opened)*(1.0 - fr));')
+    // (counted in its middle, rising at sense_rate, falling at sense_fall)
+    .replace('+ sense_rate*smoothstep(0.5, 0.8, trap)*(phi - sense)', '+ smoothstep(0.5, 0.8, trap)*(sense_rate*max(phi - sense, 0.0) + sense_fall*min(phi - sense, 0.0))')
+    + `
+// opened: the decision, made in the middle (full there), flooding out over all the trap within a few dozen steps (each
+// cell the most open of its neighbours, less a little), and ebbing as fast once the middle closes
+delta_opened = (reach*max(smoothstep(0.5, 0.8, trap)*smoothstep(0.5, 0.9, full), max(max(north_opened, south_opened), max(east_opened, west_opened)) - 0.01) - opened)/timestep;
+// free: marked on what an open trap launches, carried with the bubble (upwind, as phi) and spread through it as content
+// is (held in at its edge: wiped at the edge, it drained out of a blob in ~70 steps), wearing off at free_decay once out
+// of the trap's reach (1/20 of that in it)
+float advf = max(vx, 0.0)*(free - west_free) + min(vx, 0.0)*(east_free - free) + max(vy, 0.0)*(free - south_free) + min(vy, 0.0)*(north_free - free);
+delta_free = -carry_phi*advf + D_m*0.5*(laplacian_gfree + g*laplacian_free - free*laplacian_g) + 0.05*opened*smoothstep(0.3, 0.7, phi)*(1.0 - free) - free_decay*(1.0 - 0.95*reach)*free;
+delta_gfree = (g*free - gfree)/timestep;`,
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -4351,7 +4398,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
