@@ -133,7 +133,7 @@ fn colormap(m: u32, t: f32) -> vec3<f32> {
 // multiplied by its colour; the colours summed, then gamma, contrast (about mid-grey) and saturation
 fn customColor(g: vec2<f32>) -> vec3<f32> {
   var c = vec3<f32>(0.0);
-  let n = min(u32(view.reagents), 12u);
+  let n = min(u32(view.reagents), 32u); // MAX_REAGENTS
   for (var r = 0u; r < n; r++) {
     let a = view.custom[2u * r];
     if (a.w > 0.5) {
@@ -286,13 +286,13 @@ fn fs(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
   } else if (view.palette == 4u) {
     // HSV: the shown reagent is the hue, the tint reagent the saturation (tint mix: how much).
     var sat = 1.0;
-    if (view.tint < 12u) {
+    if (view.tint < 32u) { // (99: no tint)
       sat = mix(1.0, norm(sampleReagent(g, view.tint), view.tintLow, view.tintHigh), view.tintStrength);
     }
     col = hsv(t, sat, 1.0);
   } else {
     col = palette(t);
-    if (view.tint < 12u) {
+    if (view.tint < 32u) { // (99: no tint)
       // Hidden reagent shown as hue, strongest where it's high.
       let u = norm(sampleReagent(g, view.tint), view.tintLow, view.tintHigh);
       let h = hue(0.08 + 0.75 * u);
