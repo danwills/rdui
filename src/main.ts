@@ -117,6 +117,7 @@ async function init() {
   let shownCustom: CustomChannel[] = structuredClone(s.custom);
   let shownGrade = [s.customContrast, s.customSaturation, s.customGamma];
   let blendT = performance.now();
+  let wanderT = performance.now(); // when wander last randomised
   // the custom palette's automatic fit: pending after its channels are reset to defaults (tries left)
   let customAutoFit = 20;
   // and once fitted, one randomise (new colours and powers): the default look
@@ -1252,6 +1253,12 @@ async function init() {
   }
 
   function frame() {
+    // wander: a randomise every wanderEvery seconds, while the custom palette shows
+    if (!s.customWander || s.palette !== 7 || customAutoRandomise) wanderT = performance.now();
+    else if (performance.now() - wanderT > s.wanderEvery * 1000) {
+      wanderT = performance.now();
+      void randomiseCustom();
+    }
     for (const b of strokes.splice(0)) sim.brush(b);
 
     const enc = device.createCommandEncoder();

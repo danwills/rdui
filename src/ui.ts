@@ -37,6 +37,9 @@ export interface Settings {
   showWalls: boolean;
   /** Custom palette: how many seconds new colours take to blend in (0 = at once). */
   colourBlend: number;
+  /** Custom palette: randomise by itself every wanderEvery seconds. */
+  customWander: boolean;
+  wanderEvery: number;
   /** How the painting tools draw: freehand, a straight line (press → release), or a circle (centre → radius). */
   brushShape: 'free' | 'line' | 'circle';
   gridSize: number;
@@ -159,6 +162,8 @@ export function defaultSettings(): Settings {
     wallsFeed: false,
     showWalls: true,
     colourBlend: 1.5,
+    customWander: false,
+    wanderEvery: 7,
     brushShape: 'free',
     gridSize: 512,
     resScale: 1,
@@ -367,7 +372,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return el('label', { class: 'row log' }, el('span', {}, label), input, num);
   }
 
-  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls', title: string, then?: () => void) {
+  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'customWander', title: string, then?: () => void) {
     const input = el('input', { type: 'checkbox' });
     input.addEventListener('change', () => { s[key] = input.checked; then?.(); });
     syncers.push(() => (input.checked = s[key]));
@@ -715,7 +720,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
 
   // custom palette only: per reagent, on/off, colour, low, high, power (rebuilt for each rule)
   const customBox = el('div', {});
-  const gradeRows = el('div', {}, slider('blend (s)', 'colourBlend', 0, 10, 0.1, 1), slider('gamma', 'customGamma', 0.2, 4, 0.01, 2), slider('contrast', 'customContrast', 0.5, 3, 0.01, 2), slider('saturation', 'customSaturation', 0, 3, 0.01, 2));
+  const gradeRows = el('div', {}, slider('blend (s)', 'colourBlend', 0, 10, 0.1, 1),
+    el('div', { class: 'checks' }, checkbox('wander', 'customWander', 'randomise the colours by themselves every so often (each blending in over blend)')),
+    slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('gamma', 'customGamma', 0.2, 4, 0.01, 2), slider('contrast', 'customContrast', 0.5, 3, 0.01, 2), slider('saturation', 'customSaturation', 0, 3, 0.01, 2));
   let customKey = '';
   const toHex = (c: number[]) => '#' + c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('');
   const fillCustom = () => {
