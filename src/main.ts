@@ -113,6 +113,37 @@ async function init() {
   for (const n of rule.paintable) s.paint[n] = globals[n];
   s.custom = defaultCustom(rule.reagents, rule.view.customOff);
   let customFor = ''; // the rule or scene the custom palette was set up for
+  // the last session's settings (all but running), rule and its parameters, kept in this browser: everything but the field
+  const SESSION_KEY = 'rdui.session';
+  type Session = { ruleId: string; settings: Partial<Settings>; globals: Record<string, number> };
+  let session: Session | null = null;
+  try {
+    session = JSON.parse(localStorage.getItem(SESSION_KEY) ?? 'null');
+  } catch {
+    // storage blocked or garbled: start afresh
+  }
+  const sessionSettings = () => {
+    const { running: _, ...rest } = s;
+    return rest;
+  };
+  if (session?.settings) {
+    const defs = defaultSettings();
+    // only known keys of the right type (a setting renamed since is left at its default)
+    for (const [k, v] of Object.entries(session.settings)) if (k in defs && k !== 'running' && typeof v === typeof (defs as unknown as Record<string, unknown>)[k]) (s as unknown as Record<string, unknown>)[k] = v;
+  }
+  let sessionSaved = '';
+  let sessionT = 0;
+  function saveSession() {
+    const json = JSON.stringify({ ruleId, settings: sessionSettings(), globals } satisfies Session);
+    if (json === sessionSaved) return;
+    sessionSaved = json;
+    try {
+      localStorage.setItem(SESSION_KEY, json);
+    } catch {
+      // storage blocked: nothing is remembered
+    }
+  }
+  addEventListener('pagehide', saveSession);
   // the custom palette as shown: eases toward s.custom over about s.colourBlend seconds
   let shownCustom: CustomChannel[] = structuredClone(s.custom);
   let shownGrade = [s.customContrast, s.customSaturation, s.customGamma];
@@ -1309,6 +1340,7 @@ async function init() {
     } else if (!hover) {
       readout.textContent = stats;
     }
+    if (now - sessionT > 1000) { sessionT = now; saveSession(); }
     requestAnimationFrame(frame);
   }
 
@@ -1319,9 +1351,28 @@ async function init() {
   } catch {
     // storage blocked
   }
-  const wanted = decodeURIComponent(location.hash.match(/rule=([^&]+)/)?.[1] ?? '') || last;
-  if (wanted && ruleChoices().some((c) => c.id === wanted)) await selectRule(wanted);
+  const wanted = [decodeURIComponent(location.hash.match(/rule=([^&]+)/)?.[1] ?? ''), last].find((id) => id && ruleChoices().some((c) => c.id === id));
+  if (wanted) await selectRule(wanted);
   else await applyRule(rule, { field: 'initial', id: ruleId });
+  // the same rule as last time: its view, colours, brush and parameters as they were (loading it set the rule's own)
+  if (session && session.ruleId === ruleId) {
+    const defs = defaultSettings();
+    for (const [k, v] of Object.entries(session.settings ?? {})) if (k in defs && k !== 'running' && typeof v === typeof (defs as unknown as Record<string, unknown>)[k]) (s as unknown as Record<string, unknown>)[k] = v;
+    s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
+    if (s.tint >= rule.reagents.length) s.tint = -1;
+    if (s.custom.length !== Math.min(rule.reagents.length, 12)) s.custom = defaultCustom(rule.reagents, rule.view.customOff);
+    else { customAutoFit = 0; customAutoRandomise = false; }
+    shownCustom = structuredClone(s.custom);
+    shownGrade = [s.customContrast, s.customSaturation, s.customGamma];
+    const saved = Object.entries(session.globals ?? {}).filter(([k, v]) => rule.params.some((p) => p.name === k) && typeof v === 'number' && v !== globals[k]);
+    const painted = Object.fromEntries(saved.filter(([k]) => rule.paintable.includes(k)));
+    for (const [k, v] of saved) if (!(k in painted)) { globals[k] = v; sim.setGlobal(k, v); }
+    if (Object.keys(painted).length) setBackground(painted);
+    cellScale = 1 / s.featureSize;
+    sim.setCellScale(cellScale);
+    ui.rebuildRule();
+    ui.sync();
+  }
   requestAnimationFrame(frame);
 }
 
