@@ -766,7 +766,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const customBox = el('div', {});
   const gradeRows = el('div', {}, slider('blend (s)', 'colourBlend', 0, 10, 0.1, 1),
     el('div', { class: 'checks' }, checkbox('wander', 'customWander', 'randomise the colours by themselves every so often (each blending in over blend)')),
-    slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('overall power', 'customGamma', 0.2, 4, 0.01, 2), slider('contrast', 'customContrast', 0.5, 3, 0.01, 2), slider('saturation', 'customSaturation', 0, 3, 0.01, 2));
+    slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2), slider('contrast', 'customContrast', 0.5, 3, 0.01, 2), slider('saturation', 'customSaturation', 0, 3, 0.01, 2));
   let customKey = '';
   const toHex = (c: number[]) => '#' + c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('');
   const fillCustom = () => {
