@@ -298,14 +298,14 @@ export function openExplorerPanel(env: ExplorerEnv) {
       : 'Centre: the current values. Tap a variant to make it the centre; Use or Save as rule takes the centre.';
   }
   function gridControls() {
-    const chips = el('div', { class: 'explore-chips' }, el('span', { class: 'hint' }, 'vary'));
+    const chips = el('div', { class: 'explore-chips' }, el('span', { class: 'hint' }, 'Vary'));
     for (const p of specs) {
       const b = button(p.name, () => {
         if (unlocked.has(p.name)) unlocked.delete(p.name);
         else unlocked.add(p.name);
         dirs = null;
         start(); // (rebuilds these controls too: a strength row per varied parameter)
-      }, 'tap to vary or hold this parameter');
+      }, 'tap to vary or hold this parameter', true);
       b.classList.toggle('active', unlocked.has(p.name));
       if (unlocked.has(p.name)) Object.assign(b.style, { borderColor: colourOf(p.name), color: colourOf(p.name) });
       chips.append(b);
@@ -363,7 +363,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
       start();
     });
     controls.replaceChildren(chips,
-      el('label', { class: 'check', title: 'tiles become fixed directions, kept from tap to tap: tap one to move that way, again to carry on' }, go, 'keep going'),
+      el('label', { class: 'check', title: 'tiles become fixed directions, kept from tap to tap: tap one to move that way, again to carry on' }, go, 'Keep Going'),
       el('div', { class: 'hint' }, 'strength'),
       ...[...unlocked].map(strengthRow));
   }
@@ -533,7 +533,7 @@ export function openExplorerPanel(env: ExplorerEnv) {
       setSpan(Number(sp.value));
       start();
     });
-    const spanRow = el('label', { class: 'row', title: 'how much of each parameter\'s range the map covers, about the current values (resets the limits below)' }, el('span', {}, 'span'), sp, out);
+    const spanRow = el('label', { class: 'row', title: 'how much of each parameter\'s range the map covers, about the current values (resets the limits below)' }, el('span', {}, 'Span'), sp, out);
     ladder(spanRow, {
       get: () => span,
       set: (v) => { setSpan(v); sp.value = String(v); out.textContent = `${+(v * 100).toPrecision(3)}%`; restartSoon(); },

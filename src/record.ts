@@ -102,7 +102,7 @@ export function recordSection(env: RecordEnv) {
   quality.value = '0.25';
   const row = (label: string, input: HTMLElement, hint = '') => el('label', { class: 'row' }, el('span', {}, label), input, el('output', {}, hint));
   const stepsOut = el('output');
-  const stepsRow = el('label', { class: 'row' }, el('span', {}, 'steps/frame'), steps, stepsOut);
+  const stepsRow = el('label', { class: 'row' }, el('span', {}, 'Steps/Frame'), steps, stepsOut);
   for (const [box, lo] of [[secs, 0.1], [fps, 1], [steps, 1]] as [HTMLInputElement, number][]) {
     ladder(box, {
       get: () => Number(box.value) || (box === steps ? env.stepsPerFrame() : lo),

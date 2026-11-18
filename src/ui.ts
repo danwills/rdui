@@ -206,8 +206,19 @@ export function section(title: string, ...children: Node[]) {
   return el('section', {}, el('h2', {}, title), ...children);
 }
 
-export function button(label: string, onClick: () => void, title = '') {
-  const b = el('button', { title }, label);
+const SMALL_WORDS = new Set(['a', 'an', 'the', 'of', 'to', 'by', 'in', 'on', 'and', 'or', 'as', 'at', 'for', 'per', 'vs']);
+/**
+ * Labels in Title Case: each word capitalised, except small ones mid-label, units in brackets ("(s)")
+ * and names with underscores or capitals inside (parameter and reagent names keep their own case).
+ */
+export function titleCase(s: string) {
+  return s.replace(/[A-Za-z][\w']*/g, (w: string, at: number) =>
+    (at > 0 && SMALL_WORDS.has(w)) || s[at - 1] === '(' || /[A-Z0-9_]/.test(w.slice(1)) ? w : w[0].toUpperCase() + w.slice(1));
+}
+
+/** A button; its label in Title Case unless `raw` (names: parameters, presets). */
+export function button(label: string, onClick: () => void, title = '', raw = false) {
+  const b = el('button', { title }, raw ? label : titleCase(label));
   b.addEventListener('click', onClick);
   return b;
 }
@@ -358,7 +369,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       input.value = String(s[key]);
       out.textContent = (s[key] as number).toFixed(digits);
     });
-    const row = el('label', { class: 'row', title: SETTING_HINTS[key] ?? label }, el('span', {}, label), input, out);
+    const row = el('label', { class: 'row', title: SETTING_HINTS[key] ?? label }, el('span', {}, titleCase(label)), input, out);
     ladder(row, {
       get: () => s[key] as number,
       set: (v) => { (s[key] as number) = v; onChange?.(); sync(); },
@@ -399,14 +410,14 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       input.value = String(Math.min(1, Math.log(Math.max(1, s[key])) / L));
       if (document.activeElement !== num) num.value = String(s[key]);
     });
-    return el('label', { class: 'row log', title: SETTING_HINTS[key] ?? label }, el('span', {}, label), input, num);
+    return el('label', { class: 'row log', title: SETTING_HINTS[key] ?? label }, el('span', {}, titleCase(label)), input, num);
   }
 
   function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'customWander', title: string, then?: () => void) {
     const input = el('input', { type: 'checkbox' });
     input.addEventListener('change', () => { s[key] = input.checked; then?.(); });
     syncers.push(() => (input.checked = s[key]));
-    return el('label', { class: 'check', title }, input, label);
+    return el('label', { class: 'check', title }, input, titleCase(label));
   }
 
   function select(label: string, key: keyof Settings, options: () => [number | string, string][], onChange?: () => void) {
@@ -422,7 +433,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       sync();
     });
     syncers.push(() => (sel.value = String(s[key])));
-    return { row: el('label', { class: 'row', title: SETTING_HINTS[key] ?? label }, el('span', {}, label), sel), fill };
+    return { row: el('label', { class: 'row', title: SETTING_HINTS[key] ?? label }, el('span', {}, titleCase(label)), sel), fill };
   }
 
   /** The palette: a button showing the current one, opening a grid of every palette with its preview. */
@@ -496,11 +507,11 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       document.body.append(sheet);
       grid.querySelector('.active')?.scrollIntoView({ block: 'center' });
     });
-    return el('label', { class: 'row' }, el('span', {}, 'palette'), btn);
+    return el('label', { class: 'row' }, el('span', {}, 'Palette'), btn);
   }
 
   function rangeRow(label: string, key: 'low' | 'high' | 'tintLow' | 'tintHigh' | 'fleckLow' | 'fleckHigh', range: [number, number]) {
-    const r = valueRow(label, () => s[key], (v) => (s[key] = v), range, undefined, SETTING_HINTS[key] ?? label);
+    const r = valueRow(titleCase(label), () => s[key], (v) => (s[key] = v), range, undefined, SETTING_HINTS[key] ?? label);
     syncers.push(r.refresh);
     return r.row;
   }
@@ -622,7 +633,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       };
       const pad = buildFKPad(s, () => globals, setFK);
       ruleSyncers.push(pad.draw);
-      const targetRow = el('div', { class: 'presets fk-target' }, el('span', { class: 'hint' }, 'map sets'));
+      const targetRow = el('div', { class: 'presets fk-target' }, el('span', { class: 'hint' }, 'Map Sets'));
       for (const [id, label, hint] of [['brush', 'Brush', 'the values the Params tool paints'], ['background', 'Background', 'the unpainted field: every cell still at the old base values follows (painted areas and walls stay); Reset starts from it too']] as const) {
         const b = button(label, () => {
           s.fkTarget = id;
@@ -634,7 +645,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       targetRow.append(button('Map ⤢', () => openFKMap(s, () => globals, setFK, sync), 'the whole map, with Pearson\'s classes and the bifurcation curves'));
       const presetRow = el('div', { class: 'presets' });
       for (const p of PRESETS) {
-        const b = button(p.name, () => setFK(p.feed, p.kill), p.note);
+        const b = button(p.name, () => setFK(p.feed, p.kill), p.note, true);
         ruleSyncers.push(() => b.classList.toggle('active', Math.abs(target().F - p.feed) < 1e-5 && Math.abs(target().k - p.kill) < 1e-5));
         presetRow.append(b);
       }
@@ -682,14 +693,14 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     }
 
     nodes.push(
-      el('h3', {}, 'Paint values'), paintBox,
+      el('h3', {}, 'Paint Values'), paintBox,
       el('div', { class: 'buttons' },
         button('Fill all', actions.fillParams, 'apply the paint values to the whole field (keeps walls) · F'),
         button('Reset', actions.reset, 'regenerate the initial pattern · R'),
         button('Clear all', actions.clearAll, 'a blank field: chemistry at rest, painted params and walls removed (Clear chem keeps them)'),
       ),
       ...(wallBox.childElementCount ? [el('h3', { title: 'walls drawn with the Wall tool (walls reflect / walls absorb): wall_grow moves every edge out (or in, below 0) by that many cells' }, 'Walls'), wallBox] : []),
-      el('details', { class: 'globals-wrap', open: '' }, el('summary', {}, `Global parameters (${globalBox.childElementCount})`), globalBox),
+      el('details', { class: 'globals-wrap', open: '' }, el('summary', {}, `Global Parameters (${globalBox.childElementCount})`), globalBox),
     );
     ruleBody.replaceChildren(...nodes);
     viewReagent.fill();
@@ -772,9 +783,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         ch().color = c;
         colour.style.background = toHex(c);
       }, holdForDropper));
-      const lo = valueRow('low', () => ch().low, (v) => (ch().low = v), [-1, 1], undefined, `${name}'s value that shows no colour`);
-      const hi = valueRow('high', () => ch().high, (v) => (ch().high = v), [0, 2], undefined, `${name}'s value that shows its full colour`);
-      const pw = valueRow('power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4], undefined, `${name}'s curve from low to high: above 1 shows only its peaks, below 1 lifts the faint parts`);
+      const lo = valueRow('Low', () => ch().low, (v) => (ch().low = v), [-1, 1], undefined, `${name}'s value that shows no colour`);
+      const hi = valueRow('High', () => ch().high, (v) => (ch().high = v), [0, 2], undefined, `${name}'s value that shows its full colour`);
+      const pw = valueRow('Power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4], undefined, `${name}'s curve from low to high: above 1 shows only its peaks, below 1 lifts the faint parts`);
       refreshers.push(() => { on.checked = ch().on; colour.style.background = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
       const fit = button('fit', () => actions.fitCustom(r), `fit ${name}'s low and high to the field (1st to 99th percentile)`);
       fit.classList.add('mini');

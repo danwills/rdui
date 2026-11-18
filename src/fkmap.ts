@@ -329,7 +329,7 @@ export function openFKMap(s: Settings, background: () => Record<string, number>,
   guideBtn.classList.add('active');
   const root = el('div', { class: 'fkmap' },
     el('div', { class: 'fkmap-box' },
-      el('div', { class: 'fkmap-bar' }, el('span', {}, 'sets'), ...targetBtns, guideBtn, readout, button('✕', close, 'close · Esc')),
+      el('div', { class: 'fkmap-bar' }, el('span', {}, 'Sets'), ...targetBtns, guideBtn, readout, button('✕', close, 'close · Esc')),
       canvas,
       el('p', { class: 'hint' }, 'A real Gray-Scott run with F and k varying across the field (b shown). Solid: saddle-node, dashed: Hopf. Red: Pearson\'s classes (Munafo\'s examples), blue: presets.'),
     ),
