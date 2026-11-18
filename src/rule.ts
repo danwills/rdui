@@ -3778,7 +3778,23 @@ delta_m = -carry*div_m + D_m`)
     .replace('delta_py = D_m', 'delta_py = -carry*div_py + D_m'),
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3];
+/**
+ * Momentum Bubbles 4 (speed limit): version 3, with each part of the velocity p/m capped at ±v_max. The carrying is
+ * only stable while the content's spreading and the flow together move under a cell a step (4·D_m + |vx| + |vy| ≤ 1,
+ * so |vx| + |vy| ≤ 0.2 at D_m 0.2): pushed harder (Push at strength 5 is 0.3 px a step), version 3 blows up.
+ */
+export const MOMENTUM_BUBBLES_4: RuleDef = {
+  ...MOMENTUM_BUBBLES_3,
+  name: 'Momentum Bubbles 4 (speed limit)',
+  params: [...MOMENTUM_BUBBLES_3.params, { name: 'v_max', value: 0.1, min: 0, max: 0.2 }],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_3.paramHints,
+    v_max: 'Top speed, in cells a step, across and up (each): pushed past it a bubble goes no faster (and keeps the extra momentum). Above ~0.1 with D_m 0.2 the carrying can go unstable',
+  },
+  formula: MOMENTUM_BUBBLES_3.formula.replace(/= (\w+)\/max\((\w+), 0\.1\);/g, '= clamp($1/max($2, 0.1), -v_max, v_max);'),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3789,7 +3805,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
