@@ -1,0 +1,16 @@
+{
+ "name": "Smoke + History: twist",
+ "description": "The history twists the smoke's flow (h_twist 0.05): the history gathers into a few big blobs.",
+ "rule": "builtin:37",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 3,
+ "globals": {
+  "h_twist": 0.05
+ },
+ "view": {
+  "reagent": "h",
+  "low": 0,
+  "high": 1
+ }
+}

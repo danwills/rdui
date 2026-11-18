@@ -1,0 +1,16 @@
+{
+ "name": "Smoke + History: cells",
+ "description": "The smoke is pushed down its own history's slope (h_push 0.3), away from where it has been: it breaks into drifting cells, each with a bright crescent edge where it's moving on.",
+ "rule": "builtin:37",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 3,
+ "globals": {
+  "h_push": 0.3
+ },
+ "view": {
+  "reagent": "h",
+  "low": 0,
+  "high": 1
+ }
+}

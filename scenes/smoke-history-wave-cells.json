@@ -1,0 +1,17 @@
+{
+ "name": "Smoke + History + Wave: cells",
+ "description": "History cells (h_push 0.3) with the wave speeding the smoke's growth (wave_to_amp 0.001); the wave (shown) follows the cells.",
+ "rule": "builtin:38",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 3,
+ "globals": {
+  "h_push": 0.3,
+  "wave_to_amp": 0.001
+ },
+ "view": {
+  "reagent": "w",
+  "low": 0,
+  "high": 1
+ }
+}

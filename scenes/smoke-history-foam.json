@@ -1,0 +1,16 @@
+{
+ "name": "Smoke + History: foam",
+ "description": "The smoke is pulled up its history's slope (h_push \u22120.3), so it follows its own trails: the history sets into a foam of cells.",
+ "rule": "builtin:37",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 3,
+ "globals": {
+  "h_push": -0.3
+ },
+ "view": {
+  "reagent": "h",
+  "low": 0,
+  "high": 1
+ }
+}

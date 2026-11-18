@@ -1,0 +1,17 @@
+{
+ "name": "Smoke + History + Wave: arcs",
+ "description": "The smoke follows its trails (h_push \u22120.3) and the wave slows its growth (wave_to_amp \u22120.001): the wave (shown) draws bright arcs.",
+ "rule": "builtin:38",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 3,
+ "globals": {
+  "h_push": -0.3,
+  "wave_to_amp": -0.001
+ },
+ "view": {
+  "reagent": "w",
+  "low": 0,
+  "high": 1
+ }
+}

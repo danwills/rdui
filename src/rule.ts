@@ -3512,7 +3512,96 @@ delta_c = delta_c - stir_c*(fx*x_gradient_c - fy*y_gradient_c) + stir_smooth*0.5
   view: { reagent: 'c', low: 0, high: 1, tint: 'b', stepsPerFrame: 10, customOff: ['d', 'e', 'sx', 'sy', 'sdiv', 'sview'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW];
+/**
+ * Smoke with a history of its strength (Dan's idea, step one; then SMOKE_HISTORY_WAVE): the Smoke kernel (a, b, c, d) and h,
+ * which builds up where the smoke is strong (its magnitude |(a, b)|, magnified by mag_gain as d is, since smoke lives at
+ * ~1e-7), fades and spreads. h can feed back: speeding the smoke's growth (h_to_amp) or its turning (h_to_cs). Reach as
+ * Smoke (wide), 1 by default (the plain kernel).
+ */
+function smokeHistory(wave: boolean): RuleDef {
+  const waveFormula = wave
+    ? `
+// a damped wave (displacement w, velocity wv) the smoke's strength drives; w moves with the new velocity (as in
+// GS History+Wave), which keeps it stable for wave_c2 up to 0.5
+delta_wv = wave_c2*laplacian_w - wave_damp*wv - wave_spring*w + m_to_wave*m;
+delta_w = wv + delta_wv;`
+    : '';
+  return {
+    name: wave ? 'Smoke + History + Wave' : 'Smoke + History',
+    description:
+      'Smoke with a history h of its strength: h builds up where the smoke is strong (its magnitude, magnified by mag_gain), '
+      + 'fades and spreads, so it shows where the smoke has been. h can feed back on the smoke\'s growth (h_to_amp) and turning (h_to_cs).'
+      + (wave ? ' A damped wave (w, its velocity wv), driven by the smoke\'s strength (m_to_wave), spreads out from it, and can '
+        + 'feed back on its growth (wave_to_amp).' : ''),
+    reagents: ['a', 'b', 'c', 'd', 'h', ...(wave ? ['w', 'wv'] : [])],
+    params: [
+      ...SMOKE.params,
+      { name: 'reach', value: 1, min: 1, max: 12 },
+      { name: 'smoke_clamp', value: 10, min: 0.01, max: 10 },
+      { name: 'mag_gain', value: 1e6, min: 0, max: 1e7 },
+      { name: 'h_gain', value: 0.01, min: 0, max: 0.1 },
+      { name: 'h_decay', value: 0.01, min: 0, max: 0.1 },
+      { name: 'D_h', value: 0.05, min: 0, max: 0.3 },
+      { name: 'h_half', value: 1, min: 0.01, max: 100 },
+      { name: 'h_to_amp', value: 0, min: -0.002, max: 0.002 },
+      { name: 'h_to_cs', value: 0, min: -1, max: 2 },
+      { name: 'h_twist', value: 0, min: -0.5, max: 0.5 },
+      { name: 'h_push', value: 0, min: -1, max: 1 },
+      ...(wave ? [
+        { name: 'wave_c2', value: 0.2, min: 0, max: 0.5 },
+        { name: 'wave_damp', value: 0.002, min: 0, max: 0.05 },
+        { name: 'wave_spring', value: 0.001, min: 0, max: 0.05 },
+        { name: 'm_to_wave', value: 0.001, min: 0, max: 0.01 },
+        { name: 'wave_to_amp', value: 0, min: -0.01, max: 0.01 },
+      ] : []),
+    ],
+    paramHints: {
+      ...SMOKE_HINTS,
+      reach: 'How far the smoke\'s neighbours reach, in cells (as Smoke (wide)): 1 is the plain kernel; larger makes larger smoke',
+      smoke_clamp: 'Most the smoke (a and b) may reach: keeps feedback from running away',
+      mag_gain: 'How much the smoke\'s strength is magnified before the history (and wave) take it up: smoke lives at ~1e-7',
+      h_gain: 'How fast the smoke\'s strength builds up the history h',
+      h_decay: 'How fast the history h fades',
+      D_h: 'How fast the history h spreads',
+      h_half: 'The history at which its feedback is half on: the feedback uses h/(h + h_half), from 0 to 1, so it can\'t run away',
+      h_to_amp: 'How much the history speeds the smoke\'s growth (negative: slows it where the smoke has been). amp is ~1.001, so small values matter',
+      h_to_cs: 'How much the history changes the smoke\'s turning: cs times (1 + h_to_cs·hn)',
+      h_twist: 'Turns the flow by this angle (radians a step) where the history is: old trails curl the smoke one way (negative: the other)',
+      h_push: 'Pushes the flow down the history\'s slope, away from where the smoke has been (negative: towards it, so it follows its trails)',
+      ...(wave ? {
+        wave_c2: 'Wave speed squared: higher spreads the wave faster (above 0.5 it goes unstable)',
+        wave_damp: 'How fast the wave dies away',
+        wave_spring: 'Pulls the wave back to 0: the smoke\'s strength only ever pushes it one way, so without this it drifts up for ever',
+        m_to_wave: 'How hard the smoke\'s strength drives the wave',
+        wave_to_amp: 'How much the wave\'s displacement speeds (or, negative, slows) the smoke\'s growth, saturating (w/(1 + |w|)): the smoke rides its own wakes',
+      } : {}),
+    },
+    paintable: ['cs', 'amp'],
+    discrete: true,
+    reach: 'reach',
+    formula: `// the smoke's strength, magnified (it lives at ~1e-7)
+float m = mag_gain*sqrt(a*a + b*b);
+// the history's feedback, saturating (0 to 1) so it can't run away
+float hn = h/(fabs(h) + h_half);
+float amp_l = amp + h_to_amp*hn${wave ? ' + wave_to_amp*w/(1.0 + fabs(w))' : ''};
+float cs_l = cs*(1.0 + h_to_cs*hn);
+${smokeFormula(false).replace(/amp\*/g, 'amp_l*').replace(/\bcs\*/g, 'cs_l*')
+    .replace('float a2 =', '// pushed down the history\'s slope (a right, b down; rdui\'s y_gradient points up), in the smoke\'s own tiny units\nta = ta - h_push*x_gradient_h/mag_gain;\ntb = tb + h_push*y_gradient_h/mag_gain;\nturn = turn + h_twist*hn;\nfloat a2 =')
+    .replace('float d2 =', 'a2 = clamp(a2, -smoke_clamp, smoke_clamp);\nb2 = clamp(b2, -smoke_clamp, smoke_clamp);\nfloat d2 =')}
+// its history: built up by its strength, fading and spreading
+delta_h = h_gain*m - h_decay*h + D_h*laplacian_h;${waveFormula}`,
+    size: { width: 512, height: 512 },
+    rest: [0, 0, 0, 0, 0, ...(wave ? [0, 0] : [])],
+    seed: [1, 1, null, null, null, ...(wave ? [null, null] : [])],
+    seedNoise: [0, 0, 0, 0, 0, ...(wave ? [0, 0] : [])],
+    initial: SMOKE.initial,
+    view: { reagent: 'h', low: 0, high: 1, stepsPerFrame: 3, customAuto: true, customOff: ['a', 'b', 'c', ...(wave ? ['wv'] : [])] },
+  };
+}
+export const SMOKE_HISTORY = smokeHistory(false);
+export const SMOKE_HISTORY_WAVE = smokeHistory(true);
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3522,7 +3611,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
-  ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW]],
+  ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_GS, SMOKE_HW]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
