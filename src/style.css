@@ -205,8 +205,10 @@ footer { border-top: 1px solid var(--line); padding-top: 8px; }
   #app.split #stage { grid-template-columns: 55% 45%; grid-template-rows: 100%; }
 }
 #app.fill #viewport { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 0; }
-header button { margin-left: 8px; padding: 0 8px; font-size: 15px; }
-header button.narrow { margin-left: 2px; padding: 0 3px; }
+/* the header's icon buttons sit close together: the header's gap before the first, 3px between the rest */
+header button { padding: 0 5px; font-size: 15px; }
+header button + button { margin-left: -5px; }
+header button.narrow { padding: 0 3px; }
 header button.narrow span { display: inline-block; transform: scaleX(0.5); margin: 0 -4px; }
 
 /* magnifier while dragging on the F/k pad (fkmap.ts) */
