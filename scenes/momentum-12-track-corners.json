@@ -1,0 +1,147 @@
+{
+ "name": "Momentum Bubbles 12: square track (big corner gates)",
+ "description": "The anticlockwise track with big gates (radius 0.2) out in the frame's corners, just touching its edges; gentle gates (brake, accel 0.003), aim_speed 0.04. A dot starts in the middle of the bottom side heading east into the bottom-right gate and goes round the gap between the gates, turning as it clips each one's inner edge (~12000 steps a lap; it sheds a little now and then). Gates show as the aim channel in the custom palette.",
+ "rule": "builtin:51",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 20,
+ "globals": {
+  "aim_speed": 0.04,
+  "brake": 0.003,
+  "accel": 0.003
+ },
+ "initial": [
+  {
+   "chem": "u",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.8,
+    "cy": 0.8,
+    "r": 0.2
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.8,
+    "cy": 0.2,
+    "r": 0.2
+   }
+  },
+  {
+   "chem": "ay",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": -1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.2,
+    "cy": 0.2,
+    "r": 0.2
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 1,
+    "edge": 3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.2,
+    "cy": 0.8,
+    "r": 0.2
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5,
+    "cy": 0.8,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 10
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5,
+    "cy": 0.8,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "px",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.4
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5,
+    "cy": 0.8,
+    "r": 0.05
+   }
+  },
+  {
+   "chem": "s",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.4
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5,
+    "cy": 0.8,
+    "r": 0.05
+   }
+  }
+ ],
+ "view": {
+  "reagent": "phi",
+  "low": 0,
+  "high": 1
+ }
+}
