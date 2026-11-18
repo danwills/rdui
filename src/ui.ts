@@ -16,8 +16,8 @@ export interface Settings {
   tool: Tool;
   radius: number;
   strength: number;
-  /** Each tool's own last strength (the app swaps strength over when the tool changes). */
-  toolStrength: Record<string, number>;
+  /** Each tool's own last radius, strength, hardness and shape (the app swaps them over when the tool changes). */
+  toolBrush: Record<string, Partial<Pick<Settings, 'radius' | 'strength' | 'hardness' | 'brushShape'>>>;
   hardness: number;
   /** Brush values for the rule's paintable params. */
   paint: Record<string, number>;
@@ -154,7 +154,7 @@ export function defaultSettings(): Settings {
     tool: 'seed',
     radius: 42,
     strength: 1,
-    toolStrength: {},
+    toolBrush: {},
     hardness: 0.6,
     paint: {},
     fkTarget: 'background',

@@ -1373,13 +1373,14 @@ async function init() {
     return { custom: shownCustom, customContrast: shownGrade[0], customSaturation: shownGrade[1], customGamma: shownGrade[2] };
   }
 
-  let strengthTool = s.tool; // the tool s.strength belongs to
+  let brushTool = s.tool; // the tool the brush settings belong to
   function frame() {
-    // each tool keeps its own strength: changing tool (button, key or stamp) puts the old one's away and brings the new one's back
-    if (s.tool !== strengthTool) {
-      s.toolStrength[strengthTool] = s.strength;
-      s.strength = s.toolStrength[s.tool] ?? s.strength;
-      strengthTool = s.tool;
+    // each tool keeps its own brush (radius, strength, hardness, shape): changing tool (button, key or stamp) puts the
+    // old one's away and brings the new one's back, so a small seed and a big erase are a tool switch apart
+    if (s.tool !== brushTool) {
+      s.toolBrush[brushTool] = { radius: s.radius, strength: s.strength, hardness: s.hardness, brushShape: s.brushShape };
+      Object.assign(s, s.toolBrush[s.tool] ?? {});
+      brushTool = s.tool;
       ui.sync();
     }
     // wander: a randomise every wanderEvery seconds, while the custom palette shows
