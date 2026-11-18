@@ -2,8 +2,8 @@
 // screen; a quick middle click instead puts the row's default back) and a ladder of step sizes pops up, 100 at the top down to 0.0001. The row under the
 // pointer is the step; dragging left or right takes steps off or adds them. Changing row carries
 // on from the value reached (as Houdini's ladder). Letting go keeps the value; Esc puts it back.
-// Drags don't stop at the screen's edge: a mouse is locked (hidden, read as movement), and a finger
-// (or a mouse the browser won't lock) held near the left or right edge keeps going, faster the nearer.
+// Drags don't stop at the screen's edge: a mouse or finger held near the left or right edge keeps going, faster
+// the nearer (pointer lock, which hides the mouse and reads movement, is there but off: see LOCK).
 
 export interface LadderTarget {
   get(): number;
@@ -21,6 +21,9 @@ const LONG_PRESS = 450; // ms
 const SLOP = 8; // px a long-press may wander
 const MOUSE_HOLD = 200; // ms a middle button is held (or 3 px moved) before the ladder opens; let go sooner, it's a click
 const EDGE = 40; // px from the screen's side where a drag keeps going by itself
+// Pointer lock is off: Chrome announces it with a bubble that is a window of its own, and on Dan's desktop (X11, KWin,
+// NVIDIA, Vulkan) such windows set off see-through flicker. A mouse held near the side keeps going instead, as a finger does.
+const LOCK = false;
 const targets = new WeakMap<Element, LadderTarget>();
 let claimed = -1; // the pointer whose gesture opened a ladder (the slider guard leaves it alone)
 
@@ -235,5 +238,5 @@ function open(t: LadderTarget, start: PointerEvent) {
   document.addEventListener('touchmove', noScroll, { passive: false });
   document.addEventListener('pointerlockchange', lockChange);
   // (a browser that won't lock falls back to the edge)
-  if (!touch) Promise.resolve(box.requestPointerLock?.()).catch(() => {});
+  if (!touch && LOCK) Promise.resolve(box.requestPointerLock?.()).catch(() => {});
 }
