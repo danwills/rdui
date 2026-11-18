@@ -3899,7 +3899,47 @@ delta_u =`),
   view: { ...MOMENTUM_BUBBLES_4.view, customOff: [...MOMENTUM_BUBBLES_4.view.customOff!, 'mb', 'gb', 'gmb', 'mbB'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7];
+/**
+ * Momentum Bubbles 8 (aim): version 4, with aim: a still field a = (ax, ay) (y up; stamped by scenes, like warmth in the
+ * lava lamp) that reprograms bubbles passing through. Where it is, a bubble's momentum swings toward the same size
+ * along a's direction (|p|·â, at aim_rate·|a|): it keeps its speed and turns, however it came in, so it leaves the way
+ * a points (a corner). aim_drag bleeds momentum there too (scaled by |a|): slow bubbles stall in it, fast ones get through.
+ * Found: a corner turns a dot from 0° to −90° cleanly, but it keeps only ~1/3 of its momentum (the turned front and
+ * unturned back average inside the bubble, and vectors pointing different ways shrink when averaged); sharper turns
+ * (aim_rate 0.5) keep less (~1/6).
+ */
+export const MOMENTUM_BUBBLES_8: RuleDef = {
+  ...MOMENTUM_BUBBLES_4,
+  name: 'Momentum Bubbles 8 (aim)',
+  description: MOMENTUM_BUBBLES_4.description + ' Aim (ax, ay; y up): still regions that turn bubbles passing through toward '
+    + 'their direction, keeping their speed (aim_drag slows them there too, so slow ones stall).',
+  reagents: [...MOMENTUM_BUBBLES_4.reagents, 'ax', 'ay'],
+  params: [
+    ...MOMENTUM_BUBBLES_4.params,
+    { name: 'aim_rate', value: 0.05, min: 0, max: 0.5 },
+    { name: 'aim_drag', value: 0, min: 0, max: 0.05 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_4.paramHints,
+    aim_rate: 'How fast a bubble in an aim region turns toward its direction (per step, times the aim\'s strength |a|): high turns it sharply as it enters',
+    aim_drag: 'How fast a bubble in an aim region loses momentum (times |a|): slow ones stall there, fast ones get through',
+  },
+  rest: [...MOMENTUM_BUBBLES_4.rest, 0, 0],
+  seed: [...MOMENTUM_BUBBLES_4.seed, null, null],
+  seedNoise: [...MOMENTUM_BUBBLES_4.seedNoise, 0, 0],
+  formula: MOMENTUM_BUBBLES_4.formula
+    .replace('delta_px = -carry*div_px', `// aim: the momentum turned toward the aim's direction, keeping its size; bled by aim_drag
+float al = sqrt(ax*ax + ay*ay);
+float pl = sqrt(px*px + py*py);
+float tx = pl*ax/max(al, 1e-6);
+float ty = pl*ay/max(al, 1e-6);
+delta_px = aim_rate*al*(tx - px) - aim_drag*al*px - carry*div_px`)
+    .replace('delta_py = -carry*div_py', 'delta_py = aim_rate*al*(ty - py) - aim_drag*al*py - carry*div_py')
+    .replace(/$/, '\n// the aim regions: still, as stamped\ndelta_ax = 0.0;\ndelta_ay = 0.0;'),
+  view: { ...MOMENTUM_BUBBLES_4.view, customOff: [...MOMENTUM_BUBBLES_4.view.customOff!, 'ay'] },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3910,7 +3950,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
