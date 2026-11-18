@@ -110,7 +110,7 @@ export interface RuleDef {
   seedNoise: number[];
   initial: Overlay[];
   /** Suggested view: reagent shown, its range, and steps per frame. */
-  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number; palette?: number; hueShape?: number; hueOffset?: number; fleckLow?: number; fleckHigh?: number; fleckGain?: number; custom?: CustomChannel[]; customContrast?: number; customSaturation?: number; customGamma?: number; customOff?: string[]; mode?: 'reagent' | 'params' | 'outlines' };
+  view: { reagent: string; low: number; high: number; tint?: string; stepsPerFrame?: number; palette?: number; hueShape?: number; hueOffset?: number; fleckLow?: number; fleckHigh?: number; fleckGain?: number; custom?: CustomChannel[]; customContrast?: number; customSaturation?: number; customGamma?: number; customOff?: string[]; customAuto?: boolean; mode?: 'reagent' | 'params' | 'outlines' };
   /**
    * Membranes: for the listed reagents, neighbours whose `param` value differs
    * (a painted compartment id) are treated as no-flux, like walls but only for
@@ -3338,8 +3338,8 @@ export const SMOKE: RuleDef = {
   seed: [1, 1, null, null],
   seedNoise: [0, 0, 0, 0],
   initial: (['a', 'b'] as const).map((chem): Overlay => ({ chem, op: 'overwrite', fill: { type: 'white_noise', low: -1, high: 1 }, shape: { type: 'everywhere' } })),
-  // as Ready showed it (its d): the smoke settles at a ~ 1e-7, magnified by d_gain
-  view: { reagent: 'd', low: -1.5, high: 4, stepsPerFrame: 3 },
+  // as Ready showed it (its d): the smoke settles at a ~ 1e-7, magnified by d_gain; the custom palette's ranges follow it (auto)
+  view: { reagent: 'd', low: -1.5, high: 4, stepsPerFrame: 3, customAuto: true },
 };
 
 export const SMOKE_SMOOTH: RuleDef = {
@@ -3350,7 +3350,7 @@ export const SMOKE_SMOOTH: RuleDef = {
     + 'vector\'s direction rather than the signs of a and b, so it has no favoured axes, and a and b are clamped to ±1.',
   params: SMOKE.params.map((p) => p.name === 'lps' ? { ...p, value: 0.034 } : p.name === 'lps2' ? { ...p, value: -0.08 } : p),
   formula: smokeFormula(true),
-  view: { reagent: 'd', low: -300, high: 300, stepsPerFrame: 3 },
+  view: { reagent: 'd', low: -300, high: 300, stepsPerFrame: 3, customAuto: true },
 };
 
 export const SMOKE_WIDE: RuleDef = {
@@ -3363,7 +3363,7 @@ export const SMOKE_WIDE: RuleDef = {
   params: [...SMOKE.params, { name: 'reach', value: 4, min: 1, max: 12 }],
   paramHints: { ...SMOKE_HINTS, reach: 'How far the neighbours reach, in cells (each the mean of a box about that wide): features grow about in proportion; 1 is the original' },
   reach: 'reach',
-  view: { reagent: 'd', low: -4, high: 4, stepsPerFrame: 3 },
+  view: { reagent: 'd', low: -4, high: 4, stepsPerFrame: 3, customAuto: true },
 };
 
 export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE];

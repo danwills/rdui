@@ -56,7 +56,8 @@ export interface CellSample {
   wall: boolean;
 }
 
-export interface CustomChannel { on: boolean; low: number; high: number; power: number; color: [number, number, number] }
+/** A custom palette channel; with auto, its low and high follow the field (the app's job; the shader ignores it). */
+export interface CustomChannel { on: boolean; low: number; high: number; power: number; color: [number, number, number]; auto?: boolean }
 
 /** The colour maps (colormaps.ts) as RGBA8 words, 256 per map, for the render shader; decoded once per device. */
 const colormapBuffers = new WeakMap<GPUDevice, GPUBuffer>();

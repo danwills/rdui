@@ -37,11 +37,11 @@ function oklchToRgb(L: number, C: number, h: number): [number, number, number] {
  * so they don't burn out to white. Low and high are fitted to the field once it has some structure.
  * A rule's view can name reagents to start off (customOff: helpers and hidden fields, like a lava lamp's heat).
  */
-function defaultCustom(reagents: string[], off: string[] = []): CustomChannel[] {
+function defaultCustom(reagents: string[], off: string[] = [], auto = false): CustomChannel[] {
   const colours: [number, number, number][] = [[1, 0.55, 0.2], [0.2, 0.75, 1], [0.6, 1, 0.3]];
   const m = Math.min(reagents.length, 12), dim = Math.min(1, 2.2 / m);
   return Array.from({ length: m }, (_, r) => ({
-    on: !off.includes(reagents[r]), low: 0, high: 1, power: 1,
+    on: !off.includes(reagents[r]), low: 0, high: 1, power: 1, ...(auto ? { auto } : {}),
     color: m <= 3 ? colours[r] : oklchToRgb(0.72, 0.15, 0.08 + r / m).map((x) => x * dim) as [number, number, number],
   }));
 }
@@ -113,7 +113,7 @@ async function init() {
   let note = ''; // shown under the rule picker (scene description)
   let globals: Record<string, number> = defaultGlobals(rule);
   for (const n of rule.paintable) s.paint[n] = globals[n];
-  s.custom = defaultCustom(rule.reagents, rule.view.customOff);
+  s.custom = defaultCustom(rule.reagents, rule.view.customOff, rule.view.customAuto);
   let customFor = ''; // the rule or scene the custom palette was set up for
   // the last session's settings (all but running), rule and its parameters, kept in this browser: everything but the field
   const SESSION_KEY = 'rdui.session';
@@ -151,10 +151,19 @@ async function init() {
   let shownGrade = [s.customContrast, s.customSaturation, s.customGamma];
   let blendT = performance.now();
   let wanderT = performance.now(); // when wander last randomised
-  // the custom palette's automatic fit: pending after its channels are reset to defaults (tries left)
-  let customAutoFit = 20;
-  // and once fitted, one randomise (new colours and powers): the default look
+  // and once first fitted, one randomise (new colours and powers): the default look
   let customAutoRandomise = true;
+  /*
+   * Custom palette ranges that follow the field. Each channel can have a target low/high that its range eases toward
+   * (span in log, so a range shrinking from 1 to 1e-7 glides), written by: a channel's auto, which refits it a few times
+   * a second for good; a randomise (🎲); and, after its channels are set up afresh, settling: every channel follows the
+   * field until the ranges stop moving (under SETTLE_RATE of their span per second, over SETTLE_WINDOW), then holds.
+   * Low or high changed by anything else (a slider, Fit) drops the target, and stops that channel settling.
+   */
+  const FIT_EVERY = 250, FIT_TAU = 1.2, SETTLE_WINDOW = 2, SETTLE_RATE = 0.05, SETTLE_MAX = 60;
+  let fits: { target?: [number, number]; wrote?: [number, number]; touched?: boolean }[] = [];
+  let settle: { t0: number; hist: { t: number; v: ([number, number] | null)[] }[]; rate: number; worst?: string; end?: string } | null = { t0: performance.now(), hist: [], rate: Infinity };
+  let fitBusy = false, fitT = 0, fitEaseT = performance.now(), rangeSyncT = 0;
   let compiled: CompiledRule = compileRule(rule);
   let sim = new Simulation(device, format, s.gridSize, s.gridSize, compiled);
   // the field's full-resolution size; the sim runs at full × s.resScale. Separately,
@@ -307,39 +316,113 @@ async function init() {
       return v.sort((p, q) => p - q);
     });
   }
-  /** Fits a custom channel's low and high to its 1st-99th percentile; false if (nearly) uniform, for its size (Smoke lives at ~1e-7). */
-  function fitChannel(c: CustomChannel, v: number[]) {
-    if (!v.length) return false;
+  /** A channel's 1st-99th percentile, or null if (nearly) uniform for its size (Smoke lives at ~1e-7). */
+  function fitRange(v: number[]): [number, number] | null {
+    if (!v.length) return null;
     const lo = v[Math.floor(v.length * 0.01)], hi = v[Math.floor(v.length * 0.99)];
-    if (!(hi - lo > 1e-4 * Math.max(Math.abs(lo), Math.abs(hi)) && hi - lo > 1e-30)) return false;
-    c.low = lo;
-    c.high = hi;
+    return hi - lo > 1e-4 * Math.max(Math.abs(lo), Math.abs(hi)) && hi - lo > 1e-30 ? [lo, hi] : null;
+  }
+  /** Fits a custom channel's low and high to its 1st-99th percentile at once; false if (nearly) uniform. */
+  function fitChannel(c: CustomChannel, v: number[]) {
+    const f = fitRange(v);
+    if (!f) return false;
+    [c.low, c.high] = f;
     return true;
   }
-  /** Custom palette: fit every reagent's low and high to the field, or just reagent `only`. */
+  /** Custom palette: fit every reagent's low and high to the field now, or just reagent `only` (yours from then on: it stops settling). */
   async function fitCustom(only?: number) {
     const samples = await reagentSamples();
-    s.custom.forEach((c, r) => { if (only === undefined || r === only) fitChannel(c, samples[r]); });
+    s.custom.forEach((c, r) => {
+      if (only !== undefined && r !== only) return;
+      if (fitChannel(c, samples[r])) fits[r] = { touched: true };
+    });
     ui.sync();
   }
-  /**
-   * Custom palette, shown with channels still at their defaults (low 0, high 1): fit those to the field.
-   * Tried every half second (a fresh field is often flat, nothing to fit yet) until none are left or
-   * the tries run out; then one randomise, for the default look.
-   */
-  async function autoFitCustom() {
-    customAutoFit--;
-    const samples = await reagentSamples();
-    let left = 0;
+  /** Fresh channels: follow the field until their ranges settle. */
+  function startSettling() {
+    settle = { t0: performance.now(), hist: [], rate: Infinity };
+    fits = [];
+  }
+  /** Writes a channel's range (remembering it, to tell when something else changes it). */
+  function writeRange(r: number, lo: number, hi: number) {
+    const c = s.custom[r];
+    c.low = lo;
+    c.high = hi;
+    (fits[r] ??= {}).wrote = [lo, hi];
+  }
+  /** Each frame: a range something else changed loses its target (and stops settling); the rest ease toward theirs. */
+  function easeRanges() {
+    const t = performance.now(), dt = Math.min(0.25, (t - fitEaseT) / 1000);
+    fitEaseT = t;
+    const k = 1 - Math.exp(-dt / FIT_TAU);
+    if (fits.some((f) => f?.target) && t - rangeSyncT > 250) { rangeSyncT = t; ui.sync(); } // the sliders follow, a few times a second
     s.custom.forEach((c, r) => {
-      if (c.on && c.low === 0 && c.high === 1 && !fitChannel(c, samples[r])) left++;
+      const f = fits[r];
+      if (!f) return;
+      if (f.wrote && (c.low !== f.wrote[0] || c.high !== f.wrote[1])) {
+        f.target = undefined;
+        f.wrote = undefined;
+        f.touched = true;
+        return;
+      }
+      if (!f.target) return;
+      const [tl, th] = f.target, span = c.high - c.low, ts = th - tl;
+      const mid = (c.low + c.high) / 2 + ((tl + th) / 2 - (c.low + c.high) / 2) * k;
+      const w = span > 0 && ts > 0 ? Math.exp(Math.log(span) + (Math.log(ts) - Math.log(span)) * k) : span + (ts - span) * k;
+      if (Math.abs(mid - (tl + th) / 2) < 1e-3 * ts && Math.abs(w - ts) < 1e-3 * ts) { writeRange(r, tl, th); f.target = undefined; }
+      else writeRange(r, mid - w / 2, mid + w / 2);
     });
-    if (!left) customAutoFit = 0;
-    if (customAutoFit <= 0 && customAutoRandomise) {
-      customAutoRandomise = false;
-      await randomiseCustom();
+  }
+  /** A few times a second, while anything follows the field: new targets from it, and how settling is going. */
+  async function fitTick() {
+    if (fitBusy) return;
+    fitBusy = true;
+    try {
+      const samples = await reagentSamples();
+      const now = performance.now(), ranges = samples.map(fitRange);
+      const settling = !!settle && !settle.end;
+      s.custom.forEach((c, r) => {
+        const f = (fits[r] ??= {}), range = ranges[r];
+        if (!range || !(c.auto || (settling && !f.touched))) return;
+        // a range never fitted (still 0 to 1) takes the field's at once
+        if (!f.wrote && c.low === 0 && c.high === 1) { writeRange(r, ...range); f.target = undefined; }
+        else f.target = range;
+      });
+      if (settling && settle) {
+        const age = (now - settle.t0) / 1000;
+        if (ranges.some(Boolean)) {
+          if (customAutoRandomise) { customAutoRandomise = false; await randomiseCustom(false); }
+          settle.hist.push({ t: now, v: ranges });
+          while (settle.hist.length > 2 && now - settle.hist[1].t > 2 * SETTLE_WINDOW * 1000) settle.hist.shift(); // (one kept from before: slow frames)
+          if (now - settle.hist[0].t >= 1.8 * SETTLE_WINDOW * 1000) {
+            // how fast the shown channels' ranges drift (hidden ones are fitted along the way but don't hold it up): each channel's mean range over the last window against the one before (a busy
+            // field jitters about a steady range, which averages out), the most any end moved per second as a share of its span
+            const mid = now - SETTLE_WINDOW * 1000;
+            const mean = (r: number, late: boolean) => {
+              const vs = settle!.hist.filter((h) => (h.t >= mid) === late && h.v[r]).map((h) => h.v[r]!);
+              return vs.length ? [vs.reduce((a, v) => a + v[0], 0) / vs.length, vs.reduce((a, v) => a + v[1], 0) / vs.length] : null;
+            };
+            const rates = ranges.map((_, r) => {
+              const a = mean(r, true), b = mean(r, false);
+              return a && b && s.custom[r]?.on ? (Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1])) / Math.max(a[1] - a[0], b[1] - b[0]) / SETTLE_WINDOW : 0;
+            });
+            settle.rate = Math.max(0, ...rates);
+            settle.worst = rule.reagents[rates.indexOf(settle.rate)] ?? '';
+            if (settle.rate < SETTLE_RATE) settle.end = `settled after ${age.toFixed(1)} s`;
+          }
+        }
+        if (!settle.end && age > SETTLE_MAX) settle.end = `stopped after ${SETTLE_MAX} s, still moving ${(settle.rate * 100).toFixed(0)}%/s (most: ${settle.worst})`;
+      }
+    } finally {
+      fitBusy = false;
     }
-    ui.sync();
+  }
+  /** For the stats line: how the custom palette's ranges are following the field. */
+  function fitInfo() {
+    if (s.palette !== 7) return '';
+    const auto = s.custom.map((c, r) => (c.auto ? rule.reagents[r] : '')).filter(Boolean);
+    const st = !settle ? '' : settle.end ?? `settling ${((performance.now() - settle.t0) / 1000).toFixed(1)} s${Number.isFinite(settle.rate) ? `, moving ${(settle.rate * 100).toFixed(0)}%/s (most: ${settle.worst})` : ''}`;
+    return [st && `colour ranges: ${st}`, auto.length ? `auto: ${auto.join(' ')}` : ''].filter(Boolean).join(' · ');
   }
   /**
    * Custom palette: new colours and powers for the reagents switched on, chosen to work together, each refitted to the
@@ -349,7 +432,7 @@ async function init() {
    * to white. Powers: from each reagent's own spread in the field, so its median cell lands at a
    * random 20-45% of its colour (sparse reagents don't vanish, dense ones don't flood), jittered.
    */
-  async function randomiseCustom() {
+  async function randomiseCustom(refit = true) {
     const samples = await reagentSamples();
     if (!s.custom.some((c) => c.on)) s.custom.forEach((c, r) => (c.on = r < 3));
     const on = s.custom.map((c, r) => [c, r] as const).filter(([c]) => c.on);
@@ -357,10 +440,14 @@ async function init() {
     const order = on.map((_, i) => i).sort(() => Math.random() - 0.5);
     on.forEach(([c, r], i) => {
       const v = samples[r];
-      fitChannel(c, v); // the field as it is now (a flat one keeps the range it had)
+      // the field's range as it is now (a flat one keeps the range it had): taken at once if never fitted, else eased to
+      const range = refit || (c.low === 0 && c.high === 1) ? fitRange(v) : null;
+      if (range && c.low === 0 && c.high === 1) writeRange(r, ...range);
+      else if (range) (fits[r] ??= {}).target = range;
+      const [low, high] = fits[r]?.target ?? [c.low, c.high];
       const hue = h0 + order[i] / n + (Math.random() - 0.5) * (0.12 / n);
       c.color = oklchToRgb(0.72 + (Math.random() - 0.5) * 0.12, 0.15, hue).map((x) => x * dim) as [number, number, number];
-      const tMed = v.length ? Math.min(1, Math.max(0, (v[v.length >> 1] - c.low) / (c.high - c.low || 1))) : 0.5;
+      const tMed = v.length ? Math.min(1, Math.max(0, (v[v.length >> 1] - low) / (high - low || 1))) : 0.5;
       const target = 0.2 + Math.random() * 0.25;
       const p = tMed > 0.01 && tMed < 0.99 ? Math.log(target) / Math.log(tMed) : Math.exp((Math.random() - 0.5) * 1.6);
       c.power = Math.min(4, Math.max(0.25, p * Math.exp((Math.random() - 0.5) * 0.5)));
@@ -567,8 +654,8 @@ async function init() {
       // the custom palette is set up afresh only for a new rule or scene: reloading the same one (a resize,
       // a reset) keeps its colours
       if (ruleId !== customFor) {
-        s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents, rule.view.customOff);
-        if (!rule.view.custom) { customAutoFit = 20; customAutoRandomise = true; }
+        s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents, rule.view.customOff, rule.view.customAuto);
+        if (!rule.view.custom) { startSettling(); customAutoRandomise = true; }
         s.customContrast = rule.view.customContrast ?? 1.2;
         s.customSaturation = rule.view.customSaturation ?? 1;
         s.customGamma = rule.view.customGamma ?? 2.5;
@@ -576,7 +663,7 @@ async function init() {
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
-    if (s.custom.length !== Math.min(rule.reagents.length, 12)) { s.custom = defaultCustom(rule.reagents, rule.view.customOff); customAutoFit = 20; customAutoRandomise = true; }
+    if (s.custom.length !== Math.min(rule.reagents.length, 12)) { s.custom = defaultCustom(rule.reagents, rule.view.customOff, rule.view.customAuto); startSettling(); customAutoRandomise = true; }
     if (s.tint >= rule.reagents.length) s.tint = -1;
     customFor = ruleId;
     if (full.width === full.height) s.gridSize = full.width;
@@ -1280,7 +1367,7 @@ async function init() {
       const to = s.custom[r];
       // a channel switched off keeps its fit and fades its colour to black
       const col = to.color.map((x) => (to.on ? x : 0));
-      return { on: c.on || to.on, low: ease(c.low, to.low), high: ease(c.high, to.high), power: ease(c.power, to.power), color: c.color.map((x, i) => ease(c.on ? x : 0, col[i])) as [number, number, number] };
+      return { on: c.on || to.on, low: to.low, high: to.high, power: ease(c.power, to.power), color: c.color.map((x, i) => ease(c.on ? x : 0, col[i])) as [number, number, number] };
     }).map((c, r) => (!s.custom[r].on && Math.max(...c.color) < 1e-3 ? { ...c, on: false } : c));
     shownGrade = [s.customContrast, s.customSaturation, s.customGamma].map((x, i) => ease(shownGrade[i], x));
     return { custom: shownCustom, customContrast: shownGrade[0], customSaturation: shownGrade[1], customGamma: shownGrade[2] };
@@ -1291,7 +1378,7 @@ async function init() {
     if (!s.customWander || s.palette !== 7 || customAutoRandomise) wanderT = performance.now();
     else if (performance.now() - wanderT > s.wanderEvery * 1000) {
       wanderT = performance.now();
-      void randomiseCustom();
+      void randomiseCustom(false); // new colours and powers; the ranges stay
     }
     for (const b of strokes.splice(0)) sim.brush(b);
 
@@ -1328,9 +1415,14 @@ async function init() {
     if (now - lastStat > 500) {
       const dt = (now - lastStat) / 1000;
       stats = `${(frames / dt).toFixed(0)} fps · ${(stepsDone / dt).toFixed(0)} steps/s · ${sim.width}×${sim.height} · ${rule.name}`;
+      const fi = fitInfo();
+      if (fi) stats += `\n${fi}`;
       frames = stepsDone = 0;
       lastStat = now;
-      if (s.palette === 7 && customAutoFit > 0) void autoFitCustom();
+    }
+    if (s.palette === 7) {
+      easeRanges();
+      if (now - fitT > FIT_EVERY && ((settle && !settle.end) || s.custom.some((c) => c.auto))) { fitT = now; void fitTick(); }
     }
     readout.hidden = !s.showStats;
     if (hover && frameNo % 4 === 0) {
@@ -1363,8 +1455,8 @@ async function init() {
     for (const [k, v] of Object.entries(session.settings ?? {})) if (k in defs && k !== 'running' && typeof v === typeof (defs as unknown as Record<string, unknown>)[k]) (s as unknown as Record<string, unknown>)[k] = v;
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
     if (s.tint >= rule.reagents.length) s.tint = -1;
-    if (s.custom.length !== Math.min(rule.reagents.length, 12)) s.custom = defaultCustom(rule.reagents, rule.view.customOff);
-    else { customAutoFit = 0; customAutoRandomise = false; }
+    if (s.custom.length !== Math.min(rule.reagents.length, 12)) s.custom = defaultCustom(rule.reagents, rule.view.customOff, rule.view.customAuto);
+    else { settle = null; fits = []; customAutoRandomise = false; }
     shownCustom = structuredClone(s.custom);
     shownGrade = [s.customContrast, s.customSaturation, s.customGamma];
     const saved = Object.entries(session.globals ?? {}).filter(([k, v]) => rule.params.some((p) => p.name === k) && typeof v === 'number' && v !== globals[k]);

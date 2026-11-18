@@ -816,10 +816,12 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       const lo = valueRow('Low', () => ch().low, (v) => (ch().low = v), [-1, 1], undefined, `${name}'s value that shows no colour`, () => 0);
       const hi = valueRow('High', () => ch().high, (v) => (ch().high = v), [0, 2], undefined, `${name}'s value that shows its full colour`, () => 1);
       const pw = valueRow('Power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4], undefined, `${name}'s curve from low to high: above 1 shows only its peaks, below 1 lifts the faint parts`, () => 1);
-      refreshers.push(() => { on.checked = ch().on; colour.style.background = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
+      const auto = el('input', { type: 'checkbox' });
+      auto.addEventListener('change', () => { ch().auto = auto.checked; });
+      refreshers.push(() => { on.checked = ch().on; auto.checked = !!ch().auto; colour.style.background = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
       const fit = button('fit', () => actions.fitCustom(r), `fit ${name}'s low and high to the field (1st to 99th percentile)`);
       fit.classList.add('mini');
-      rows.push(el('div', { class: 'custom-channel' }, el('label', { class: 'check' }, on, name), el('span', { class: 'custom-tools' }, fit, colour)), lo.row, hi.row, pw.row);
+      rows.push(el('div', { class: 'custom-channel' }, el('label', { class: 'check' }, on, name), el('span', { class: 'custom-tools' }, el('label', { class: 'check mini-check', title: `${name}'s low and high follow the field all the time, smoothly (1st to 99th percentile, eased over a second or so): for values that keep drifting` }, auto, 'Auto'), fit, colour)), lo.row, hi.row, pw.row);
     });
     customBox.replaceChildren(
       el('div', { class: 'buttons' },
