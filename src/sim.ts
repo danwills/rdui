@@ -356,7 +356,7 @@ export class Simulation {
     f[0] = b.ax; f[1] = b.ay; f[2] = b.bx; f[3] = b.by;
     f[4] = b.radius;
     u[5] = b.mode;
-    f[6] = b.strength;
+    f[6] = Math.max(-1, Math.min(1, b.strength)); // a blend: Push's past 1 is its speed (below)
     f[7] = b.hardness;
     f[8] = Math.random() * 1000;
     f[9] = b.slot ?? 0;
@@ -375,7 +375,10 @@ export class Simulation {
       if (!mo) return;
       const ix = (n?: string) => (n ? rule.reagents.indexOf(n) : -1);
       const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
-      const v = b.clear || len < 1e-6 ? [0, 0] : [(mo.speed * dx) / len, (-mo.speed * dy) / len];
+      // strength past 1 multiplies the speed (each dab then goes all the way), and negative sends it the other way
+      const sp = mo.speed * Math.sign(b.strength) * Math.max(1, Math.abs(b.strength));
+      f[6] = Math.min(1, Math.abs(b.strength));
+      const v = b.clear || len < 1e-6 ? [0, 0] : [(sp * dx) / len, (-sp * dy) / len];
       f[12] = v[0]; f[13] = v[1];
       f[14] = ix(mo.x); f[15] = ix(mo.y); f[16] = ix(mo.mass);
       // a click (no direction) leaves the momentum be, unless braking

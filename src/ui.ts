@@ -146,7 +146,7 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'wall', label: 'Wall', key: '4', hint: 'no-flux barrier · right-drag removes' },
   { id: 'unwall', label: 'Unwall', key: '8', hint: 'remove walls (e.g. open a door)' },
   { id: 'smooth', label: 'Smooth', key: '9', hint: 'round off walls and blur painted params · right-drag blurs the pattern too · walls thinner than about a sixth of the brush go · strength 0.5 is one full pass a dab, up to 8 at 1' },
-  { id: 'push', label: 'Push', key: '0', hint: 'drag across a bubble to send it that way (its momentum set to its content × the rule\'s speed) · right-drag brakes it · strength: how far each dab goes · rules with momentum only' },
+  { id: 'push', label: 'Push', key: '0', hint: 'drag across a bubble to send it that way (its momentum set to its content × the rule\'s speed) · right-drag brakes it · strength up to 1: how far each dab goes; above 1 (up to 10: faster, a bubble outruns its carrying): that many times the speed; negative: the other way · rules with momentum only' },
   { id: 'capture', label: 'Capture', key: '5', hint: 'drag a rectangle to capture it as a stamp' },
   { id: 'stamp', label: 'Stamp', key: '6', hint: 'click to place the selected stamp · Q/E rotate · X mirror' },
   { id: 'probe', label: 'Probe', key: '7', hint: 'drag a rectangle to measure it · right-click a probe removes it' },
@@ -463,8 +463,10 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     const num = el('input', { type: 'text', class: 'num', inputmode: 'decimal' });
     const flip = button('±', () => { s.strength = -s.strength; sync(); }, 'flip the sign: negative pushes away from the target (seeds the opposite way, erase exaggerates, smooth sharpens)');
     flip.classList.add('mini');
+    // Push's strength goes past 1 (to 10: 0.6 px a step at Momentum Bubbles' speed; past a cell a step the carrying goes unstable), multiplying its speed (see sim.ts); the other tools' is a blend, 1 at most
+    const most = () => (s.tool === 'push' ? 10 : 1);
     const put = (v: number) => {
-      s.strength = Math.max(-1, Math.min(1, v));
+      s.strength = Math.max(-most(), Math.min(most(), v));
       sync();
     };
     input.addEventListener('input', () => put((s.strength < 0 ? -1 : 1) * 10 ** Number(input.value)));
@@ -482,7 +484,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       row.classList.toggle('negative', s.strength < 0);
     });
     const row = el('label', { class: 'row strength', title: SETTING_HINTS.strength ?? 'strength' }, el('span', {}, 'Strength'), input, num, flip);
-    ladder(row, { get: () => s.strength, set: put, range: [0, 1], clamp: [-1, 1], reset: () => put(defaultSettings().strength) });
+    ladder(row, { get: () => s.strength, set: put, range: [0, 1], get clamp(): [number, number] { return [-most(), most()]; }, reset: () => put(defaultSettings().strength) });
     resetTip(row);
     return row;
   }
