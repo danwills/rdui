@@ -9,7 +9,7 @@ import { Overlay, type Ghost } from './overlay';
 import { stampSection, probeSection } from './panels';
 import { encodeSnapshot, decodeSnapshot, download, pickFile } from './snapshot';
 import {
-  BUILTIN_RULES, RULE_FAMILIES, GRAY_SCOTT, RuleError, compileRule, defaultGlobals, initialField, layoutOf, remapCells,
+  BUILTIN_RULES, MAX_REAGENTS, RULE_FAMILIES, GRAY_SCOTT, RuleError, compileRule, defaultGlobals, initialField, layoutOf, remapCells,
   type CompiledRule, type RuleDef,
 } from './rule';
 import { BUNDLED_PATTERNS, importReady, loadBundled } from './ready';
@@ -39,7 +39,7 @@ function oklchToRgb(L: number, C: number, h: number): [number, number, number] {
  */
 function defaultCustom(reagents: string[], off: string[] = [], auto = false): CustomChannel[] {
   const colours: [number, number, number][] = [[1, 0.55, 0.2], [0.2, 0.75, 1], [0.6, 1, 0.3]];
-  const m = Math.min(reagents.length, 12), dim = Math.min(1, 2.2 / m);
+  const m = Math.min(reagents.length, MAX_REAGENTS), dim = Math.min(1, 2.2 / m);
   return Array.from({ length: m }, (_, r) => ({
     on: !off.includes(reagents[r]), low: 0, high: 1, power: 1, ...(auto ? { auto } : {}),
     color: m <= 3 ? colours[r] : oklchToRgb(0.72, 0.15, 0.08 + r / m).map((x) => x * dim) as [number, number, number],
@@ -664,7 +664,7 @@ async function init() {
       s.viewMode = rule.view.mode ?? 'reagent';
     }
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
-    if (s.custom.length !== Math.min(rule.reagents.length, 12)) { s.custom = defaultCustom(rule.reagents, rule.view.customOff, rule.view.customAuto); startSettling(); customAutoRandomise = true; }
+    if (s.custom.length !== Math.min(rule.reagents.length, MAX_REAGENTS)) { s.custom = defaultCustom(rule.reagents, rule.view.customOff, rule.view.customAuto); startSettling(); customAutoRandomise = true; }
     if (s.tint >= rule.reagents.length) s.tint = -1;
     customFor = ruleId;
     if (full.width === full.height) s.gridSize = full.width;
@@ -1516,7 +1516,7 @@ async function init() {
     for (const [k, v] of Object.entries(session.settings ?? {})) if (k in defs && k !== 'running' && typeof v === typeof (defs as unknown as Record<string, unknown>)[k]) (s as unknown as Record<string, unknown>)[k] = v;
     s.reagent = Math.min(s.reagent, rule.reagents.length - 1);
     if (s.tint >= rule.reagents.length) s.tint = -1;
-    if (s.custom.length !== Math.min(rule.reagents.length, 12)) s.custom = defaultCustom(rule.reagents, rule.view.customOff, rule.view.customAuto);
+    if (s.custom.length !== Math.min(rule.reagents.length, MAX_REAGENTS)) s.custom = defaultCustom(rule.reagents, rule.view.customOff, rule.view.customAuto);
     else { settle = null; fits = []; customAutoRandomise = false; }
     shownCustom = structuredClone(s.custom);
     shownGrade = [s.customContrast, s.customSaturation, s.customGamma];
