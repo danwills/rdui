@@ -55,8 +55,12 @@ export const FAR = 64;
 export type Fill =
   | { type: 'constant'; value: number }
   | { type: 'white_noise'; low: number; high: number }
-  /** On a circle: value · ½(1 − tanh((d − r)/edge)), a flat top with a smooth rim `edge` cells wide (default 2). Elsewhere: value. */
-  | { type: 'bump'; value: number; edge?: number }
+  /**
+   * On a circle: value · ½(1 − tanh((d − r)/edge)), a flat top with a smooth rim `edge` cells wide (default 2). Elsewhere: value.
+   * With wrap, distances wrap round the field's edges as the simulation does, so a bump near an edge carries on
+   * across it rather than being cut off there.
+   */
+  | { type: 'bump'; value: number; edge?: number; wrap?: boolean }
   /**
    * On a circle: a Gaussian wave packet, amp·exp(−d²/2sigma²)·cos(kx·x + ky·y + phase)
    * (sigma in cells, k in radians per cell, relative to the centre), or its
@@ -584,12 +588,20 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
     const sh = o.shape, fill = o.fill;
     const bump = fill.type === 'bump' && sh.type === 'circle' ? { cx: sh.cx * w, cy: sh.cy * h, r: sh.r * Math.max(w, h), e: fill.edge ?? 2 } : null;
     const pk = fill.type === 'packet' && sh.type === 'circle' ? { cx: sh.cx * w, cy: sh.cy * h } : null;
-    const cellsOf = bump ? shapeCells({ ...sh, r: (bump.r + 4 * bump.e) / Math.max(w, h) } as Shape, w, h, salt) : shapeCells(sh, w, h, salt);
+    const wrap = bump && fill.type === 'bump' && fill.wrap;
+    // (distances from the bump's middle, wrapping round the field's edges for a wrapping bump)
+    const dist = (x: number, y: number) => {
+      let dx = x + 0.5 - bump!.cx, dy = y + 0.5 - bump!.cy;
+      if (wrap) { dx -= w * Math.round(dx / w); dy -= h * Math.round(dy / h); }
+      return Math.hypot(dx, dy);
+    };
+    const cellsOf = wrap ? [...Array(w * h).keys()].filter((c) => dist(c % w, Math.floor(c / w)) <= bump!.r + 4 * bump!.e)
+      : bump ? shapeCells({ ...sh, r: (bump.r + 4 * bump.e) / Math.max(w, h) } as Shape, w, h, salt) : shapeCells(sh, w, h, salt);
     for (const c of cellsOf) {
       const v =
         fill.type === 'constant' ? fill.value
         : fill.type === 'packet' ? packetValue(fill, pk, c % w, Math.floor(c / w))
-        : fill.type === 'bump' ? (bump ? fill.value * 0.5 * (1 - Math.tanh((Math.hypot((c % w) + 0.5 - bump.cx, Math.floor(c / w) + 0.5 - bump.cy) - bump.r) / bump.e)) : fill.value)
+        : fill.type === 'bump' ? (bump ? fill.value * 0.5 * (1 - Math.tanh((dist(c % w, Math.floor(c / w)) - bump.r) / bump.e)) : fill.value)
         : fill.type === 'bowl' ? bowlValue(fill.value, sh, c % w, Math.floor(c / w), w, h)
         : fill.type === 'ramp' ? rampValue(fill, sh, c % w, Math.floor(c / w), w, h)
         : fill.type === 'vortices' ? vortexValue(fill, c % w, Math.floor(c / w), w, h)
@@ -4131,7 +4143,23 @@ delta_full = full_rate*trap*(full*(1.0 - full)*(full - 0.5 + lam) + max(lam - 0.
   view: { ...MOMENTUM_BUBBLES_12.view, customOff: [...MOMENTUM_BUBBLES_12.view.customOff!, 'tsense', 'sense'] },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13];
+/**
+ * Momentum Bubbles 14 (drawing trap): version 13, with a trap's release (any aim stamped inside it) held off wherever
+ * the trap reaches at all (from 0.05 of its strength) until it's full, rather than in proportion to its strength: so a
+ * trap can be a smooth hill all the way to its middle, whose slope (and so its pull) reaches everywhere in it, drawing
+ * bubbles to its middle, without its release acting on the faint outskirts. Pull stronger (trap_pull 0.002).
+ */
+export const MOMENTUM_BUBBLES_14: RuleDef = {
+  ...MOMENTUM_BUBBLES_13,
+  name: 'Momentum Bubbles 14 (drawing trap)',
+  params: MOMENTUM_BUBBLES_13.params.map((q) => (q.name === 'trap_pull' ? { ...q, value: 0.002 } : q)),
+  formula: MOMENTUM_BUBBLES_13.formula.replace(
+    'float on = min(al, 1.0)*(1.0 - hold);',
+    '// (the release held off wherever the trap reaches, until it\'s full)\nfloat on = min(al, 1.0)*(1.0 - smoothstep(0.0, 0.05, trap)*(1.0 - full));',
+  ),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -4142,7 +4170,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
