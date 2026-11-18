@@ -365,7 +365,7 @@ const SETTING_HINTS: Partial<Record<keyof Settings, string>> = {
   customSaturation: 'custom palette: colourfulness (0 grey, 1 as is, above 1 more vivid)',
   viewMode: 'what the field shows: the reagents, the reagents with painted params outlined, or the painted params alone',
   radius: 'brush radius, in screen pixels · [ and ]',
-  strength: 'how much each dab changes the field: 1 sets it outright, lower builds up gradually',
+  strength: 'how much each dab moves the field toward the target: 1 sets it outright, lower builds up gradually (down to 1e-7, for fields with tiny values); negative pushes away from it',
   hardness: 'the brush edge: 1 sharp, 0 soft and fading out',
   brushShape: 'freehand strokes, straight lines, or circles',
   stepsPerFrame: 'simulation steps run each frame (per 1/60 s): more is faster, if the GPU keeps up',
@@ -446,6 +446,40 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     input.addEventListener('change', () => { s[key] = input.checked; then?.(); });
     syncers.push(() => (input.checked = s[key]));
     return el('label', { class: 'check', title }, input, titleCase(label));
+  }
+
+  /**
+   * Brush strength: its size on a log slider from 1e-7 to 1 (Smoke lives at ~1e-7, so its brush must be that light),
+   * ± flips its sign (negative pushes away from the target: seed the opposite way, erase exaggerates, smooth sharpens),
+   * and the box takes any value from -1 to 1.
+   */
+  function strengthRow() {
+    const MIN = -7;
+    const input = el('input', { type: 'range', min: String(MIN), max: '0', step: 'any' });
+    const num = el('input', { type: 'text', class: 'num', inputmode: 'decimal' });
+    const flip = button('±', () => { s.strength = -s.strength; sync(); }, 'flip the sign: negative pushes away from the target (seeds the opposite way, erase exaggerates, smooth sharpens)');
+    flip.classList.add('mini');
+    const put = (v: number) => {
+      s.strength = Math.max(-1, Math.min(1, v));
+      sync();
+    };
+    input.addEventListener('input', () => put((s.strength < 0 ? -1 : 1) * 10 ** Number(input.value)));
+    num.addEventListener('change', () => {
+      const v = Number(num.value);
+      if (Number.isFinite(v)) put(v);
+      sync();
+    });
+    num.addEventListener('keydown', (e) => e.stopPropagation());
+    num.addEventListener('focus', () => num.select());
+    syncers.push(() => {
+      input.value = String(Math.max(MIN, Math.log10(Math.abs(s.strength) || 10 ** MIN)));
+      if (document.activeElement !== num) num.value = fmt(s.strength);
+      flip.classList.toggle('on', s.strength < 0);
+    });
+    const row = el('label', { class: 'row strength', title: SETTING_HINTS.strength ?? 'strength' }, el('span', {}, 'Strength'), input, num, flip);
+    ladder(row, { get: () => s.strength, set: put, range: [0, 1], clamp: [-1, 1], reset: () => put(defaultSettings().strength) });
+    resetTip(row);
+    return row;
   }
 
   function select(label: string, key: keyof Settings, options: () => [number | string, string][], onChange?: () => void) {
@@ -858,7 +892,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       button('◧', () => actions.toggleUI('split'), 'hide the panel: the sim and live analysis (3D histogram, histograms, history) side by side, or stacked on a phone · Back or Esc returns')),
     section('Tool', toolRow, toolHint, wallBoxes,
       slider('radius', 'radius', 1, 80, 1, 0),
-      slider('strength', 'strength', 0.02, 1, 0.01, 2),
+      strengthRow(),
       slider('hardness', 'hardness', 0, 1, 0.01, 2),
       select('shape', 'brushShape', () => [['free', 'freehand'], ['line', 'line (press, drag to the end)'], ['circle', 'circle (press the centre, drag out)']]).row,
     ),

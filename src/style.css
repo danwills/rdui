@@ -304,3 +304,8 @@ section > h2 { display: none; }
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
 .tip[hidden] { display: none; }
+
+/* brush strength: log slider, value, ± (lit when negative) */
+.row.strength { grid-template-columns: 76px 1fr 64px 22px; }
+.row.strength .num { width: 60px; justify-self: end; }
+button.mini.on { opacity: 1; color: #ff9a6a; border-color: var(--line); }
