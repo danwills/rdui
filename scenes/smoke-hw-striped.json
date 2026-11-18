@@ -1,5 +1,5 @@
 {
- "name": "Smoke + History+Wave: striped (artefact)",
+ "name": "Smoke + GS History+Wave: striped (artefact)",
  "description": "Strong stirring (stir 0.5) with no smoothing: the stirring leaves fine ripples in the history, which build into dense stripes, crossed by worm lines. A numerical artefact rather than the dynamics, but a striking one.",
  "rule": "builtin:36",
  "size": 256,

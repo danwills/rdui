@@ -1,5 +1,5 @@
 {
- "name": "Smoke + History+Wave: arcs",
+ "name": "Smoke + GS History+Wave: arcs",
  "description": "Strong stirring (stir 0.5), cleanly done (stir_smooth 1): the worms are drawn out into long arcs that sweep along the smoke's flow over a smooth history.",
  "rule": "builtin:36",
  "size": 256,

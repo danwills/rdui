@@ -1,5 +1,5 @@
 {
- "name": "Smoke + History+Wave: marbled (artefact)",
+ "name": "Smoke + GS History+Wave: marbled (artefact)",
  "description": "Gentle stirring (stir 0.2) with no smoothing, and the wave feeding the smoke (wave_to_smoke 0.05): the history marbles into big swirling bands. The bands come from the stirring's ripples (with stir_smooth 1 they go, and so does the chemistry), but they're gorgeous.",
  "rule": "builtin:36",
  "size": 256,

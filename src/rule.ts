@@ -3453,7 +3453,7 @@ function renamedSmoke(smooth: boolean, [x, y, div, view]: [string, string, strin
  * wave_to_smoke). Smoke clamped to ±smoke_clamp.
  */
 export const SMOKE_HW: RuleDef = {
-  name: 'Smoke + History+Wave',
+  name: 'Smoke + GS History+Wave',
   description:
     'A hybrid: wide smoke stirs Dan\'s GS History+Wave, and it feeds the smoke. The chemistry (a, b) and its history '
     + 'trail c are carried along the smoke\'s flow (stir, stir_c), so trails are swept like smoke; the smoke grows faster '
