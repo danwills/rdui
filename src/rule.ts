@@ -4159,7 +4159,188 @@ export const MOMENTUM_BUBBLES_14: RuleDef = {
   ),
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14];
+/**
+ * Momentum Bubbles 15 (funnel trap): version 14, with a trap that steers rather than brakes and pulls. Before, its
+ * braking and its pull both faded with its strength, so bubbles that slowed near a trap's faint edge sat there. Now,
+ * everywhere it reaches (from 0.02 of its strength), a trap brings bubbles toward a velocity up its slope (to its
+ * middle) at trap_speed, easing to nothing at its middle (trap_speed·(1 − trap)), at rate trap_brake: a funnel that
+ * draws in whatever is near and stops it in the middle, whichever way it came. Inside any region or trap the speed s
+ * follows the bubble's actual speed quickly (at renorm), so what leaves one keeps the speed it leaves with. All a trap
+ * does happens where it reaches (reach: from 0.01 of its strength): its sense spreads evenly over all of that and its
+ * switch is thrown across all of it, so when it's full the whole of it lets go (before, its faint edge never heard,
+ * and held a launched blob back). And a full trap uses up what it sensed (sense_drain), so it closes again once its
+ * batch has left rather than staying open while dots stream through, and counts afresh. It counts over all it reaches
+ * (small dots don't clump in its middle but keep apart round it, each starving the next), slowly enough (sense_rate
+ * 0.0003) that the count spreads evenly over it; and it's a floodgate: it opens once the count passes full_at and stays open until it falls
+ * to empty_at, so a passing dot's bump can't open a patch of it, and once open it lets all it gathered go.
+ */
+export const MOMENTUM_BUBBLES_15: RuleDef = {
+  ...MOMENTUM_BUBBLES_14,
+  name: 'Momentum Bubbles 15 (funnel trap)',
+  reagents: [...MOMENTUM_BUBBLES_14.reagents, 'reach'],
+  rest: [...MOMENTUM_BUBBLES_14.rest, 0],
+  seed: [...MOMENTUM_BUBBLES_14.seed, null],
+  seedNoise: [...MOMENTUM_BUBBLES_14.seedNoise, 0],
+  view: { ...MOMENTUM_BUBBLES_14.view, customOff: [...MOMENTUM_BUBBLES_14.view.customOff!, 'reach'] },
+  params: [
+    ...MOMENTUM_BUBBLES_14.params.filter((q) => q.name !== 'trap_pull').map((q) => (q.name === 'trap_brake' ? { ...q, value: 0.005 } : q.name === 'sense_rate' ? { ...q, value: 0.0003 } : q.name === 'full_gain' ? { ...q, value: 100, max: 3000 } : q)),
+    { name: 'trap_speed', value: 0.02, min: 0, max: 0.1 },
+    { name: 'sense_drain', value: 0.0005, min: 0, max: 0.01 },
+    { name: 'empty_at', value: 0.004, min: 0, max: 1 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_14.paramHints,
+    trap_brake: 'How fast a trap brings what\'s in it to its funnel velocity (in toward its middle, easing to nothing there), whichever way it was going',
+    trap_speed: 'How fast a trap draws bubbles in toward its middle at its edge (cells a step): it eases to nothing at the middle',
+    empty_at: 'Once open, a trap stays open until its count falls to this (below full_at): a floodgate, letting all it gathered go',
+    sense_drain: 'How fast a full trap uses up what it sensed: it closes again once what it let go has left (rather than staying open while dots stream through), and counts afresh',
+  },
+  formula: MOMENTUM_BUBBLES_14.formula
+    .replace('float hold = trap*(1.0 - full);', `float hold = reach*(1.0 - full);
+// the funnel: in up the trap's slope, trap_speed at its edge, easing to nothing at its middle
+float tg = sqrt(x_gradient_trap*x_gradient_trap + y_gradient_trap*y_gradient_trap);
+float fv = m*trap_speed*(1.0 - min(trap, 1.0))/max(tg, 1e-6);`)
+    .replace('- trap_brake*hold*px + trap_pull*hold*m*x_gradient_trap', '+ trap_brake*hold*(fv*x_gradient_trap - px)')
+    .replace('- trap_brake*hold*py + trap_pull*hold*m*y_gradient_trap', '+ trap_brake*hold*(fv*y_gradient_trap - py)')
+    // (and inside any region or trap, s follows the bubble's actual speed quickly, so a bubble keeps the speed it
+    // leaves with: following at brake, slow now, a blob launched from a trap left with s near 0 and renorm stopped it)
+    .replace('+ on*brake*(pl - s) - trap_brake*hold*s;', '+ max(on, hold)*renorm*(pl - s);')
+    // (everything a trap does, where it reaches: its sense spread evenly over it and its switch thrown across all of it,
+    // so when it's full the whole of it lets go: before, its faint edge never heard and held a launched blob back)
+    .replace('float on = min(al, 1.0)*(1.0 - smoothstep(0.0, 0.05, trap)*(1.0 - full));', 'float on = min(al, 1.0)*(1.0 - reach*(1.0 - full));')
+    .replace('D_sense*0.5*(laplacian_tsense + trap*laplacian_sense - sense*laplacian_trap)', 'D_sense*0.5*(laplacian_tsense + reach*laplacian_sense - sense*laplacian_reach)')
+    .replace('delta_tsense = (trap*sense - tsense)/timestep;', 'delta_tsense = (reach*sense - tsense)/timestep;')
+    // (and what it sensed used up while it's full, so it closes once its batch has left, and counts afresh)
+    // (counted over all it reaches, rim too: small dots don't clump in its middle but keep apart round it, each starving
+    // the next; slowly enough that the count spreads over it evenly)
+    .replace('+ sense_rate*trap*(phi - sense);', '+ sense_rate*reach*(phi - sense) - sense_drain*full*sense;')
+    // (a floodgate: it opens once the count passes full_at and stays open until it falls to empty_at, so a dot's
+    // passing bump can't open it, and once open it lets all go)
+    .replace('float lam = clamp(full_gain*(sense - full_at), -0.6, 0.6);', 'float lam = clamp(full_gain*(sense - full_at + (full_at - empty_at)*clamp(full, 0.0, 1.0)), -0.6, 0.6);')
+    .replace('delta_full = full_rate*trap*(', 'delta_full = full_rate*reach*(')
+    + `
+// where the trap reaches (from 0.01 of its strength)
+delta_reach = (smoothstep(0.0, 0.01, trap) - reach)/timestep;`,
+};
+
+/**
+ * Momentum Bubbles 16 (capacitor): version 12, with a trap that soaks dots up rather than holding them (small dots
+ * can't be held: stopped, they dissolve or drift apart). A trap (a still field, stamped as a smooth hill) draws bubbles
+ * in gently (a funnel: in up its slope at trap_speed, easing to nothing in its middle, at rate trap_brake), and its
+ * middle soaks up what reaches it (absorb): their content becomes charge, which is never lost and spreads evenly over
+ * the trap and its exit (a second still field, stamped where the trap lets go), so it keeps a natural total. Once the
+ * charge passes about full_at, a countdown (timer) runs in its middle; when it's done the trap fires (full, a latch
+ * thrown in the middle and spreading over all of it and its exit): its charge becomes content at the exit, filled out as a bubble and already moving along the exit's aim (ax, ay) at launch,
+ * until the charge falls to empty_at, when it closes and counts afresh. Also from version 15: in a region or trap the
+ * speed s follows the bubble's actual speed quickly, so a bubble keeps the speed it leaves with.
+ */
+export const MOMENTUM_BUBBLES_16: RuleDef = {
+  ...MOMENTUM_BUBBLES_12,
+  name: 'Momentum Bubbles 16 (capacitor)',
+  reagents: [...MOMENTUM_BUBBLES_12.reagents, 'trap', 'exit', 'reach', 'charge', 'tcharge', 'timer', 'full', 'tfull'],
+  rest: [...MOMENTUM_BUBBLES_12.rest, 0, 0, 0, 0, 0, 0, 0, 0],
+  seed: [...MOMENTUM_BUBBLES_12.seed, null, null, null, null, null, null, null, null],
+  seedNoise: [...MOMENTUM_BUBBLES_12.seedNoise, 0, 0, 0, 0, 0, 0, 0, 0],
+  params: [
+    ...MOMENTUM_BUBBLES_12.params,
+    { name: 'trap_brake', value: 0.005, min: 0, max: 0.05 },
+    { name: 'trap_speed', value: 0.01, min: 0, max: 0.1 },
+    { name: 'absorb', value: 0.01, min: 0, max: 0.1 },
+    { name: 'D_charge', value: 0.2, min: 0, max: 0.24 },
+    { name: 'full_at', value: 0.03, min: 0, max: 1 },
+    { name: 'empty_at', value: 0.004, min: 0, max: 1 },
+    { name: 'count_rate', value: 0.001, min: 0, max: 0.02 },
+    { name: 'full_gain', value: 1000, min: 1, max: 3000 },
+    { name: 'full_rate', value: 0.02, min: 0, max: 0.2 },
+    { name: 'emit_rate', value: 0.05, min: 0, max: 0.2 },
+    { name: 'emit_phi', value: 0.05, min: 0, max: 0.2 },
+    { name: 'launch', value: 0.05, min: 0, max: 0.1 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_12.paramHints,
+    trap_brake: 'How fast a trap brings what\'s in it to its funnel velocity (in toward its middle, easing to nothing there), whichever way it was going',
+    trap_speed: 'How fast a trap draws bubbles in toward its middle at its edge (cells a step): it eases to nothing at the middle',
+    absorb: 'How fast a trap\'s middle soaks up the bubbles that reach it, their content becoming its charge',
+    D_charge: 'How fast a trap\'s charge spreads over it (and its exit, and nowhere else)',
+    full_at: 'The charge (per cell, spread over the trap) at which a trap starts its countdown to fire: about 0.007 a dot on the Hilbert circuits',
+    empty_at: 'Once firing, a trap keeps letting its charge out until it falls to this',
+    count_rate: 'How fast a charged trap counts down to firing (about 1/count_rate steps)',
+    full_gain: 'How sharply a firing trap closes as its charge falls to empty_at',
+    full_rate: 'How fast a trap\'s full latch flips',
+    emit_rate: 'How fast a firing trap lets its charge out at its exit, as content',
+    emit_phi: 'How fast that content is filled out as a bubble',
+    launch: 'How fast (cells a step) what a trap lets out leaves along its exit\'s aim',
+  },
+  formula: `// the trap (version 16, capacitor): where it reaches (tin; not over its exit) it holds bubbles in a gentle funnel until
+// it fires; its middle soaks them up into charge; firing, its charge comes out at its exit as a moving bubble
+float tin = smoothstep(0.0, 0.01, trap);
+float hold = tin*(1.0 - full)*(1.0 - min(2.0*exit, 1.0));
+float soak = absorb*smoothstep(0.3, 0.6, trap)*(1.0 - full);
+float emit = emit_rate*full*exit;
+float tgl = sqrt(x_gradient_trap*x_gradient_trap + y_gradient_trap*y_gradient_trap);
+float fv = m*trap_speed*(1.0 - min(trap, 1.0))/max(tgl, 1e-6);
+` + MOMENTUM_BUBBLES_12.formula
+    .replace('delta_phi = -carry_phi*adv', 'delta_phi = -soak*phi + emit_phi*full*exit*smoothstep(0.5, 2.0, m)*(1.0 - phi) - carry_phi*adv')
+    .replace('delta_m = -carry*div_m', 'delta_m = -soak*m + emit*charge - carry*div_m')
+    .replace('float on = min(al, 1.0);', '// (and the gates held off where the trap holds)\nfloat on = min(al, 1.0)*(1.0 - hold);')
+    .replace('delta_px = (1.0 - on)*renorm*rx', 'delta_px = (1.0 - on)*(1.0 - hold)*renorm*rx + trap_brake*hold*(fv*x_gradient_trap - px) - soak*px + emit*charge*launch*ax')
+    .replace('delta_py = (1.0 - on)*renorm*ry', 'delta_py = (1.0 - on)*(1.0 - hold)*renorm*ry + trap_brake*hold*(fv*y_gradient_trap - py) - soak*py + emit*charge*launch*ay')
+    .replace('+ on*brake*(pl - s);', '+ max(on, hold)*renorm*(pl - s) - soak*s + emit*charge*launch;')
+    + `
+// the trap and its exit: still, as stamped; reach: where either is
+delta_trap = 0.0;
+delta_exit = 0.0;
+delta_reach = (smoothstep(0.0, 0.01, trap + exit) - reach)/timestep;
+// the charge: what it soaked up, spread over all it reaches (and not out of it), let out at the exit when firing
+delta_charge = D_charge*0.5*(laplacian_tcharge + reach*laplacian_charge - charge*laplacian_reach) + soak*m - emit*charge;
+delta_tcharge = (reach*charge - tcharge)/timestep;
+// the countdown, and the decision, in the trap's middle only (where the charge gathers): up while charged past full_at
+// (not firing), back down while not; reset by firing
+float core = smoothstep(0.3, 0.6, trap);
+float charged = smoothstep(0.8*full_at, 1.2*full_at, charge);
+delta_timer = core*(count_rate*charged*(1.0 - full)*(1.0 - timer) - count_rate*(1.0 - charged)*timer - 0.01*full*timer);
+// full: a latch, thrown in the middle when the countdown's done and let go when the charge has fallen to empty_at
+// (nudged off 0 and 1, which are resting points too), spreading from there over all the trap reaches and its exit, so
+// they all follow the middle (deciding everywhere, the exit, drained of charge first, never fired)
+float lam = clamp(mix(20.0*(timer - 0.9), full_gain*(charge - empty_at), clamp(full, 0.0, 1.0)), -0.6, 0.6);
+delta_full = D_charge*0.5*(laplacian_tfull + reach*laplacian_full - full*laplacian_reach) + full_rate*core*(full*(1.0 - full)*(full - 0.5 + lam) + max(lam - 0.5, 0.0)*(1.0 - full) + min(lam + 0.5, 0.0)*full);
+delta_tfull = (reach*full - tfull)/timestep;`,
+  view: { ...MOMENTUM_BUBBLES_12.view, customOff: [...MOMENTUM_BUBBLES_12.view.customOff!, 'reach', 'tcharge', 'tfull'] },
+};
+
+/**
+ * Momentum Bubbles 17 (gathering trap): version 15, with a trap that gathers dots into one and lets it go whole. Small
+ * dots stopped in a trap faded or kept apart (each starving the next of substrate), so the trap feeds substrate
+ * (trap_feed) and draws them firmly to its middle, where they touch and join. It counts what's in its middle (where the
+ * joined blob sits), decides there (a floodgate: open past full_at, closed again at empty_at), and the decision spreads
+ * from its middle over all of it, so it lets go as a whole (deciding everywhere, its rim, holding less, lagged).
+ */
+export const MOMENTUM_BUBBLES_17: RuleDef = {
+  ...MOMENTUM_BUBBLES_15,
+  name: 'Momentum Bubbles 17 (gathering trap)',
+  reagents: [...MOMENTUM_BUBBLES_15.reagents, 'tfull'],
+  rest: [...MOMENTUM_BUBBLES_15.rest, 0],
+  seed: [...MOMENTUM_BUBBLES_15.seed, null],
+  seedNoise: [...MOMENTUM_BUBBLES_15.seedNoise, 0],
+  params: [
+    ...MOMENTUM_BUBBLES_15.params.map((q) => (q.name === 'trap_speed' ? { ...q, value: 0.02 } : q)),
+    { name: 'trap_feed', value: 0.05, min: 0, max: 0.5 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_15.paramHints,
+    trap_feed: 'How fast a trap feeds substrate to what it holds, so small dots in it neither fade nor starve each other apart, and join',
+    full_at: 'The share of a trap\'s middle filled with bubble at which it opens and lets go',
+  },
+  formula: MOMENTUM_BUBBLES_15.formula
+    .replace('delta_u = D_u*laplacian_u', '// (fed in a trap)\ndelta_u = trap_feed*trap*(1.0 - u) + D_u*laplacian_u')
+    // (counted in its middle, where the joined blob sits)
+    .replace('+ sense_rate*reach*(phi - sense) - sense_drain*full*sense;', '+ sense_rate*smoothstep(0.5, 0.8, trap)*(phi - sense) - sense_drain*full*sense;')
+    .replace('delta_full = full_rate*reach*(', 'delta_full = D_sense*0.5*(laplacian_tfull + reach*laplacian_full - full*laplacian_reach) + full_rate*smoothstep(0.5, 0.8, trap)*(')
+    + '\n// (the decision, made in the middle, spread over all the trap)\ndelta_tfull = (reach*full - tfull)/timestep;',
+  view: { ...MOMENTUM_BUBBLES_15.view, customOff: [...MOMENTUM_BUBBLES_15.view.customOff!, 'tfull'] },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -4170,7 +4351,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
