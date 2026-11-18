@@ -35,6 +35,8 @@ export interface Settings {
   wallsFeed: boolean;
   /** Draw walls over the field (they still work when hidden). */
   showWalls: boolean;
+  /** Show the stats line (fps, steps/s, size, rule, hovered values) over the sim's top left. */
+  showStats: boolean;
   /** Custom palette: how many seconds new colours take to blend in (0 = at once). */
   colourBlend: number;
   /** Custom palette: randomise by itself every wanderEvery seconds. */
@@ -161,6 +163,7 @@ export function defaultSettings(): Settings {
     wallsTrap: false,
     wallsFeed: false,
     showWalls: true,
+    showStats: false,
     colourBlend: 1.5,
     customWander: false,
     wanderEvery: 7,
@@ -413,7 +416,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return el('label', { class: 'row log', title: SETTING_HINTS[key] ?? label }, el('span', {}, titleCase(label)), input, num);
   }
 
-  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'customWander', title: string, then?: () => void) {
+  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'showStats' | 'customWander', title: string, then?: () => void) {
     const input = el('input', { type: 'checkbox' });
     input.addEventListener('change', () => { s[key] = input.checked; then?.(); });
     syncers.push(() => (input.checked = s[key]));
@@ -846,7 +849,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     ),
     section('View',
       select('mode', 'viewMode', () => [['reagent', 'reagent'], ['outlines', 'reagent + param outlines'], ['params', 'parameter map']]).row,
-      el('div', { class: 'checks' }, showWallsBox()),
+      el('div', { class: 'checks' }, showWallsBox(), checkbox('show stats', 'showStats', 'show the stats line over the sim (fps, steps/s, size, rule, and the values under the pointer); never shown fullscreen')),
       showRows,
       tintRows,
       hueRows,

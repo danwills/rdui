@@ -1298,6 +1298,7 @@ async function init() {
       lastStat = now;
       if (s.palette === 7 && customAutoFit > 0) void autoFitCustom();
     }
+    readout.hidden = !s.showStats;
     if (hover && frameNo % 4 === 0) {
       sim.probe(Math.floor(hover[0]), Math.floor(hover[1])).then((c) => {
         if (!c) return;
