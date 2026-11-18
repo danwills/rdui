@@ -3843,7 +3843,63 @@ delta_px = -u_push*g*0.5*(sE - sW) - carry*div_px`)
     .replace('delta_py = -carry*div_py', 'delta_py = -u_push*g*0.5*(sN - sS) - carry*div_py'),
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6];
+/**
+ * Momentum Bubbles 7 (bag): version 4's bubbles, and bags: a second kind of phase field B, with its own content mb held
+ * in and spread as a bubble's is (so its area follows its content), still (no momentum). Where the two kinds overlap
+ * each is pushed out (repel, as Phase-field Bubbles 2's kinds), so bubbles dock against a bag rather than merge with it.
+ * Stamped as a ring, a bag can only get bigger round by getting thinner, and a phase field can't hold a film much
+ * thinner than its edge: bubbles crowded inside should stretch it until it tears (the test this version is for).
+ * Crowded bubbles can't push (short of substrate), so crowd (their excess content, spread a few cells) presses the bag
+ * via squeeze. Found: bag content 4 holds 16 bubbles (ring ~18 cells thick, squeeze barely dents it); content 2-2.5
+ * makes a thin ring that breaks into four arcs at the diagonals by ~5000 steps with or without squeeze (the grid
+ * pinches thin diagonal films), so it doesn't burst from fullness yet. Content at target (1) collapses.
+ */
+export const MOMENTUM_BUBBLES_7: RuleDef = {
+  ...MOMENTUM_BUBBLES_4,
+  name: 'Momentum Bubbles 7 (bag)',
+  description: MOMENTUM_BUBBLES_4.description + ' Bags (B, with content mb): a second kind, still, that bubbles dock against '
+    + 'rather than merge with; a ring of it holds bubbles in, and stretched thin enough it tears.',
+  reagents: [...MOMENTUM_BUBBLES_4.reagents, 'B', 'mb', 'gb', 'gmb', 'mbB', 'crowd'],
+  params: [
+    ...MOMENTUM_BUBBLES_4.params,
+    { name: 'repel', value: 1, min: 0, max: 4 },
+    { name: 'bag_pressure', value: 0.3, min: 0, max: 2 },
+    { name: 'bag_target', value: 1, min: 0.1, max: 4 },
+    { name: 'squeeze', value: 0.05, min: 0, max: 0.5 },
+    { name: 'crowd_rate', value: 0.01, min: 0.001, max: 0.1 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_4.paramHints,
+    repel: 'How hard bubbles and bags push each other out where they overlap: they dock rather than merge',
+    bag_pressure: 'How hard a bag\'s content above bag_target pushes its edge out (below, pulls it in): how firmly it keeps its area',
+    bag_target: 'Content level a bag settles at: its area is its content over this',
+    crowd_rate: 'How fast the crowd signal follows the bubbles\' squash, and fades: lower spreads it further (about sqrt(0.2/crowd_rate) cells)',
+    squeeze: 'How much harder squashed bubbles (content over target: crowded, they can\'t grow) push on a bag: a full bag is stretched, and thinned, by the crowd inside',
+  },
+  rest: [...MOMENTUM_BUBBLES_4.rest, 0, 0, 0, 0, 0, 0],
+  seed: [...MOMENTUM_BUBBLES_4.seed, null, null, null, null, null, null],
+  seedNoise: [...MOMENTUM_BUBBLES_4.seedNoise, 0, 0, 0, 0, 0, 0],
+  initial: [MOMENTUM_BUBBLES_4.initial[0]],
+  formula: MOMENTUM_BUBBLES_4.formula
+    .replace('delta_phi = -carry_phi*adv + D_phi*laplacian_phi + well*phi*(1.0 - phi)*(phi - 0.5 + lambda);',
+      '// (pushed out where a bag is, so bubbles dock against bags)\ndelta_phi = -carry_phi*adv + D_phi*laplacian_phi + well*phi*(1.0 - phi)*(phi - 0.5 + lambda) - repel*phi*B*B;')
+    .replace('delta_u =', `// bags: a second kind, still; their content mb holds their area (pressure), spread and held in as a bubble's; pushed out
+// where a bubble is
+// and tilted in where squashed bubbles press (crowded bubbles can't push each other, short of substrate, but their
+// content piles up over target): crowd is that excess, spread a few cells out (across the gap a bubble keeps from a bag)
+// and fading; squeeze lets it press on the bag, in the clamped tilt, so it stays stable
+float lambda_b = clamp(bag_pressure*(mb - bag_target)*smoothstep(0.05, 0.15, B) - squeeze*crowd, -0.45, 0.45);
+delta_crowd = 0.2*laplacian_crowd + crowd_rate*(phi*max(m - target, 0.0) - crowd);
+delta_B = D_phi*laplacian_B + well*B*(1.0 - B)*(B - 0.5 + lambda_b) - repel*B*phi*phi;
+delta_mb = D_m*0.5*(laplacian_gmb + gb*laplacian_mb - mb*laplacian_gb) - m_inward*0.5*(laplacian_mbB - B*laplacian_mb + mb*laplacian_B);
+delta_gb = (max(smoothstep(0.02, 0.5, B), leak) - gb)/timestep;
+delta_gmb = (gb*mb - gmb)/timestep;
+delta_mbB = (mb*B - mbB)/timestep;
+delta_u =`),
+  view: { ...MOMENTUM_BUBBLES_4.view, customOff: [...MOMENTUM_BUBBLES_4.view.customOff!, 'mb', 'gb', 'gmb', 'mbB'] },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -3854,7 +3910,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
 ];
 
