@@ -32,6 +32,22 @@ export interface ParamSpec {
   distance?: boolean;
 }
 
+/** Tooltips for parameter names most rules share (Ready's patterns too), where a rule gives none of its own. */
+export const PARAM_HINTS: Record<string, string> = {
+  timestep: 'How far each step moves time on: higher runs faster, but too high and the sim blows up',
+  dx: 'The grid spacing: smaller makes features more cells across (finer, and slower to evolve)',
+  D_a: 'How fast a spreads (diffuses): higher makes bigger, softer features',
+  D_b: 'How fast b spreads (diffuses): higher makes bigger, softer features',
+  D_c: 'How fast c spreads (diffuses)',
+  F: 'Feed rate: how fast fresh a flows in (and b drains away); with k it picks the pattern (spots, stripes, waves…)',
+  k: 'Kill rate: how fast b dies off; with F it picks the pattern (spots, stripes, waves…)',
+};
+
+/** A parameter's tooltip: the rule's own hint, else the shared one, else its range. */
+export function paramHint(rule: RuleDef, spec: ParamSpec): string {
+  return rule.paramHints?.[spec.name] ?? PARAM_HINTS[spec.name] ?? `${spec.name} (${spec.min} to ${spec.max})`;
+}
+
 /** The value a wall distance field holds far from any wall (cells): "at least this far". */
 export const FAR = 64;
 
@@ -78,6 +94,8 @@ export interface RuleDef {
   description: string;
   reagents: string[];
   params: ParamSpec[];
+  /** Tooltips for the parameters, by name: what each does here (shared names fall back to PARAM_HINTS). */
+  paramHints?: Record<string, string>;
   /** Parameter names stored per cell (paintable). Up to 7. */
   paintable: string[];
   /** Parameters the explorer varies by default (else the paintable ones). */
@@ -615,6 +633,9 @@ export const GRAY_SCOTT: RuleDef = {
     { name: 'k', value: GS_PRESET_K, min: 0.03, max: 0.075 },
     { name: 'D', value: 1, min: 0.05, max: 1.2 },
   ],
+  paramHints: {
+    D: 'Scales both diffusion rates here: paint lower to slow spreading in a region',
+  },
   paintable: ['F', 'k', 'D'],
   formula: `delta_a = D * D_a * laplacian_a - a*b*b + F*(1.0 - a);
 delta_b = D * D_b * laplacian_b + a*b*b - (F + k)*b;`,
@@ -650,6 +671,39 @@ export const GS_HISTORY_WAVE: RuleDef = {
     const [min, max] = name === 'F' ? [0, 0.1] : name === 'k' ? [0.03, 0.075] : name === 'c_damp' ? [0, 0.01] : guessRange(v);
     return { name: name as string, value: v, min, max };
   }),
+  paramHints: {
+    a_pow: 'Power on a in the reaction a^a_pow·b^b_pow: higher makes the reaction need more a',
+    b_pow: 'Power on b in the reaction a^a_pow·b^b_pow (classic Gray-Scott is 2)',
+    a_to_c: 'How much a adds to the history trail c each step',
+    b_to_c: 'How much b adds to the history trail c each step: higher lays down trails faster',
+    c_damp: 'How fast the history trail c fades: higher forgets sooner',
+    D_c: 'How fast the history trail c spreads out to neighbours',
+    c_pow: 'Power that reshapes c each step: above 1 pushes faint trail down, below 1 lifts it',
+    c_pow_norm: 'Scale c is measured against when its power is applied: the level left unchanged by c_pow',
+    c_clamp_min: 'Lowest value the history trail c is allowed to reach',
+    c_clamp_max: 'Highest value the history trail c is allowed to reach',
+    c_to_k: 'How much the history trail c adds to the kill rate k',
+    c_to_F: 'How much the history trail c adds to the feed rate F (negative: trails starve the feed)',
+    c_to_a: 'How much the history trail c adds straight to a each step',
+    c_to_b: 'How much the history trail c adds straight to b each step',
+    c_to_Da: 'How much the history trail c adds to a\'s diffusion rate',
+    c_to_Db: 'How much the history trail c adds to b\'s diffusion rate',
+    a_to_wave: 'How hard a pushes on the wave d each step',
+    b_to_wave: 'How hard b pushes on the wave d each step: higher makes stronger wakes',
+    c_to_wave: 'How hard the history trail c pushes on the wave d each step',
+    wave_diffusion: 'How fast the wave spreads: higher makes faster, wider ripples',
+    wave_damp: 'Wave height kept each step: 1 keeps it all, lower makes wakes die out sooner',
+    wave_power: 'Power applied to the wave height each step: below 1 lifts small ripples and squashes big ones',
+    wave_DC_value: 'Resting level of the wave d: the wave feeds back only by how far d sits from this',
+    wave_clamp: 'Largest height the wave may reach either side of its resting level',
+    wave_to_F: 'How much the wave height adds to the feed rate F',
+    wave_to_k: 'How much the wave height adds to the kill rate k',
+    wave_to_Da: 'How much the wave height adds to a\'s diffusion rate',
+    wave_to_Db: 'How much the wave height adds to b\'s diffusion rate',
+    wave_to_a: 'How much the wave height adds straight to a each step',
+    wave_to_b: 'How much the wave height adds straight to b each step',
+    wave_to_c: 'How much the wave height adds to the history trail c each step',
+  },
   paintable: ['F', 'k', 'c_damp'],
   formula: `delta_a = (D_a + c*c_to_Da + (d-wave_DC_value)*wave_to_Da) * laplacian_a - pow(a,(float4)a_pow)*pow(b,(float4)b_pow) + (F + c_to_F*c + (d-wave_DC_value)*wave_to_F)*(1.0f-a) + c*c_to_a + (d-wave_DC_value)*wave_to_a;
 delta_b = (D_b  + c*c_to_Db + (d-wave_DC_value)*wave_to_Db) * laplacian_b + pow(a,(float4)a_pow)*pow(b,(float4)b_pow) - ((F + c_to_F*c + (d-wave_DC_value)*wave_to_F)+(k + c*c_to_k + (d-wave_DC_value)*wave_to_k))*b + c*c_to_b + (d-wave_DC_value)*wave_to_b;
@@ -693,6 +747,44 @@ export const GS_HW_MEMORY: RuleDef = {
     { name: 'm_theta', value: 0.45, min: 0, max: 1 },
     { name: 'b_to_m', value: 0, min: -0.1, max: 0.1 },
   ],
+  paramHints: {
+    a_pow: 'Power on a in the reaction a^a_pow·b^b_pow: higher makes the reaction need more a',
+    b_pow: 'Power on b in the reaction a^a_pow·b^b_pow (classic Gray-Scott is 2)',
+    a_to_c: 'How much a adds to the history trail c each step',
+    b_to_c: 'How much b adds to the history trail c each step: higher lays down trails faster',
+    c_damp: 'How fast the history trail c fades: higher forgets sooner',
+    D_c: 'How fast the history trail c spreads out to neighbours',
+    c_pow: 'Power that reshapes c each step: above 1 pushes faint trail down, below 1 lifts it',
+    c_pow_norm: 'Scale c is measured against when its power is applied: the level left unchanged by c_pow',
+    c_clamp_min: 'Lowest value the history trail c is allowed to reach',
+    c_clamp_max: 'Highest value the history trail c is allowed to reach',
+    c_to_k: 'How much the history trail c adds to the kill rate k',
+    c_to_F: 'How much the history trail c adds to the feed rate F (negative: trails starve the feed)',
+    c_to_a: 'How much the history trail c adds straight to a each step',
+    c_to_b: 'How much the history trail c adds straight to b each step',
+    c_to_Da: 'How much the history trail c adds to a\'s diffusion rate',
+    c_to_Db: 'How much the history trail c adds to b\'s diffusion rate',
+    a_to_wave: 'How hard a pushes on the wave d each step',
+    b_to_wave: 'How hard b pushes on the wave d each step: higher makes stronger wakes',
+    c_to_wave: 'How hard the history trail c pushes on the wave d each step',
+    wave_diffusion: 'How fast the wave spreads: higher makes faster, wider ripples',
+    wave_damp: 'Wave height kept each step: 1 keeps it all, lower makes wakes die out sooner',
+    wave_power: 'Power applied to the wave height each step: below 1 lifts small ripples and squashes big ones',
+    wave_DC_value: 'Resting level of the wave d: the wave feeds back only by how far d sits from this',
+    wave_clamp: 'Largest height the wave may reach either side of its resting level',
+    wave_to_F: 'How much the wave height adds to the feed rate F',
+    wave_to_k: 'How much the wave height adds to the kill rate k',
+    wave_to_Da: 'How much the wave height adds to a\'s diffusion rate',
+    wave_to_Db: 'How much the wave height adds to b\'s diffusion rate',
+    wave_to_a: 'How much the wave height adds straight to a each step',
+    wave_to_b: 'How much the wave height adds straight to b each step',
+    wave_to_c: 'How much the wave height adds to the history trail c each step',
+    cell: 'Compartment id to paint: memory m mixes within one id but can\'t cross into another',
+    D_m: 'How fast memory m mixes within its compartment',
+    m_gain: 'How strongly memory m snaps to 0 or 1: higher settles a compartment faster',
+    m_theta: 'Tipping point for memory m: pushed past it, a compartment flips on, short of it falls back off',
+    b_to_m: 'Paint to make b write memory: above 0 sets a compartment on, below 0 resets it',
+  },
   paintable: ['F', 'k', 'cell', 'b_to_m'],
   formula: GS_HISTORY_WAVE.formula + `
 delta_m = D_m * laplacian_m + m_gain * m * (1.0 - m) * (m - m_theta) + b * b_to_m;
@@ -761,6 +853,10 @@ export const PHYLLOTAXIS: RuleDef = {
     { name: 'mu', value: 0.001, min: -0.2, max: 0.5 },
     { name: 'beta', value: 3, min: 0, max: 6 },
   ],
+  paramHints: {
+    mu: 'Growth drive: above 0 patterns grow from noise, higher makes them stronger',
+    beta: 'Strength of the quadratic terms: higher favours spots (hexagons) over stripes',
+  },
   paintable: ['mu', 'beta'],
   formula: `delta_a = mu*a - (bilaplacian_a + 2.0*laplacian_a + a) - (beta/3.0)*(gradient_mag_squared_a + 2.0*a*laplacian_a) - a*a*a;`,
   rest: [0],
@@ -799,6 +895,16 @@ export const OREGONATOR: RuleDef = {
     { name: 'tau_h', value: 1, min: 0.05, max: 20 },
     { name: 'kernel_sigma', value: 10000, min: 1, max: 10000 },
   ],
+  paramHints: {
+    eps: 'How much faster u reacts than v: lower makes sharper, quicker excitation fronts',
+    f: 'How strongly the recovery variable v inhibits u: higher makes waves harder to start',
+    q: 'Small offset in the inhibition term that sets u\'s resting floor',
+    phi: 'Light level: higher inhibits more; near 0.084 broken waves travel as compact fragments',
+    D_u: 'How fast u spreads: higher makes faster, wider waves',
+    K_h: 'How much the light follows the excitation: higher dims a growing fragment back to size',
+    tau_h: 'How slowly the size feedback h follows u: higher means a longer lag',
+    kernel_sigma: 'Width of the area h averages u over: large means the whole field, small means local',
+  },
   paintable: ['phi'],
   // the light term is very stiff near u ≈ 0 (rate ~ (f v + phi) 2q/(u+q)²/eps, up to ~10⁴):
   // it is taken implicitly (linearised backward Euler), which divides the
@@ -840,6 +946,13 @@ export const KLEIN_GORDON: RuleDef = {
     { name: 'gamma', value: 0, min: 0, max: 0.1 },
     { name: 'nu', value: 0.02, min: 0, max: 0.2 },
   ],
+  paramHints: {
+    sg: 'Strength of the sine-Gordon pull towards multiples of 2π: higher makes stiffer, narrower kinks',
+    phi4: 'Strength of the φ⁴ pull towards u = ±1: higher makes stiffer walls between them',
+    mass: 'Pull of u back towards 0: positive makes a restoring force, negative pushes u away',
+    gamma: 'Friction on motion: higher slows everything down; 0 loses no energy',
+    nu: 'Damping of fine grid-scale ripples, barely touching smooth kinks and breathers',
+  },
   paintable: ['gamma'],
   // nu: viscosity on v, which damps grid-scale ripples (~k²) and barely touches smooth kinks and breathers
   formula: `delta_v = laplacian_u - sg*sin(u) - phi4*(u*u*u - u) - mass*u - gamma*v + nu*laplacian_v;
@@ -874,6 +987,13 @@ export const SWIFT_HOHENBERG_FB: RuleDef = {
     { name: 'tau', value: 10, min: 0.1, max: 100 },
     { name: 'D_w', value: 0.5, min: 0, max: 5 },
   ],
+  paramHints: {
+    r: 'Growth drive: above 0 patterns fill the field, slightly below 0 they stay as separate spots',
+    b: 'Strength of the quadratic term: higher favours spots and lets them persist at lower r',
+    kappa: 'How hard the inhibitor w pushes u down: higher can set spots moving',
+    tau: 'How slowly the inhibitor w follows u: higher lags more and makes spots drift',
+    D_w: 'How fast the inhibitor w spreads',
+  },
   paintable: ['r', 'kappa'],
   formula: `delta_u = r*u - (bilaplacian_u + 2.0*laplacian_u + u) + b*u*u - u*u*u - kappa*w;
 delta_w = (u - w)/tau + D_w*laplacian_w;`,
@@ -917,6 +1037,18 @@ export const NEURAL_FIELD: RuleDef = {
     { name: 'tau_a', value: 10, min: 1, max: 100 },
     { name: 'I', value: 0, min: -2, max: 2 },
   ],
+  paramHints: {
+    A: 'Overall coupling strength: higher makes activity excite its neighbours more',
+    kernel_sigma: 'Reach of the nearby excitation: higher makes bigger bumps',
+    kernel_b: 'Strength of the wider inhibition relative to excitation: higher keeps bumps more apart',
+    kernel_sigma2: 'Reach of the wider inhibition around each bump',
+    theta: 'Firing threshold: higher needs more input before a region turns on',
+    beta: 'Sharpness of the firing switch: higher makes on/off more abrupt',
+    g: 'How strongly tiredness a suppresses firing: higher makes bumps move or die out',
+    tau: 'Response time of the firing rate u: higher reacts more slowly',
+    tau_a: 'How slowly tiredness a builds up and wears off',
+    I: 'Steady outside input: positive helps regions fire, negative holds them back',
+  },
   paintable: ['I', 'g'],
   formula: `delta_u = (-u + 1.0/(1.0 + exp(-beta*(A*kernel_u - g*a + I - theta))))/tau;
 delta_a = (u - a)/tau_a;`,
@@ -976,6 +1108,23 @@ export const SATURABLE_NLS: RuleDef = {
     { name: 'trap_gain', value: 0.108, min: 0, max: 0.5 },
     { name: 'trap_sat', value: 0.013, min: 0, max: 0.1 },
   ],
+  paramHints: {
+    g: 'Strength of self-focusing: higher pulls light into tighter solitons, negative spreads it',
+    s: 'Saturation: higher caps the self-focusing at lower intensity, giving wider, softer solitons',
+    gamma: 'Absorption: paint above 0 to soak up light, as at sponge borders',
+    V: 'Potential to paint: low guides and traps solitons, high reflects them',
+    reflect_d: 'Distance field of drawn reflecting walls (drawn with the Wall tool, not set by hand)',
+    absorb_d: 'Distance field of drawn absorbing walls (drawn with the Wall tool, not set by hand)',
+    wall_grow: 'Moves every drawn wall\'s edge out (positive) or in (negative) by this many cells',
+    wall_V: 'Height of reflecting walls: higher bounces stronger solitons',
+    wall_gamma: 'How strongly absorbing walls soak up light',
+    trap_d: 'Distance field of drawn traps (drawn with the Wall tool, not set by hand)',
+    trap_V: 'Depth of the well inside traps: deeper holds solitons more firmly',
+    trap_D: 'Friction inside traps: higher slows and parks incoming solitons faster',
+    trap_loss: 'Steady loss inside traps that kills faint ripples, so an empty trap stays empty',
+    trap_gain: 'Gain inside traps that grows with intensity, feeding a parked soliton',
+    trap_sat: 'Cap on trap gain at high intensity: higher settles trapped solitons at lower power',
+  },
   paintable: ['gamma', 'V', 'reflect_d', 'absorb_d', 'trap_d'],
   explore: ['gamma', 'V'],
   formula: `float P0 = wave_cos_p + wave_sin_q;
@@ -1029,6 +1178,11 @@ export const GRAY_SCOTT_ZOOM: RuleDef = {
     { name: 'F', value: GS_PRESET_F, min: 0, max: 0.1 },
     { name: 'k', value: GS_PRESET_K, min: 0.03, max: 0.075 },
   ],
+  paramHints: {
+    heat_D1: 'Diffusion rate of a (before zoom scaling)',
+    heat_D2: 'Diffusion rate of b (before zoom scaling)',
+    zoom: 'Feature size: higher makes the same patterns larger and smoother, but slower to form',
+  },
   paintable: ['F', 'k'],
   laplacian: 'spectral',
   formula: `float A = heat1_a; float B = heat2_b;
@@ -1086,6 +1240,18 @@ export const GS_FLECK: RuleDef = {
     // big ones, so single cells could run away to the clamp (the flecks); this damps them by k² instead
     { name: 'D_micro', value: 0.02, min: 0, max: 0.08 },
   ],
+  paramHints: {
+    D_c: 'How fast c spreads through the wide kernel',
+    c_to_F: 'How much c changes the feed where it lies: negative lowers it',
+    c_to_k: 'How much c changes the kill where it lies: positive raises it',
+    c_to_Da: 'How much c speeds up a\'s spreading where it lies',
+    c_to_Db: 'How much c speeds up b\'s spreading where it lies',
+    c_damp: 'How fast c decays: higher forgets where b has been sooner',
+    b_to_c: 'How fast b makes c: higher builds the trail of c quicker',
+    lap_size: 'Radius of the wide smoothing kernel in cells: patterns scale with it',
+    lap_gain: 'Strength of the wide kernel\'s diffusion: higher spreads all three faster',
+    D_micro: 'Small ordinary diffusion on top that smooths away single-cell runaways (the flecks)',
+  },
   paintable: ['F', 'k'],
   laplacian: 'spectral',
   formula: `float La = lap_gain*(kernel_a - a); float Lb = lap_gain*(kernel_b - b); float Lc = lap_gain*(kernel_c - c);
@@ -1155,6 +1321,26 @@ export const META_GS: RuleDef = {
     { name: 'Db_reach', value: 0.659, min: 0.3, max: 80 },
     { name: 'Db_diff', value: 0.1818, min: -2, max: 2 },
   ],
+  paramHints: {
+    F_gain: 'How far the dF field moves feed per unit of b: negative pushes it the other way',
+    F_mem: 'Memory of the dF field in steps: higher averages over longer and changes slower',
+    F_reach: 'How many cells the dF field spreads over its memory: high makes halos, low trails',
+    F_diff: 'How much empty space (1 - a - b) adds to b as the dF field\'s source',
+    k_gain: 'How far the dk field moves kill per unit of b: negative pushes it the other way',
+    k_mem: 'Memory of the dk field in steps: higher averages over longer and changes slower',
+    k_reach: 'How many cells the dk field spreads over its memory: high makes halos, low trails',
+    k_diff: 'How much empty space (1 - a - b) adds to b as the dk field\'s source',
+    Da_gain: 'How far the dDa field moves a\'s diffusion per unit of b: negative pushes it the other way',
+    Da_mem: 'Memory of the dDa field in steps: higher averages over longer and changes slower',
+    Da_reach: 'How many cells the dDa field spreads over its memory: high makes halos, low trails',
+    Da_diff: 'How much empty space (1 - a - b) adds to b as the dDa field\'s source',
+    Db_gain: 'How far the dDb field moves b\'s diffusion per unit of b: negative pushes it the other way',
+    Db_mem: 'Memory of the dDb field in steps: higher averages over longer and changes slower',
+    Db_reach: 'How many cells the dDb field spreads over its memory: high makes halos, low trails',
+    Db_diff: 'How much empty space (1 - a - b) adds to b as the dDb field\'s source',
+    F_forget: 'Makes the extra feed drain faster the smaller it is, giving boom-and-bust; 0 lets it die out',
+    F_ref: 'Size of dF at which the F_forget drain stops: smaller dF than this drains away',
+  },
   paintable: ['F', 'k'],
   explore: ['F_gain', 'k_gain', 'Da_gain', 'Db_gain'],
   formula: `float d = 1.0 - a - b;
@@ -1213,6 +1399,40 @@ export const WEATHER_GS: RuleDef = {
     ]),
     ...WEATHER_FIELDS.flatMap((X) => WEATHER_FIELDS.map((Y) => ({ name: `${Y}_to_${X}`, value: WEATHER_DEFAULTS[`${Y}_to_${X}`] ?? 0, min: -4, max: 4 }))),
   ],
+  paramHints: {
+    F_gain: 'How far the uF field shifts feed: negative pushes it the other way',
+    F_mem: 'Memory of the uF field in steps: higher changes slower',
+    F_reach: 'How many cells the uF field spreads over its memory',
+    F_diff: 'How much empty space (1 - a - b) adds to b as the uF field\'s source',
+    k_gain: 'How far the uk field shifts kill: negative pushes it the other way',
+    k_mem: 'Memory of the uk field in steps: higher changes slower',
+    k_reach: 'How many cells the uk field spreads over its memory',
+    k_diff: 'How much empty space (1 - a - b) adds to b as the uk field\'s source',
+    Da_gain: 'How far the uDa field shifts a\'s diffusion: negative pushes it the other way',
+    Da_mem: 'Memory of the uDa field in steps: higher changes slower',
+    Da_reach: 'How many cells the uDa field spreads over its memory',
+    Da_diff: 'How much empty space (1 - a - b) adds to b as the uDa field\'s source',
+    Db_gain: 'How far the uDb field shifts b\'s diffusion: negative pushes it the other way',
+    Db_mem: 'Memory of the uDb field in steps: higher changes slower',
+    Db_reach: 'How many cells the uDb field spreads over its memory',
+    Db_diff: 'How much empty space (1 - a - b) adds to b as the uDb field\'s source',
+    F_to_F: 'How much the uF field excites itself: above 1 it can flip and hold on or off; negative calms it',
+    k_to_F: 'How much the uk field drives the uF field: positive excites, negative inhibits',
+    Da_to_F: 'How much the uDa field drives the uF field: positive excites, negative inhibits',
+    Db_to_F: 'How much the uDb field drives the uF field: positive excites, negative inhibits',
+    F_to_k: 'How much the uF field drives the uk field: positive excites, negative inhibits',
+    k_to_k: 'How much the uk field excites itself: above 1 it can flip and hold on or off; negative calms it',
+    Da_to_k: 'How much the uDa field drives the uk field: positive excites, negative inhibits',
+    Db_to_k: 'How much the uDb field drives the uk field: positive excites, negative inhibits',
+    F_to_Da: 'How much the uF field drives the uDa field: positive excites, negative inhibits',
+    k_to_Da: 'How much the uk field drives the uDa field: positive excites, negative inhibits',
+    Da_to_Da: 'How much the uDa field excites itself: above 1 it can flip and hold on or off; negative calms it',
+    Db_to_Da: 'How much the uDb field drives the uDa field: positive excites, negative inhibits',
+    F_to_Db: 'How much the uF field drives the uDb field: positive excites, negative inhibits',
+    k_to_Db: 'How much the uk field drives the uDb field: positive excites, negative inhibits',
+    Da_to_Db: 'How much the uDa field drives the uDb field: positive excites, negative inhibits',
+    Db_to_Db: 'How much the uDb field excites itself: above 1 it can flip and hold on or off; negative calms it',
+  },
   paintable: ['F', 'k'],
   explore: WEATHER_FIELDS.flatMap((X) => WEATHER_FIELDS.map((Y) => `${Y}_to_${X}`)),
   formula: `float d = 1.0 - a - b;
@@ -1279,6 +1499,12 @@ export const GS_LINEAGES: RuleDef = {
     { name: 'trait_eps', value: 0.001, min: 0.0001, max: 0.05 },
     { name: 'seed_bank', value: 0, min: 0, max: 0.05 },
   ],
+  paramHints: {
+    F: 'Feed carried by brush seeds and the opening spots, so new lineages founded here take it on',
+    k: 'Kill carried by brush seeds and the opening spots, so new lineages founded here take it on',
+    trait_eps: 'Small stand-in amount of b so feed and kill fall back to the painted values where there is no b',
+    seed_bank: 'How much of the painted feed and kill mixes into every new b: 0 is pure inheritance',
+  },
   paintable: ['F', 'k'],
   formula: LINEAGE_FORMULA,
   rest: [1, 0, 0, 0, 0, GS_PRESET_F, GS_PRESET_K],
@@ -1340,6 +1566,12 @@ export const GS_SELECTION: RuleDef = {
     { name: 'trait_eps', value: 0.001, min: 0.0001, max: 0.05 },
     { name: 'seed_bank', value: 0, min: 0, max: 0.05 },
   ],
+  paramHints: {
+    F: 'Feed carried by brush seeds and the opening spots, so new lineages founded here take it on',
+    k: 'Kill carried by brush seeds and the opening spots, so new lineages founded here take it on',
+    trait_eps: 'Small stand-in amount of b so feed and kill fall back to the painted values where there is no b',
+    seed_bank: 'How much of the painted feed and kill mixes into every new b: 0 is pure inheritance',
+  },
   paintable: ['F', 'k'],
   formula: LINEAGE_FORMULA,
   rest: [1, 0, 0, 0, 0, 0.017, 0.0535],
@@ -1390,6 +1622,19 @@ export const GS_SPECIES: RuleDef = {
     { name: 'cross', value: 0, min: 0, max: 1 },
     { name: 'eps', value: 0.001, min: 0.0001, max: 0.05 },
   ],
+  paramHints: {
+    F: 'Feed for a where there is no b (where there is b, the species\' own feeds take over)',
+    F1: 'Feed of species 1 (by default spots): its b\'s death includes it, and a is fed at it where species 1 is',
+    k1: 'Kill of species 1 (by default spots): higher makes species 1 die faster',
+    F2: 'Feed of species 2 (by default worms): its b\'s death includes it, and a is fed at it where species 2 is',
+    k2: 'Kill of species 2 (by default worms): higher makes species 2 die faster',
+    F3: 'Feed of species 3 (by default maze): its b\'s death includes it, and a is fed at it where species 3 is',
+    k3: 'Kill of species 3 (by default maze): higher makes species 3 die faster',
+    F4: 'Feed of species 4 (by default curly): its b\'s death includes it, and a is fed at it where species 4 is',
+    k4: 'Kill of species 4 (by default curly): higher makes species 4 die faster',
+    cross: 'How readily two different species reproduce together: 0 only with their own kind, 1 as plain Gray-Scott',
+    eps: 'Small stand-in amount of b so a\'s feed falls back to the painted F where there is no b',
+  },
   paintable: ['F'],
   explore: ['cross', 'F1', 'F2', 'F3', 'F4'],
   formula: `float bt = b1 + b2 + b3 + b4;
@@ -1446,6 +1691,22 @@ export const GS_NICHES: RuleDef = {
     ...[1, 2, 3, 4].map((i) => ({ name: `interfere${i}`, value: 1, min: 0, max: 3 })),
     { name: 'territory', value: 0, min: 0, max: 1 },
   ],
+  paramHints: {
+    F1: 'Feed of species 1 (by default spots): refills its own food a1 and adds to its death rate',
+    k1: 'Kill of species 1 (by default spots): higher makes species 1 die faster',
+    F2: 'Feed of species 2 (by default worms): refills its own food a2 and adds to its death rate',
+    k2: 'Kill of species 2 (by default worms): higher makes species 2 die faster',
+    F3: 'Feed of species 3 (by default maze): refills its own food a3 and adds to its death rate',
+    k3: 'Kill of species 3 (by default maze): higher makes species 3 die faster',
+    F4: 'Feed of species 4 (by default curly): refills its own food a4 and adds to its death rate',
+    k4: 'Kill of species 4 (by default curly): higher makes species 4 die faster',
+    interfere: 'How much overlapping species raise each other\'s death rate: higher keeps them apart',
+    interfere1: 'How hard species 1 hits the others where they overlap: below 1 a strong grower can share',
+    interfere2: 'How hard species 2 hits the others where they overlap: below 1 a strong grower can share',
+    interfere3: 'How hard species 3 hits the others where they overlap: below 1 a strong grower can share',
+    interfere4: 'How hard species 4 hits the others where they overlap: below 1 a strong grower can share',
+    territory: 'How much each species\' food dip raises the others\' death rate, so a sparse pattern can hold its ground',
+  },
   paintable: [],
   explore: ['interfere', 'F1', 'F2', 'F3', 'F4'],
   formula: `float bt = b1 + b2 + b3 + b4;
@@ -1518,6 +1779,45 @@ export const GS_HW_NICHES: RuleDef = {
       return { name, value: v, min, max };
     }),
   ],
+  paramHints: {
+    F1: 'Feed of species 1: refills its own food a1 and adds to its death rate',
+    k1: 'Kill of species 1: higher makes species 1 die faster',
+    F2: 'Feed of species 2: refills its own food a2 and adds to its death rate',
+    k2: 'Kill of species 2: higher makes species 2 die faster',
+    F3: 'Feed of species 3: refills its own food a3 and adds to its death rate',
+    k3: 'Kill of species 3: higher makes species 3 die faster',
+    F4: 'Feed of species 4: refills its own food a4 and adds to its death rate',
+    k4: 'Kill of species 4: higher makes species 4 die faster',
+    interfere: 'How much overlapping species raise each other\'s death rate: higher keeps them apart',
+    interfere1: 'How hard species 1 hits the others where they overlap: below 1 a strong grower can share',
+    interfere2: 'How hard species 2 hits the others where they overlap: below 1 a strong grower can share',
+    interfere3: 'How hard species 3 hits the others where they overlap: below 1 a strong grower can share',
+    interfere4: 'How hard species 4 hits the others where they overlap: below 1 a strong grower can share',
+    history1: 'How much the history c shifts species 1\'s feed and kill: above 1 its own trails hold it back',
+    history2: 'How much the history c shifts species 2\'s feed and kill: above 1 its own trails hold it back',
+    history3: 'How much the history c shifts species 3\'s feed and kill: above 1 its own trails hold it back',
+    history4: 'How much the history c shifts species 4\'s feed and kill: above 1 its own trails hold it back',
+    wave1: 'How much the wave shifts species 1\'s feed, kill, diffusion and b: below 1 it keeps nearer its own',
+    wave2: 'How much the wave shifts species 2\'s feed, kill, diffusion and b: below 1 it keeps nearer its own',
+    wave3: 'How much the wave shifts species 3\'s feed, kill, diffusion and b: below 1 it keeps nearer its own',
+    wave4: 'How much the wave shifts species 4\'s feed, kill, diffusion and b: below 1 it keeps nearer its own',
+    b_to_c: 'How fast all species\' b lays down the history c',
+    c_damp: 'How fast the history c fades: higher forgets sooner',
+    D_c: 'How fast the history c spreads',
+    c_to_k: 'How much the history c shifts every species\' kill (times history1..4)',
+    c_to_F: 'How much the history c shifts every species\' feed (times history1..4): negative lowers it',
+    b_to_wave: 'How hard all species\' b rings the wave',
+    wave_diffusion: 'How fast the wave travels outwards',
+    wave_damp: 'How much of the wave survives each step: lower dies away sooner',
+    wave_power: 'Power the wave\'s height is raised to each step: below 1 big waves shrink faster',
+    wave_DC_value: 'The wave\'s resting level: species feel only how far it is above or below this',
+    wave_clamp: 'Largest the wave can swing away from its resting level',
+    wave_to_F: 'How much the wave shifts every species\' feed (times wave1..4)',
+    wave_to_k: 'How much the wave shifts every species\' kill (times wave1..4): negative lowers it on crests',
+    wave_to_Da: 'How much the wave changes the foods\' diffusion (times wave1..4)',
+    wave_to_Db: 'How much the wave changes the species\' diffusion (times wave1..4)',
+    wave_to_b: 'How much the wave adds b directly, shared by species (times wave1..4): negative removes it on crests',
+  },
   paintable: [],
   explore: ['interfere', 'c_to_F', 'wave_to_F', 'b_to_wave'],
   formula: `float bt = b1 + b2 + b3 + b4;
@@ -1606,6 +1906,17 @@ export const GS_BUBBLES: RuleDef = {
     { name: 'target', value: 1, min: 0.1, max: 4 },
     { name: 'seal', value: 0.03, min: 0.01, max: 0.2 },
   ],
+  paramHints: {
+    D_a: 'How fast the feed chemical a spreads',
+    D_b: 'How fast the membrane chemical b spreads',
+    D_m: 'How fast content spreads inside a bubble',
+    F: 'Gray-Scott feed rate, refilling a; shapes the membrane ring',
+    k_edge: 'Gray-Scott kill rate for the membrane; set near the edge where rings stop growing',
+    chi: 'How fast content pressure carries the membrane out (or in, once content is diluted)',
+    soft: 'Caps the pressure, so the membrane can\'t be pushed faster than it follows',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    seal: 'How leaky the membrane is to content; raise it to let content seep through',
+  },
   paintable: [],
   formula: `// pressure p: osmotic, the content's excess over the ambient solution outside (at target). The membrane
 // is carried down its gradient (a and b advected at velocity -chi grad p, so the stripe moves as a whole):
@@ -1657,6 +1968,14 @@ export const PF_BUBBLES: RuleDef = {
     { name: 'target', value: 1, min: 0.1, max: 4 },
     { name: 'repel', value: 0.1, min: 0, max: 1 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content spreads inside a bubble',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    repel: 'How hard bubbles of different kinds push each other back where they overlap',
+  },
   paintable: [],
   formula: `// three kinds of bubble (phases 1-3; a foam can be coloured with three so no two neighbours match), each with its content
 // for each: the drive at its edge, its content's pressure (excess over target), capped so the double well keeps two phases
@@ -1719,6 +2038,17 @@ export const PF_BUBBLES_1: RuleDef = {
     { name: 'repel', value: 2, min: 0, max: 8 },
     { name: 'gap_margin', value: 0.08, min: 0, max: 0.5 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content spreads inside a bubble',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_h: 'How far the blur h, used to spot gaps between bubbles, spreads',
+    h_decay: 'How fast the blur h follows phi; lower makes it spread wider and respond slower',
+    repel: 'How hard a narrow gap between two bubbles pushes both edges back',
+    gap_margin: 'How far h must sit above phi before a gap pushes back; raise it to act only in tighter gaps',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure out (its excess over target), crowding in: in a narrow gap between two
 // bubbles the blur h sits well above phi (at a lone edge, or inside, it tracks phi); capped so the double well always keeps
@@ -1775,6 +2105,18 @@ export const PF_BUBBLES_3: RuleDef = {
     { name: 'drain', value: 6, min: 0, max: 12 },
     { name: 'gap_margin', value: 0.05, min: 0, max: 0.5 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content spreads inside a bubble',
+    m_inward: 'How strongly content is drawn in with a retreating edge, so a shrinking bubble keeps it',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_h: 'How far the blur h, used to spot gaps between bubbles, spreads',
+    h_decay: 'How fast the blur h follows phi; lower makes it spread wider and respond slower',
+    drain: 'How fast a narrow gap between facing edges is emptied, keeping islands apart',
+    gap_margin: 'How far h must sit above a half before a gap is drained; raise it to drain only tighter gaps',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure out (its excess over target), capped so the double well keeps two phases
 float lambda = clamp(pressure*(m - target), -0.45, 0.45);
@@ -1840,6 +2182,19 @@ export const PF_BUBBLES_4: RuleDef = {
     { name: 'u_edge', value: 0.15, min: 0, max: 1 },
     { name: 'starve', value: 3, min: 0, max: 20 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content spreads inside a bubble',
+    m_inward: 'How strongly content is drawn in with a retreating edge, so a shrinking bubble keeps it',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure out (its excess over target); held back where the substrate is short of a lone
 // edge's share (between two bubbles, eaten from both sides); capped so the double well keeps two phases
@@ -1871,7 +2226,8 @@ delta_mem = (4.0*phi*(1.0 - phi) - mem)/timestep;`,
  * crammed bubble's pressure beat the starving and neighbours merged; here the push out is scaled by the substrate at the
  * edge (u over u_supply, up to 1), so an edge facing a neighbour across a depleted gap can't be pushed into it however
  * crammed the bubble. Pulling in (pressure below target) is never held back.
- */export const PF_BUBBLES_5: RuleDef = {
+ */
+export const PF_BUBBLES_5: RuleDef = {
   name: 'Phase-field Bubbles 5 (fed pressure)',
   description: 'Bubbles as one phase field φ (1 inside, 0 outside), whose edges move by their own curvature (smoothing '
     + 'bulges rather than buckling) and by the pressure of the content m inside, so size follows content. As in Gray-Scott, '
@@ -1896,6 +2252,20 @@ delta_mem = (4.0*phi*(1.0 - phi) - mem)/timestep;`,
     { name: 'starve', value: 3, min: 0, max: 20 },
     { name: 'u_supply', value: 0.3, min: 0.01, max: 1 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content spreads inside a bubble',
+    m_inward: 'How strongly content is drawn in with a retreating edge, so a shrinking bubble keeps it',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
 // u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
@@ -1972,6 +2342,26 @@ export const PF_BUBBLES_6: RuleDef = {
     { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
     { name: 'T_max', value: 1, min: 0.1, max: 4 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content and heat spread inside a bubble',
+    m_inward: 'How strongly content and heat are drawn in with a retreating edge, so a shrinking bubble keeps them',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+    buoy: 'How strongly warm bubbles rise and cool ones sink',
+    gx: 'Sideways part of gravity\'s direction',
+    gy: 'Up-down part of gravity\'s direction; -1 is down',
+    heat: 'How fast painted warmth heats a bubble (or cools it, where warmth is negative)',
+    T_leak: 'How fast a bubble\'s heat fades back toward neutral',
+    T_max: 'Caps the temperature that drives buoyancy, so hotter bubbles don\'t move faster',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
 // u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
@@ -2021,7 +2411,8 @@ delta_warmth = 0.0;`,
  * Phase-field Bubbles 7 (lava lamp, even heating): version 6, with the warmth heating or cooling only a bubble's solid inside
  * (φ over a half), its heat spreading out to the edge from there. In version 6 it acted out into the edge's faint tail too,
  * where heat mixes slowest: tail cells overheated (or overcooled), were pushed hardest, and budded off as dots.
- */export const PF_BUBBLES_7: RuleDef = {
+ */
+export const PF_BUBBLES_7: RuleDef = {
   name: 'Phase-field Bubbles 7 (lava lamp, even heating)',
   description: 'A lava lamp of bubbles. Each carries heat T (one temperature per bubble) and is buoyant: warm ones rise, '
     + 'cool ones sink (buoy; gravity along gx, gy, y up: (0, −1) is down). Warmth (paintable) heats a bubble where it\'s positive and cools it '
@@ -2055,6 +2446,26 @@ delta_warmth = 0.0;`,
     { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
     { name: 'T_max', value: 1, min: 0.1, max: 4 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content and heat spread inside a bubble',
+    m_inward: 'How strongly content and heat are drawn in with a retreating edge, so a shrinking bubble keeps them',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+    buoy: 'How strongly warm bubbles rise and cool ones sink',
+    gx: 'Sideways part of gravity\'s direction',
+    gy: 'Up-down part of gravity\'s direction; -1 is down',
+    heat: 'How fast painted warmth heats a bubble (or cools it, where warmth is negative)',
+    T_leak: 'How fast a bubble\'s heat fades back toward neutral',
+    T_max: 'Caps the temperature that drives buoyancy, so hotter bubbles don\'t move faster',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
 // u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
@@ -2141,6 +2552,26 @@ export const PF_BUBBLES_8: RuleDef = {
     { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
     { name: 'T_max', value: 1, min: 0.1, max: 4 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content and heat spread inside a bubble',
+    m_inward: 'How strongly content and heat are drawn in with a retreating edge, so a shrinking bubble keeps them',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+    buoy: 'How strongly warm bubbles rise and cool ones sink',
+    gx: 'Sideways part of gravity\'s direction',
+    gy: 'Up-down part of gravity\'s direction; -1 is down',
+    heat: 'How fast painted warmth heats a bubble (or cools it, where warmth is negative)',
+    T_leak: 'How fast a bubble\'s heat fades back toward neutral',
+    T_max: 'Caps the temperature that drives buoyancy, so hotter bubbles don\'t move faster',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
 // u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
@@ -2196,7 +2627,8 @@ delta_warmth = 0.0;`,
  * in the lively lamp the dots still come (20 bubbles to about 50-60 islands, leak 0.002-0.03), budding off bubbles with their
  * own content rather than growing from stray content. Tried and taken out: evaporating content over a threshold, which took
  * the big bubbles too.
- */export const PF_BUBBLES_9: RuleDef = {
+ */
+export const PF_BUBBLES_9: RuleDef = {
   name: 'Phase-field Bubbles 9 (lava lamp, ripening)',
   description: 'A lava lamp of bubbles. Each carries heat T (one temperature per bubble) and is buoyant: warm ones rise, '
     + 'cool ones sink (buoy; gravity along gx, gy, y up: (0, −1) is down). Warmth (paintable) heats a bubble where it\'s positive and cools it '
@@ -2231,6 +2663,27 @@ delta_warmth = 0.0;`,
     { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
     { name: 'T_max', value: 1, min: 0.1, max: 4 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content and heat spread inside a bubble',
+    m_inward: 'How strongly content and heat are drawn in with a retreating edge, so a shrinking bubble keeps them',
+    leak: 'How much content seeps through the open lamp; lets small bubbles slowly lose content to big ones',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+    buoy: 'How strongly warm bubbles rise and cool ones sink',
+    gx: 'Sideways part of gravity\'s direction',
+    gy: 'Up-down part of gravity\'s direction; -1 is down',
+    heat: 'How fast painted warmth heats a bubble (or cools it, where warmth is negative)',
+    T_leak: 'How fast a bubble\'s heat fades back toward neutral',
+    T_max: 'Caps the temperature that drives buoyancy, so hotter bubbles don\'t move faster',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
 // u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
@@ -2288,7 +2741,8 @@ delta_warmth = 0.0;`,
  * apart sideways 16 cells in 400k steps (version 9: 6); at 1-3 they stop short and hover. Each bubble's own halo of eaten
  * substrate dominates (the substrate rises outward all round its edge, so steering mostly pushes out evenly, like more
  * pressure); a neighbour is only a slight lopsidedness in it.
- */export const PF_BUBBLES_10: RuleDef = {
+ */
+export const PF_BUBBLES_10: RuleDef = {
   name: 'Phase-field Bubbles 10 (lava lamp, slipping past)',
   description: 'A lava lamp of bubbles. Each carries heat T (one temperature per bubble) and is buoyant: warm ones rise, '
     + 'cool ones sink (buoy; gravity along gx, gy, y up: (0, −1) is down). Warmth (paintable) heats a bubble where it\'s positive and cools it '
@@ -2325,6 +2779,29 @@ delta_warmth = 0.0;`,
     { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
     { name: 'T_max', value: 1, min: 0.1, max: 4 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content and heat spread inside a bubble',
+    m_inward: 'How strongly content and heat are drawn in with a retreating edge, so a shrinking bubble keeps them',
+    leak: 'How much content seeps through the open lamp; lets small bubbles slowly lose content to big ones',
+    steer: 'How strongly edges move toward open space and back from nearby bubbles',
+    move_max: 'Top speed for an edge moved by buoyancy and steering; faster leaves a bubble\'s content behind',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+    buoy: 'How strongly warm bubbles rise and cool ones sink',
+    gx: 'Sideways part of gravity\'s direction',
+    gy: 'Up-down part of gravity\'s direction; -1 is down',
+    heat: 'How fast painted warmth heats a bubble (or cools it, where warmth is negative)',
+    T_leak: 'How fast a bubble\'s heat fades back toward neutral',
+    T_max: 'Caps the temperature that drives buoyancy, so hotter bubbles don\'t move faster',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
 // u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
@@ -2385,7 +2862,8 @@ delta_warmth = 0.0;`,
  * sideways drift is vx. Bubbles start at their own phases (the scene's), so they sway out of step. Outside bubbles it fades.
  * (Room for it: the view-only membrane field is gone.) Measured: too slow to matter; below the speed at which a bubble
  * keeps its content, a sway moves it only a few cells each way (head-on: 12 cells apart sideways in 400k steps, still jammed).
- */export const PF_BUBBLES_11: RuleDef = {
+ */
+export const PF_BUBBLES_11: RuleDef = {
   name: 'Phase-field Bubbles 11 (lava lamp, swaying)',
   description: 'A lava lamp of bubbles. Each carries heat T (one temperature per bubble) and is buoyant: warm ones rise, '
     + 'cool ones sink (buoy; gravity along gx, gy, y up: (0, −1) is down). Warmth (paintable) heats a bubble where it\'s positive and cools it '
@@ -2424,6 +2902,31 @@ delta_warmth = 0.0;`,
     { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
     { name: 'T_max', value: 1, min: 0.1, max: 4 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content and heat spread inside a bubble',
+    m_inward: 'How strongly content and heat are drawn in with a retreating edge, so a shrinking bubble keeps them',
+    leak: 'How much content seeps through the open lamp; lets small bubbles slowly lose content to big ones',
+    sway: 'How strongly each bubble sways side to side as it goes',
+    sway_rate: 'How fast each bubble\'s sway swings back and forth',
+    D_sway: 'How evenly the sway spreads through a bubble, so it sways as one',
+    move_max: 'Top speed for an edge moved by buoyancy and sway; faster leaves a bubble\'s content behind',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+    buoy: 'How strongly warm bubbles rise and cool ones sink',
+    gx: 'Sideways part of gravity\'s direction',
+    gy: 'Up-down part of gravity\'s direction; -1 is down',
+    heat: 'How fast painted warmth heats a bubble (or cools it, where warmth is negative)',
+    T_leak: 'How fast a bubble\'s heat fades back toward neutral',
+    T_max: 'Caps the temperature that drives buoyancy, so hotter bubbles don\'t move faster',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
 // u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
@@ -2486,7 +2989,8 @@ delta_warmth = 0.0;`,
  * psi slides slowly sideways (psi_drift), so the swirls change as it goes. A bubble is carried by tilting its edge out
  * where it faces along the flow and in where it faces against it; with buoyancy, capped below the speed at which a bubble
  * leaves its content behind.
- */export const PF_BUBBLES_12: RuleDef = {
+ */
+export const PF_BUBBLES_12: RuleDef = {
   name: 'Phase-field Bubbles 12 (lava lamp, swirling)',
   description: 'A lava lamp of bubbles. Each carries heat T (one temperature per bubble) and is buoyant: warm ones rise, '
     + 'cool ones sink (buoy; gravity along gx, gy, y up: (0, −1) is down). Warmth (paintable) heats a bubble where it\'s positive and cools it '
@@ -2524,6 +3028,30 @@ delta_warmth = 0.0;`,
     { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
     { name: 'T_max', value: 1, min: 0.1, max: 4 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content and heat spread inside a bubble',
+    m_inward: 'How strongly content and heat are drawn in with a retreating edge, so a shrinking bubble keeps them',
+    leak: 'How much content seeps through the open lamp; lets small bubbles slowly lose content to big ones',
+    swirl: 'How strongly the swirling flow carries bubbles along',
+    psi_drift: 'How fast the swirl pattern slides sideways, so the swirls change over time',
+    move_max: 'Top speed for an edge moved by buoyancy and swirl; faster leaves a bubble\'s content behind',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+    buoy: 'How strongly warm bubbles rise and cool ones sink',
+    gx: 'Sideways part of gravity\'s direction',
+    gy: 'Up-down part of gravity\'s direction; -1 is down',
+    heat: 'How fast painted warmth heats a bubble (or cools it, where warmth is negative)',
+    T_leak: 'How fast a bubble\'s heat fades back toward neutral',
+    T_max: 'Caps the temperature that drives buoyancy, so hotter bubbles don\'t move faster',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
 // u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further
@@ -2584,7 +3112,8 @@ delta_psi = -psi_drift*x_gradient_psi;`,
  * bubble (φ over 0.1), as in version 6. Since version 7 it acted only on a bubble's solid inside (φ over a half, fully from
  * 0.9), which small soft dots barely have, so they kept whatever temperature they budded off with: hot dots stuck at the
  * top, cold ones at the bottom.
- */export const PF_BUBBLES_13: RuleDef = {
+ */
+export const PF_BUBBLES_13: RuleDef = {
   name: 'Phase-field Bubbles 13 (lava lamp, swirling, dots warm too)',
   description: 'A lava lamp of bubbles. Each carries heat T (one temperature per bubble) and is buoyant: warm ones rise, '
     + 'cool ones sink (buoy; gravity along gx, gy, y up: (0, −1) is down). Warmth (paintable) heats a bubble where it\'s positive and cools it '
@@ -2622,6 +3151,30 @@ delta_psi = -psi_drift*x_gradient_psi;`,
     { name: 'T_leak', value: 0.00003, min: 0, max: 0.001 },
     { name: 'T_max', value: 1, min: 0.1, max: 4 },
   ],
+  paramHints: {
+    D_phi: 'How fast phi spreads; higher gives wider, softer bubble edges',
+    well: 'How strongly cells settle fully inside or outside a bubble; higher gives sharper edges',
+    D_m: 'How fast content and heat spread inside a bubble',
+    m_inward: 'How strongly content and heat are drawn in with a retreating edge, so a shrinking bubble keeps them',
+    leak: 'How much content seeps through the open lamp; lets small bubbles slowly lose content to big ones',
+    swirl: 'How strongly the swirling flow carries bubbles along',
+    psi_drift: 'How fast the swirl pattern slides sideways, so the swirls change over time',
+    move_max: 'Top speed for an edge moved by buoyancy and swirl; faster leaves a bubble\'s content behind',
+    pressure: 'How hard content above target pushes the edge out (content below target pulls it in)',
+    target: 'Content level a bubble settles at; raise it for smaller bubbles',
+    D_u: 'How fast the substrate spreads',
+    u_feed: 'How fast substrate is fed back toward 1 everywhere',
+    u_eat: 'How fast bubbles eat the substrate inside them',
+    u_edge: 'Substrate an edge needs to advance freely; below this the edge is held back',
+    starve: 'How hard an edge short of substrate is held back; higher keeps neighbours further apart',
+    u_supply: 'Substrate needed for content to push the edge out at full strength; less substrate pushes less',
+    buoy: 'How strongly warm bubbles rise and cool ones sink',
+    gx: 'Sideways part of gravity\'s direction',
+    gy: 'Up-down part of gravity\'s direction; -1 is down',
+    heat: 'How fast painted warmth heats a bubble (or cools it, where warmth is negative)',
+    T_leak: 'How fast a bubble\'s heat fades back toward neutral',
+    T_max: 'Caps the temperature that drives buoyancy, so hotter bubbles don\'t move faster',
+  },
   paintable: [],
   formula: `// the drive at the edge: content pressure (its excess over target), its push out scaled by the substrate there (u over
 // u_supply, up to 1: no pushing into a depleted gap, however crammed), its pull in never held back; held back further

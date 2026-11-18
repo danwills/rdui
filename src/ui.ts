@@ -1,6 +1,6 @@
 import { PRESETS } from './presets';
 import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, openLoupe } from './fkmap';
-import type { RuleDef } from './rule';
+import { paramHint, type RuleDef } from './rule';
 import type { CustomChannel } from './sim';
 import { PALETTES, paletteCss } from './palettes';
 import { ladder, onLadderClaim } from './ladder';
@@ -225,7 +225,7 @@ export function fmt(v: number) {
  * A labelled range slider plus an editable number. `range` can grow when a
  * typed value falls outside it.
  */
-function valueRow(label: string, get: () => number, set: (v: number) => void, range: [number, number], extra?: Node) {
+function valueRow(label: string, get: () => number, set: (v: number) => void, range: [number, number], extra?: Node, title = label) {
   const input = el('input', { type: 'range', step: 'any' });
   const num = el('input', { type: 'text', class: 'num', inputmode: 'decimal' });
   const lo = () => Math.min(range[0], get());
@@ -247,7 +247,7 @@ function valueRow(label: string, get: () => number, set: (v: number) => void, ra
   });
   num.addEventListener('keydown', (e) => e.stopPropagation());
   refresh();
-  const row = el('label', { class: 'row param', title: label }, el('span', {}, label), input, num);
+  const row = el('label', { class: 'row param', title }, el('span', {}, label), input, num);
   if (extra) row.append(extra);
   ladder(row, { get, set: (v) => { set(v); refresh(); }, range });
   return { row, refresh };
@@ -310,6 +310,36 @@ export function guardSliders() {
   }, { capture: true, passive: true });
 }
 
+/** Tooltips for the panel's own controls, by the setting each one sets. */
+const SETTING_HINTS: Partial<Record<keyof Settings, string>> = {
+  reagent: 'which reagent the palette colours',
+  low: 'the value shown as the bottom of the palette',
+  high: 'the value shown as the top of the palette',
+  tint: 'a second reagent that shifts the colour (none: off)',
+  tintLow: 'the tint reagent\'s value that tints not at all',
+  tintHigh: 'the tint reagent\'s value that tints fully',
+  tintStrength: 'how strongly the tint shows: 0 none, 1 full',
+  hueShape: 'fleck palettes: hue contrast (1 = even; higher packs the hues toward the ends)',
+  hueOffset: 'fleck palettes: turns every hue round the wheel',
+  fleckLow: 'fleck palettes: the value of a, b and c shown as none',
+  fleckHigh: 'fleck palettes: the value of a, b and c shown as full',
+  fleckGain: 'fleck palettes: scales lightness and colourfulness (below 1: less washed out)',
+  colourBlend: 'custom palette: seconds new colours take to blend in (0 = at once)',
+  wanderEvery: 'custom palette: seconds between wander\'s randomises',
+  customGamma: 'custom palette: the summed colour raised to this power first (above 1 darkens the mid-tones)',
+  customContrast: 'custom palette: contrast about mid-grey (1 = as is)',
+  customSaturation: 'custom palette: colourfulness (0 grey, 1 as is, above 1 more vivid)',
+  viewMode: 'what the field shows: the reagents, the reagents with painted params outlined, or the painted params alone',
+  radius: 'brush radius, in screen pixels · [ and ]',
+  strength: 'how much each dab changes the field: 1 sets it outright, lower builds up gradually',
+  hardness: 'the brush edge: 1 sharp, 0 soft and fading out',
+  brushShape: 'freehand strokes, straight lines, or circles',
+  stepsPerFrame: 'simulation steps run each frame (per 1/60 s): more is faster, if the GPU keeps up',
+  gridSize: 'the field\'s size in cells (bigger is more detail and slower); the field starts over',
+  resScale: 'run on fewer cells than the grid (faster, coarser); the field starts over',
+  featureSize: 'how big features are, in cells: above 1× the same pattern spans more cells (finer looking, slower)',
+};
+
 export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc: RuleContext, extraSections: Node[] = []) {
   guardSliders();
   const syncers: (() => void)[] = [];
@@ -328,7 +358,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       input.value = String(s[key]);
       out.textContent = (s[key] as number).toFixed(digits);
     });
-    const row = el('label', { class: 'row' }, el('span', {}, label), input, out);
+    const row = el('label', { class: 'row', title: SETTING_HINTS[key] ?? label }, el('span', {}, label), input, out);
     ladder(row, {
       get: () => s[key] as number,
       set: (v) => { (s[key] as number) = v; onChange?.(); sync(); },
@@ -369,7 +399,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       input.value = String(Math.min(1, Math.log(Math.max(1, s[key])) / L));
       if (document.activeElement !== num) num.value = String(s[key]);
     });
-    return el('label', { class: 'row log' }, el('span', {}, label), input, num);
+    return el('label', { class: 'row log', title: SETTING_HINTS[key] ?? label }, el('span', {}, label), input, num);
   }
 
   function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'customWander', title: string, then?: () => void) {
@@ -392,7 +422,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       sync();
     });
     syncers.push(() => (sel.value = String(s[key])));
-    return { row: el('label', { class: 'row' }, el('span', {}, label), sel), fill };
+    return { row: el('label', { class: 'row', title: SETTING_HINTS[key] ?? label }, el('span', {}, label), sel), fill };
   }
 
   /** The palette: a button showing the current one, opening a grid of every palette with its preview. */
@@ -470,7 +500,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   }
 
   function rangeRow(label: string, key: 'low' | 'high' | 'tintLow' | 'tintHigh' | 'fleckLow' | 'fleckHigh', range: [number, number]) {
-    const r = valueRow(label, () => s[key], (v) => (s[key] = v), range);
+    const r = valueRow(label, () => s[key], (v) => (s[key] = v), range, undefined, SETTING_HINTS[key] ?? label);
     syncers.push(r.refresh);
     return r.row;
   }
@@ -620,7 +650,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       const r = valueRow(name, () => s.paint[name], (v) => {
         s.paint[name] = v;
         sync();
-      }, [spec.min, spec.max], unpaint);
+      }, [spec.min, spec.max], unpaint, `${paramHint(rule, spec)} · painted with the Params tool`);
       ruleSyncers.push(r.refresh);
       paintBox.append(r.row);
     }
@@ -634,7 +664,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       const r = valueRow(spec.name, () => globals[spec.name], (v) => {
         globals[spec.name] = v;
         actions.setGlobal(spec.name, v);
-      }, [spec.min, spec.max]);
+      }, [spec.min, spec.max], undefined, paramHint(rule, spec));
       wallBox.append(r.row);
     }
 
@@ -647,7 +677,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       const r = valueRow(spec.name, () => globals[spec.name], (v) => {
         globals[spec.name] = v;
         actions.setGlobal(spec.name, v);
-      }, [spec.min, spec.max], paint);
+      }, [spec.min, spec.max], paint, paramHint(rule, spec));
       globalBox.append(r.row);
     }
 
@@ -659,7 +689,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         button('Clear all', actions.clearAll, 'a blank field: chemistry at rest, painted params and walls removed (Clear chem keeps them)'),
       ),
       ...(wallBox.childElementCount ? [el('h3', { title: 'walls drawn with the Wall tool (walls reflect / walls absorb): wall_grow moves every edge out (or in, below 0) by that many cells' }, 'Walls'), wallBox] : []),
-      el('details', { class: 'globals-wrap' }, el('summary', {}, `Global parameters (${globalBox.childElementCount})`), globalBox),
+      el('details', { class: 'globals-wrap', open: '' }, el('summary', {}, `Global parameters (${globalBox.childElementCount})`), globalBox),
     );
     ruleBody.replaceChildren(...nodes);
     viewReagent.fill();
@@ -742,9 +772,9 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         ch().color = c;
         colour.style.background = toHex(c);
       }, holdForDropper));
-      const lo = valueRow('low', () => ch().low, (v) => (ch().low = v), [-1, 1]);
-      const hi = valueRow('high', () => ch().high, (v) => (ch().high = v), [0, 2]);
-      const pw = valueRow('power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4]);
+      const lo = valueRow('low', () => ch().low, (v) => (ch().low = v), [-1, 1], undefined, `${name}'s value that shows no colour`);
+      const hi = valueRow('high', () => ch().high, (v) => (ch().high = v), [0, 2], undefined, `${name}'s value that shows its full colour`);
+      const pw = valueRow('power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4], undefined, `${name}'s curve from low to high: above 1 shows only its peaks, below 1 lifts the faint parts`);
       refreshers.push(() => { on.checked = ch().on; colour.style.background = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
       const fit = button('fit', () => actions.fitCustom(r), `fit ${name}'s low and high to the field (1st to 99th percentile)`);
       fit.classList.add('mini');
