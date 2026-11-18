@@ -1,6 +1,7 @@
 # Writes a Momentum Bubbles Hilbert-curve track scene:
-#   python3 lab/gen/hilbert-track.py ORDER SIZE OUT [dots] [aim_speed] [brake] [N, its Contraptions number: one more than the newest] [end: bowl | trap]
-import json, sys
+#   [DOT=cells] python3 lab/gen/hilbert-track.py ORDER SIZE OUT [dots] [aim_speed] [brake] [N, its Contraptions number: one more than the newest] [end: bowl | trap | corner] [full_at]
+# Contraptions 13: 2 512 OUT 1 0.03 0.002 13; 14: 2 512 OUT 3 0.03 0.002 14 trap 0.6; 15: DOT=14 3 512 OUT 3 0.025 0.002 15 corner 0.45
+import json, os, sys
 def d2xy(n, d):
     x = y = 0; s = 1; t = d
     while s < n:
@@ -23,18 +24,30 @@ H = 1.0
 pts = [((x + 0.5) / n, H * (1 - (y + 0.5) / n)) for x, y in (d2xy(n, d) for d in range(n * n))]
 gap = 1 / n
 gr = 0.38 * gap * H          # gate radius (the corner track's gates were ~1/3 of their spacing)
-dr = 20.0 / size         # dot radius: 20 cells (13 come apart on this track)
+dr = float(os.environ.get('DOT', 20)) / size  # dot radius in cells (20; 13 came apart on the order-2 track at aim_speed 0.04)
 C = lambda chem, v, cx, cy, r: {'chem': chem, 'op': 'overwrite', 'fill': {'type': 'constant', 'value': v}, 'shape': {'type': 'circle', 'cx': cx, 'cy': cy, 'r': r}}
 Bump = lambda chem, v, cx, cy, r, e=3: {'chem': chem, 'op': 'add', 'fill': {'type': 'bump', 'value': v, 'edge': e}, 'shape': {'type': 'circle', 'cx': cx, 'cy': cy, 'r': r}}
 Rect = lambda chem, v, x, y, w, h: {'chem': chem, 'op': 'overwrite', 'fill': {'type': 'constant', 'value': v}, 'shape': {'type': 'rectangle', 'x0': x, 'y0': y, 'x1': x + w, 'y1': y + h}}
 init = [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1}, 'shape': {'type': 'everywhere'}}]
-# each gate aims at the next point; the last point is the bowl instead
-for i, (px, py) in enumerate(pts[:-1]):
-    nx, ny = pts[i + 1]
-    ax, ay = (nx > px + 1e-6) - (nx < px - 1e-6), (ny < py - 1e-6) - (ny > py + 1e-6)  # aim is y-up
-    init += [Bump(ch, v, px, py, gr) for ch, v in (('ax', ax), ('ay', ay)) if v]
-lx, ly = pts[-1]
-if END == 'bowl':
+# each gate aims at the next point; the last point is the bowl or trap instead (for 'corner', the last 2x2 block is: it
+# sits in the frame's bottom-right corner, and the trap goes in its middle, its soft tail fading out before the frame's
+# edges, so nothing is cut off there)
+gates = pts[:-4] if END == 'corner' else pts[:-1]
+ends = pts[-4:] if END == 'corner' else pts[-1:]
+tx, ty = sum(p[0] for p in ends) / len(ends), sum(p[1] for p in ends) / len(ends)
+for i, (px, py) in enumerate(gates):
+    nx, ny = pts[i + 1] if i + 1 < len(gates) else (tx, ty)
+    dx, dy = nx - px, -(ny - py)  # aim is y-up
+    l = (dx * dx + dy * dy) ** 0.5
+    ax, ay = (round(v, 4) if abs(v - round(v)) > 1e-9 else int(round(v)) for v in (dx / l, dy / l))
+    init += [Bump(ch, v, px, py, gr) for ch, v in (('ax', ax), ('ay', ay)) if abs(v) > 1e-6]
+lx, ly = tx, ty
+if END == 'corner':
+    # the trap fills the corner square (2 gaps wide), its tail (4 edges past its radius) ending at the frame's edges
+    # (a flat top, so the release aim inside it is held off everywhere it reaches)
+    e = 0.1 * gap
+    init += [Bump('trap', 1, lx, ly, gap - 4 * e, e * size), Bump('ax', 1, lx, ly, 0.45 * gap)]
+elif END == 'bowl':
     # the bowl, in the last point's square: aims everywhere at its middle, gripping less towards it (|a| = distance/R),
     # so dots that arrive are pulled in, braked, and gather there
     R = 0.45 * gap
@@ -48,9 +61,9 @@ else:
 for k in range(ndots):
     fx, fy = pts[2 * k]
     init += [Bump('phi', 1, fx, fy, dr), Bump('m', 10, fx, fy, dr)]  # feathered
-json.dump({'name': f'Contraptions {N}: Hilbert track (order {order}' + (', trap' if END == 'trap' else '') + ') (Momentum Bubbles ' + ('13' if END == 'trap' else '12') + ')',
-           'description': (f'A Hilbert-curve track (order {order}, {n * n - 1} gates, each aiming at the next) at {size}²: {ndots} dots start at rest in every other gate from the first, which launch them along the curve into a trap in the last square (Momentum Bubbles 13): a smooth round hill that brakes whatever is in it and draws it in, senses how full it is, and once full (about {FULL} of it) lets go, launching what it collected east, round the frame into the first gate. Gates: brake, accel {BK}, aim_speed {A}. Gates show as the aim channel, the trap as trap and full, in the custom palette.') if END == 'trap' else f'A Hilbert-curve track (order {order}, {n * n - 1} gates, each aiming at the next) at {size}²: a dot starts at rest in the bottom-left gate, which launches it; it follows the curve, and ends in a bowl in the last square, which aims everything at its middle (gripping less towards it), where dots gather (one swings out to the frame’s edge once on the way in, then settles). Dots are radius 20 cells, feathered. Gates: brake, accel {BK}, aim_speed {A}. Gates show as the aim channel in the custom palette.',
-           'rule': 'builtin:52' if END == 'trap' else 'builtin:51', 'size': size, 'start': 'initial', 'stepsPerFrame': 40,
-           'globals': {'aim_speed': A, 'brake': BK, 'accel': BK, **({'full_at': FULL} if END == 'trap' else {})},
+json.dump({'name': f'Contraptions {N}: Hilbert track (order {order}' + (', trap' if END in ('trap', 'corner') else '') + ') (Momentum Bubbles ' + ('13' if END in ('trap', 'corner') else '12') + ')',
+           'description': (f'A Hilbert-curve track (order {order}, {n * n - 1} gates, each aiming at the next) at {size}²: {ndots} dots start at rest in every other gate from the first, which launch them along the curve into a trap in the last square (Momentum Bubbles 13): a smooth round hill that brakes whatever is in it and draws it in, senses how full it is, and once full (about {FULL} of it) lets go, launching what it collected east, round the frame into the first gate. Gates: brake, accel {BK}, aim_speed {A}. Gates show as the aim channel, the trap as trap and full, in the custom palette.') if END == 'trap' else (f'A Hilbert-curve track (order {order}, {len(gates)} gates, each aiming at the next) at {size}²: {ndots} dots (radius {dr * size:.0f} cells) start at rest in every other gate from the first, which launch them along the curve into a trap in place of its last 2x2 block, in the bottom-right corner (Momentum Bubbles 13): a smooth round hill, fading out before the frame\'s edges, that brakes whatever is in it and draws it in, senses how full it is, and once full (about {FULL} of it) lets go, launching what it collected east, round the frame toward the first gates. Gates: brake, accel {BK}, aim_speed {A}. Gates show as the aim channel, the trap as trap and full, in the custom palette.') if END == 'corner' else f'A Hilbert-curve track (order {order}, {n * n - 1} gates, each aiming at the next) at {size}²: a dot starts at rest in the bottom-left gate, which launches it; it follows the curve, and ends in a bowl in the last square, which aims everything at its middle (gripping less towards it), where dots gather (one swings out to the frame’s edge once on the way in, then settles). Dots are radius 20 cells, feathered. Gates: brake, accel {BK}, aim_speed {A}. Gates show as the aim channel in the custom palette.',
+           'rule': 'builtin:52' if END in ('trap', 'corner') else 'builtin:51', 'size': size, 'start': 'initial', 'stepsPerFrame': 40,
+           'globals': {'aim_speed': A, 'brake': BK, 'accel': BK, **({'full_at': FULL} if END in ('trap', 'corner') else {})},
            'initial': init, 'view': {'reagent': 'phi', 'low': 0, 'high': 1}}, open(out, 'w'), indent=1)
 print(len(pts), 'gates; first', pts[:3], 'last', pts[-1])
