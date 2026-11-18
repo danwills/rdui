@@ -307,11 +307,11 @@ async function init() {
       return v.sort((p, q) => p - q);
     });
   }
-  /** Fits a custom channel's low and high to its 1st-99th percentile; false if (nearly) uniform. */
+  /** Fits a custom channel's low and high to its 1st-99th percentile; false if (nearly) uniform, for its size (Smoke lives at ~1e-7). */
   function fitChannel(c: CustomChannel, v: number[]) {
     if (!v.length) return false;
     const lo = v[Math.floor(v.length * 0.01)], hi = v[Math.floor(v.length * 0.99)];
-    if (!(hi - lo > 1e-6)) return false;
+    if (!(hi - lo > 1e-4 * Math.max(Math.abs(lo), Math.abs(hi)) && hi - lo > 1e-30)) return false;
     c.low = lo;
     c.high = hi;
     return true;
@@ -342,7 +342,8 @@ async function init() {
     ui.sync();
   }
   /**
-   * Custom palette: new colours and powers for the reagents switched on, chosen to work together.
+   * Custom palette: new colours and powers for the reagents switched on, chosen to work together, each refitted to the
+   * field first.
    * Colours: hues spread evenly round the wheel from a random start (a little jitter), at a fixed
    * perceptual lightness and chroma (OKLCH), dimmed by how many are summed so they don't burn out
    * to white. Powers: from each reagent's own spread in the field, so its median cell lands at a
@@ -356,7 +357,7 @@ async function init() {
     const order = on.map((_, i) => i).sort(() => Math.random() - 0.5);
     on.forEach(([c, r], i) => {
       const v = samples[r];
-      if (c.low === 0 && c.high === 1) fitChannel(c, v);
+      fitChannel(c, v); // the field as it is now (a flat one keeps the range it had)
       const hue = h0 + order[i] / n + (Math.random() - 0.5) * (0.12 / n);
       c.color = oklchToRgb(0.72 + (Math.random() - 0.5) * 0.12, 0.15, hue).map((x) => x * dim) as [number, number, number];
       const tMed = v.length ? Math.min(1, Math.max(0, (v[v.length >> 1] - c.low) / (c.high - c.low || 1))) : 0.5;
