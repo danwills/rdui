@@ -21,7 +21,8 @@ header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-
   display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 h1 { font-size: 18px; margin: 0; color: var(--accent); letter-spacing: 0.04em; }
 .sub { color: var(--muted); }
-main { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; padding: 16px; }
+main { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; padding: 12px; }
+@media (min-width: 960px) { main { grid-template-columns: repeat(3, 1fr); } }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
 .card.yes { border-color: var(--yes); } .card.no { border-color: var(--no); opacity: 0.6; } .card.maybe { border-color: var(--maybe); }
 .frame { background: #000; overflow: auto; max-height: 70vh; display: flex; }
@@ -56,7 +57,7 @@ const rates = [];
   picks = p;
   document.getElementById('count').textContent = files.length + ' clips';
   for (const f of files) {
-    const v = $('video', { src: encodeURIComponent(f.name), controls: '', loop: '', muted: '', playsinline: '', preload: 'metadata' });
+    const v = $('video', { src: encodeURIComponent(f.name) + '?v=' + f.mtime, controls: '', loop: '', muted: '', playsinline: '', preload: 'metadata' });
     v.muted = true;
     const frame = $('div', { class: 'frame' }, v);
     const card = $('article', { class: 'card ' + (picks[f.name]?.pick ?? '') });
@@ -87,6 +88,16 @@ const rates = [];
     setRate(1); setZoom(1);
     v.addEventListener('loadedmetadata', () => v.playbackRate = +speed.querySelector('.on').dataset.r);
   }
+  // reload when a clip or a description is added or changed (keeping the scroll position), unless a note is being typed
+  const sig = (d) => JSON.stringify([d.files.map((f) => [f.name, f.mtime]), d.notes]);
+  const was = sig({ files, notes });
+  setInterval(async () => {
+    const d = await fetch('list').then((r) => r.json()).catch(() => null);
+    if (!d || sig(d) === was || document.activeElement?.classList.contains('note')) return;
+    sessionStorage.setItem('scroll', String(scrollY));
+    location.reload();
+  }, 10000);
+  const sy = Number(sessionStorage.getItem('scroll')); if (sy) requestAnimationFrame(() => scrollTo(0, sy));
   document.querySelectorAll('[data-all]').forEach((b) => b.addEventListener('click', () => rates.forEach((s) => s(+b.dataset.all))));
   // play only what's on screen (a dozen 1024² videos at once is a lot)
   const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting ? e.target.play().catch(() => {}) : e.target.pause()), { threshold: 0.3 });
@@ -96,10 +107,10 @@ const rates = [];
 
 http.createServer((req, res) => {
   const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  if (url === '/') return res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(page);
+  if (url === '/') return res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(page);
   if (url === '/list') {
-    const files = fs.readdirSync(dir).filter((f) => /\.(mp4|webm)$/i.test(f)).sort().map((name) => ({ name, size: fs.statSync(path.join(dir, name)).size }));
-    return res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ files, notes: readJson(path.join(dir, 'notes.json'), {}) }));
+    const files = fs.readdirSync(dir).filter((f) => /\.(mp4|webm)$/i.test(f)).sort().map((name) => { const st = fs.statSync(path.join(dir, name)); return { name, size: st.size, mtime: Math.round(st.mtimeMs) }; });
+    return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify({ files, notes: readJson(path.join(dir, 'notes.json'), {}) }));
   }
   if (url === '/picks' && req.method === 'POST') {
     let body = '';
