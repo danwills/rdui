@@ -309,7 +309,11 @@ try {
   // number k (0.2), random phase, at a random place on the track (where the field is quiet enough, else skipped)
   // unwall: the walls taken away partway through, from the centre out (a circle growing to the corners), so what grew
   // apart (the lineages' dishes) meets: from `at` seconds of video (0.4 of the clip) over `over` seconds (2)
-  await page.evaluate((e, d, u, fps, seconds) => {
+  // grow: a painted parameter's disc growing from the centre while recording ({ param, inside, outside, from, to, over }):
+  // the field painted `outside` (-0.1) at the start, then a disc of `inside` (0.3), soft-edged, its radius widening from
+  // `from` to `to` (fractions of the field: 0.04 to 0.48) over `over` seconds (0.85 of the clip). Phyllotaxis's spirals
+  // come from spots laid down at such a growing front (param mu, the defaults)
+  await page.evaluate((e, d, u, g, fps, seconds) => {
     const hooks = [];
     if (e) {
       const { every = 3, from = 3, len = 1.5, radius = 0.18, strength = 0.8 } = e === true ? {} : e;
@@ -356,6 +360,17 @@ try {
         sim.writeRegion(ox, oy, side, side, undefined, state);
       });
     }
+    if (g) {
+      const { param = 'mu', inside = 0.3, outside = -0.1, from = 0.04, to = 0.48, over = 0.85 * seconds } = g;
+      hooks.push((i) => {
+        const sim = window.rdui.sim, rule = window.rdui.rule, w = sim.width, h = sim.height;
+        const paint = (v) => rule.paintable.map((n) => (n === param ? v : window.rdui.globals[n]));
+        const brush = (r, v, hardness) => sim.brush({ ax: w / 2, ay: h / 2, bx: w / 2, by: h / 2, mode: window.rdui.BrushMode.Params, radius: r, strength: 1, hardness, paint: paint(v) });
+        // (first the whole field off, then the disc on, a little wider each frame)
+        if (i === 1) brush(Math.hypot(w, h), outside, 1);
+        brush((from + (to - from) * Math.min(1, i / fps / over)) * w, inside, 0.6);
+      });
+    }
     if (u) {
       const { at = 0.4 * seconds, over = 2 } = u === true ? {} : u;
       hooks.push((i) => {
@@ -366,7 +381,7 @@ try {
       });
     }
     window.rdui.eachFrame = hooks.length ? async (i) => { for (const h of hooks) await h(i); } : null;
-  }, cfg.erase ?? false, cfg.drop ?? false, cfg.unwall ?? false, cfg.fps, cfg.seconds);
+  }, cfg.erase ?? false, cfg.drop ?? false, cfg.unwall ?? false, cfg.grow === true ? {} : cfg.grow ?? false, cfg.fps, cfg.seconds);
   console.log(`rule: ${await page.evaluate(() => window.rdui.rule.name)}, ${await page.evaluate(() => `${window.rdui.sim.width}²`)}`);
   let file = await recordClip(cfg);
   // (the probe is early on, while the pattern grows: a clip can still end up plain blue, or dark (under 3/4 of bright).
