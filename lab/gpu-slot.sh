@@ -2,9 +2,9 @@
 # Runs a command in one of a few GPU slots, waiting for a free one, so headless recordings share the GPU without
 # crowding it (one at a time left it mostly idle; many at once lost the browsers' devices):
 #   lab/gpu-slot.sh <folder> <command...>
-# The slots are lock files <folder>/.gpu.lock.<i>, GPU_SLOTS of them (default 2).
+# The slots are lock files <folder>/.gpu.lock.<i>, GPU_SLOTS of them (default 1: two headless browsers at once still lost their devices, 2026-11-19).
 dir=$1; shift
-n=${GPU_SLOTS:-2}
+n=${GPU_SLOTS:-1}
 while :; do
   i=0
   while [ "$i" -lt "$n" ]; do
