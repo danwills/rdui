@@ -129,6 +129,7 @@ try {
     }
     return n / (px.length / 3);
   };
+  const brightness = (f) => Number(/YAVG=([\d.]+)/.exec(execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' }))?.[1] ?? 0);
   async function rollColours(first = true) {
     if (first) await new Promise((r) => setTimeout(r, (cfg.diceWarm ?? 6) * 1000));
     // every reagent coloured (enable all; else only the shown one is, and Gray-Scott's background, all a, stays black),
@@ -139,7 +140,6 @@ try {
     // `tries` times (default 20; then it keeps the last roll). avoid: mean colours ([r, g, b], 0-255) of earlier takes to
     // stay `apart` from (default 60, as RGB distance), for variants in clearly different colours; the take's own mean
     // colour is printed (colour: [r,g,b]) to pass on
-    const brightness = (f) => Number(/YAVG=([\d.]+)/.exec(execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' }))?.[1] ?? 0);
     const meanColour = (f) => [...execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'scale=1:1:flags=area', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
     const roll = async () => {
       for (let i = 0; i < cfg.dice; i++) await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '🎲').click());
@@ -282,10 +282,11 @@ try {
     window.rdui.eachFrame = hooks.length ? async (i) => { for (const h of hooks) await h(i); } : null;
   }, cfg.erase ?? false, cfg.drop ?? false, cfg.fps);
   let file = await recordClip(cfg);
-  // (the probe is early on, while the pattern grows: a clip can still end up plain blue. Rolled again on the grown field
-  // and recorded again, at most 3 times)
-  for (let redo = 0; cfg.dice && redo < 3 && plainBlue(file) > (cfg.blue ?? 0.1); redo++) {
-    console.log(`the clip ends ${(plainBlue(file) * 100).toFixed(0)}% plain blue: 🎲 again`);
+  // (the probe is early on, while the pattern grows: a clip can still end up plain blue, or dark (under 3/4 of bright).
+  // Rolled again on the grown field and recorded again, at most 3 times)
+  const off = (f) => plainBlue(f) > (cfg.blue ?? 0.1) || brightness(f) < 0.75 * (cfg.bright ?? 32);
+  for (let redo = 0; cfg.dice && redo < 3 && off(file); redo++) {
+    console.log(`the clip ends ${(plainBlue(file) * 100).toFixed(0)}% plain blue, brightness ${brightness(file).toFixed(0)}: 🎲 again`);
     await rollColours(false);
     await restart();
     await setUp();
