@@ -44,6 +44,8 @@ export interface Settings {
   colourBlend: number;
   /** Custom palette: randomise by itself every wanderEvery seconds. */
   customWander: boolean;
+  /** Custom palette: 🎲 picks colours as they'll show, undoing the exponent's push towards primaries. */
+  customTrueColours: boolean;
   wanderEvery: number;
   /** How the painting tools draw: freehand, a straight line (press → release), or a circle (centre → radius). */
   brushShape: 'free' | 'line' | 'circle';
@@ -173,6 +175,7 @@ export function defaultSettings(): Settings {
     showStats: false,
     colourBlend: 7,
     customWander: false,
+    customTrueColours: false,
     wanderEvery: 30,
     brushShape: 'free',
     gridSize: 512,
@@ -446,7 +449,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return row;
   }
 
-  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'showStats' | 'customWander', title: string, then?: () => void) {
+  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'showStats' | 'customWander' | 'customTrueColours', title: string, then?: () => void) {
     const input = el('input', { type: 'checkbox' });
     input.addEventListener('change', () => { s[key] = input.checked; then?.(); });
     syncers.push(() => (input.checked = s[key]));
@@ -837,7 +840,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   // custom palette only: per reagent, on/off, colour, low, high, power (rebuilt for each rule)
   const customBox = el('div', {});
   const gradeRows = el('div', {}, slider('blend (s)', 'colourBlend', 0, 10, 0.1, 1),
-    el('div', { class: 'checks' }, checkbox('wander', 'customWander', 'randomise the colours by themselves every so often (each blending in over blend)')),
+    el('div', { class: 'checks' }, checkbox('wander', 'customWander', 'randomise the colours by themselves every so often (each blending in over blend)'),
+      checkbox('true colours', 'customTrueColours', '🎲 picks colours as they\'ll show: the exponent pushes colours towards primaries (light blue comes out plain blue), and this undoes that for the colours 🎲 picks, so they come out lighter and softer (at each 🎲, for the exponent then)')),
     slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('headroom', 'customHeadroom', 0, 2, 0.01, 2), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2, undefined, () => rc.rule().view.customGamma ?? 2.5),
       slider('contrast', 'customContrast', 0.5, 3, 0.01, 2, undefined, () => rc.rule().view.customContrast ?? 1.2),
       slider('saturation', 'customSaturation', 0, 3, 0.01, 2, undefined, () => rc.rule().view.customSaturation ?? 1));

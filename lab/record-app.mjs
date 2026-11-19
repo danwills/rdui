@@ -12,8 +12,9 @@
 // a recipe, put back instead of rolling (the recipe, .recipes/<out>.json beside the clip, is written for every take);
 // liveSteps: the live loop's steps/frame before recording (heavy scenes lose the GPU device headless at their own).
 // Clips start at the very start (the sim paused through the restart). fit: true slows a pattern that settles early, so
-// its growth fills the clip; erase paints soft erase strokes while recording; drop adds solitons to a ring track (see
-// below for each).
+// its growth fills the clip; erase paints soft erase strokes while recording; drop adds solitons to a ring track;
+// unwall takes the walls away partway (see below for each). 🎲 uses the app's true colours (trueColours: false for
+// the old, more saturated, ones).
 // Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
@@ -32,7 +33,8 @@ const browser = await puppeteer.launch({
   executablePath: process.env.CHROME ?? '/usr/bin/google-chrome-stable',
   headless: 'new',
   protocolTimeout: 0,
-  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=vulkan', '--disable-vulkan-surface'],
+  // (RDUI_CHROME_ARGS: more flags, space-separated, for trying them)
+  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=vulkan', '--disable-vulkan-surface', ...(process.env.RDUI_CHROME_ARGS?.split(' ').filter(Boolean) ?? [])],
 });
 try {
   const page = await browser.newPage();
@@ -131,6 +133,8 @@ try {
   };
   const brightness = (f) => Number(/YAVG=([\d.]+)/.exec(execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' }))?.[1] ?? 0);
   async function rollColours(first = true) {
+    // 🎲's true colours (as picked, light blue staying light), unless trueColours: false
+    if (first) await page.evaluate((on) => { window.rdui.settings.customTrueColours = on; window.rdui.sync(); }, cfg.trueColours !== false);
     if (first) await new Promise((r) => setTimeout(r, (cfg.diceWarm ?? 6) * 1000));
     // every reagent coloured (enable all; else only the shown one is, and Gray-Scott's background, all a, stays black),
     // unless channels: 'shown'
@@ -234,7 +238,9 @@ try {
   // scenes' own: one every `every` seconds of video (3), from `from` (2), on the ring at (cx, cy) radius r (fractions of
   // the field: 0.5, 0.5, 0.359, the track's centre line), a Gaussian packet of `amp` (2.2) and `sigma` cells (7) at wave
   // number k (0.2), random phase, at a random place on the track (where the field is quiet enough, else skipped)
-  await page.evaluate((e, d, fps) => {
+  // unwall: the walls taken away partway through, from the centre out (a circle growing to the corners), so what grew
+  // apart (the lineages' dishes) meets: from `at` seconds of video (0.4 of the clip) over `over` seconds (2)
+  await page.evaluate((e, d, u, fps, seconds) => {
     const hooks = [];
     if (e) {
       const { every = 3, from = 3, len = 1.5, radius = 0.18, strength = 0.8 } = e === true ? {} : e;
@@ -279,8 +285,17 @@ try {
         sim.writeRegion(ox, oy, side, side, undefined, state);
       });
     }
+    if (u) {
+      const { at = 0.4 * seconds, over = 2 } = u === true ? {} : u;
+      hooks.push((i) => {
+        const t = (i / fps - at) / over;
+        if (t < 0 || t > 1 + 1 / (over * fps)) return;
+        const sim = window.rdui.sim, w = sim.width, h = sim.height;
+        sim.brush({ ax: w / 2, ay: h / 2, bx: w / 2, by: h / 2, mode: window.rdui.BrushMode.Unwall, radius: Math.min(1, t) * Math.hypot(w, h) / 2, strength: 1, hardness: 1, paint: [] });
+      });
+    }
     window.rdui.eachFrame = hooks.length ? async (i) => { for (const h of hooks) await h(i); } : null;
-  }, cfg.erase ?? false, cfg.drop ?? false, cfg.fps);
+  }, cfg.erase ?? false, cfg.drop ?? false, cfg.unwall ?? false, cfg.fps, cfg.seconds);
   let file = await recordClip(cfg);
   // (the probe is early on, while the pattern grows: a clip can still end up plain blue, or dark (under 3/4 of bright).
   // Rolled again on the grown field and recorded again, at most 3 times)

@@ -430,7 +430,7 @@ async function init() {
    * field first.
    * Colours: hues spread evenly round the wheel from a random start (a little jitter), at a fixed
    * perceptual lightness and chroma (OKLCH), dimmed by how many are summed so they don't burn out
-   * to white. Powers: from each reagent's own spread in the field, so its median cell lands at a
+   * to white (true colours: raised to 1/exponent first, so they show as picked). Powers: from each reagent's own spread in the field, so its median cell lands at a
    * random 20-45% of its colour (sparse reagents don't vanish, dense ones don't flood), jittered.
    */
   async function randomiseCustom(refit = true) {
@@ -447,7 +447,9 @@ async function init() {
       else if (range) (fits[r] ??= {}).target = range;
       const [low, high] = fits[r]?.target ?? [c.low, c.high];
       const hue = h0 + order[i] / n + (Math.random() - 0.5) * (0.12 / n);
-      c.color = oklchToRgb(0.72 + (Math.random() - 0.5) * 0.12, 0.15, hue).map((x) => x * dim) as [number, number, number];
+      // (true colours: raised to 1/exponent here, so the exponent brings them back to the colour picked)
+      const pre = s.customTrueColours ? 1 / s.customGamma : 1;
+      c.color = oklchToRgb(0.72 + (Math.random() - 0.5) * 0.12, 0.15, hue).map((x) => x ** pre * dim) as [number, number, number];
       const tMed = v.length ? Math.min(1, Math.max(0, (v[v.length >> 1] - low) / (high - low || 1))) : 0.5;
       const target = 0.2 + Math.random() * 0.25;
       const p = tMed > 0.01 && tMed < 0.99 ? Math.log(target) / Math.log(tMed) : Math.exp((Math.random() - 0.5) * 1.6);
