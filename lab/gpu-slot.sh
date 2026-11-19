@@ -5,6 +5,8 @@
 # The slots are lock files <folder>/.gpu.lock.<i>, GPU_SLOTS of them (default 1: two headless browsers at once still lost their devices, 2026-11-19).
 dir=$1; shift
 n=${GPU_SLOTS:-1}
+# (one slot: wait on it, so waiters take turns; polling let the batch, straight back each time, starve the others)
+[ "$n" = 1 ] && exec flock "$dir/.gpu.lock.0" "$@"
 while :; do
   i=0
   while [ "$i" -lt "$n" ]; do
