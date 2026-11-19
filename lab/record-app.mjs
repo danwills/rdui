@@ -7,7 +7,7 @@
 // palette by name (applied after dice); preset: an F/k preset by name (coral, maze...) as the field's background; set: parameters by name
 // ({"D_a":0.2}); dice: press 🎲 that many times for new custom colours (random, so each run differs), with every reagent
 // switched on (channels: 'shown' leaves them), after diceWarm seconds (default 6) so they fit a grown pattern, rolled again
-// till a probe's brightness reaches bright (default 40 of 255, at most tries times, default 10); blend: seconds to wait
+// till a probe's brightness reaches bright (default 32 of 255, at most tries times, default 20); blend: seconds to wait
 // for them, default 4; restart: false records on from the grown field instead of starting over.
 // Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
 import puppeteer from 'puppeteer-core';
@@ -115,19 +115,27 @@ try {
     // unless channels: 'shown'
     if (cfg.channels !== 'shown') await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent === 'Enable All' || b.textContent === 'enable all').click());
     // 🎲 can land dim (it aims each reagent's typical value at 20-45% brightness, so it all depends on the fit): roll, record
-    // a 0.3 s probe, measure its mean brightness (0-255), and roll again until it reaches `bright` (default 40), at most
-    // `tries` times (default 10; then it keeps the last roll)
+    // a 0.3 s probe, measure its mean brightness (0-255), and roll again until it reaches `bright` (default 32), at most
+    // `tries` times (default 20; then it keeps the last roll). avoid: mean colours ([r, g, b], 0-255) of earlier takes to
+    // stay `apart` from (default 60, as RGB distance), for variants in clearly different colours; the take's own mean
+    // colour is printed (colour: [r,g,b]) to pass on
     const brightness = (f) => Number(/YAVG=([\d.]+)/.exec(execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' }))?.[1] ?? 0);
+    const meanColour = (f) => [...execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'scale=1:1:flags=area', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
     const roll = async () => {
       for (let i = 0; i < cfg.dice; i++) await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '🎲').click());
       await new Promise((r) => setTimeout(r, (cfg.blend ?? 4) * 1000));
     };
-    for (let i = 0; i < (cfg.tries ?? 10); i++) {
+    let colour = null;
+    for (let i = 0; i < (cfg.tries ?? 20); i++) {
       await roll();
-      const y = brightness(await recordClip({ ...cfg, seconds: 0.3, scale: 1, quality: 'light' }, true));
-      console.log(`🎲 ${i + 1}: brightness ${y.toFixed(0)}`);
-      if (y >= (cfg.bright ?? 40)) break;
+      const probe = await recordClip({ ...cfg, seconds: 0.3, scale: 1, quality: 'light' }, true);
+      const y = brightness(probe);
+      colour = meanColour(probe);
+      const near = Math.min(Infinity, ...(cfg.avoid ?? []).map((c) => Math.hypot(c[0] - colour[0], c[1] - colour[1], c[2] - colour[2])));
+      console.log(`🎲 ${i + 1}: brightness ${y.toFixed(0)}, colour ${colour}${cfg.avoid?.length ? `, ${near.toFixed(0)} from the nearest earlier take` : ''}`);
+      if (y >= (cfg.bright ?? 32) && near >= (cfg.apart ?? 60)) break;
     }
+    console.log(`colour: ${JSON.stringify(colour)}`);
   }
   // start the rule or scene over (unless restart: false), then record from there
   if (cfg.restart !== false) {
