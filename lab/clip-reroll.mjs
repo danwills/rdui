@@ -5,7 +5,8 @@
 // A colour re-roll rolls 🎲 again, kept apart from the take's colours (and from the takes it has replaced); a seed
 // re-roll keeps the take's colours (its saved look; a take without one gets new colours) and records on from the field
 // grown a random 10-60 s instead of from the start. The queue is rerolls.json in the folder: [{ name, kind, state }],
-// state queued, recording, done or failed.
+// state queued, recording, done or failed. Recordings take turns on the GPU with other users of .gpu.lock in the folder
+// (two headless browsers recording at once lost their devices).
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -46,8 +47,8 @@ for (;;) {
     else Object.assign(cfg, { dice: 1, restart: false, diceWarm: grow });
   }
   const tmp = path.join(dir, '.reroll-' + job.name);
-  const r = spawnSync('node', ['lab/record-app.mjs', recipe.id, tmp, JSON.stringify(cfg)], { cwd: root, encoding: 'utf8', timeout: 1800000 });
-  if (r.status !== 0 || !fs.existsSync(tmp)) { update(job.at, { state: 'failed', why: (r.stderr || r.stdout || '').split('\n').filter(Boolean).pop() }); continue; }
+  const r = spawnSync('flock', [path.join(dir, '.gpu.lock'), 'node', 'lab/record-app.mjs', recipe.id, tmp, JSON.stringify(cfg)], { cwd: root, encoding: 'utf8', timeout: 1800000 });
+  if (r.status !== 0 || !fs.existsSync(tmp)) { update(job.at, { state: 'failed', why: ((r.stderr || '') + (r.stdout || '')).split('\n').filter((l) => /Error|lost/.test(l)).pop()?.slice(0, 160) ?? 'no video' }); continue; }
   fs.mkdirSync(path.join(dir, 'old'), { recursive: true });
   fs.renameSync(clip, path.join(dir, 'old', `${base}-${new Date().toISOString().replace(/[:.]/g, '-')}.mp4`));
   fs.renameSync(tmp, clip);

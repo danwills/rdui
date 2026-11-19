@@ -23,8 +23,8 @@ header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-
   display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
 h1 { font-size: 18px; margin: 0; color: var(--accent); letter-spacing: 0.04em; }
 .sub { color: var(--muted); }
-main { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; padding: 12px; }
-@media (min-width: 960px) { main { grid-template-columns: repeat(3, 1fr); } }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; padding: 12px; }
+@media (min-width: 960px) { .grid { grid-template-columns: repeat(3, 1fr); } }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
 .card.yes { border-color: var(--yes); } .card.no { border-color: var(--no); opacity: 0.6; } .card.maybe { border-color: var(--maybe); }
 .frame { background: #000; overflow: auto; max-height: 70vh; display: flex; }
@@ -41,11 +41,14 @@ button.pick.no.on { background: var(--no); border-color: var(--no); color: #fff;
 button.pick.maybe.on { background: var(--maybe); border-color: var(--maybe); color: #111; }
 input.note { flex: 1; min-width: 120px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
 .saved { color: var(--muted); font-size: 12px; }
+details.done > summary { cursor: pointer; padding: 10px 16px; color: var(--muted); font-weight: 600; border-top: 1px solid var(--line); }
 </style></head><body>
 <header><h1>rdui clips</h1><span class="sub" id="count"></span><span class="sub">Your picks save as you click.</span>
 <span class="row" style="padding:0"><span class="label">all at</span><button data-all="1">1×</button><button data-all="2">2×</button><button data-all="4">4×</button></span>
 <span class="saved" id="saved"></span></header>
-<main id="grid"></main>
+<main id="grid" class="grid"></main>
+<details class="done" id="yes-box"><summary></summary><div class="grid" id="yes-grid"></div></details>
+<details class="done" id="no-box"><summary></summary><div class="grid" id="no-grid"></div></details>
 <script>
 const $ = (t, a = {}, ...kids) => { const e = document.createElement(t); for (const [k, v] of Object.entries(a)) k.startsWith('on') ? e.addEventListener(k.slice(2), v) : e.setAttribute(k, v); e.append(...kids); return e; };
 let picks = {};
@@ -54,6 +57,19 @@ async function save() {
   document.getElementById('saved').textContent = r.ok ? 'saved ' + new Date().toLocaleTimeString() : 'not saved!';
 }
 const rates = [];
+// yes and no clips go out of the way, into their folded sections at the bottom (maybe and unpicked stay in the main grid)
+const place = (card, k) => {
+  document.getElementById(k === 'yes' || k === 'no' ? k + '-grid' : 'grid').append(card);
+  for (const s of ['yes', 'no']) {
+    const n = document.getElementById(s + '-grid').children.length, box = document.getElementById(s + '-box');
+    box.hidden = !n; box.querySelector('summary').textContent = s + ' (' + n + ')';
+  }
+};
+for (const s of ['yes', 'no']) {
+  const box = document.getElementById(s + '-box');
+  box.open = sessionStorage.getItem(s + '-open') === '1';
+  box.addEventListener('toggle', () => sessionStorage.setItem(s + '-open', box.open ? '1' : ''));
+}
 (async () => {
   const [{ files, notes, rerolls }, p] = await Promise.all([fetch('list').then((r) => r.json()), fetch('picks').then((r) => r.json())]);
   picks = p;
@@ -78,6 +94,7 @@ const rates = [];
       picks[f.name] = { ...picks[f.name], pick: picks[f.name]?.pick === k ? undefined : k };
       card.className = 'card ' + (picks[f.name].pick ?? '');
       pickRow.querySelectorAll('.pick').forEach((b) => b.classList.toggle('on', b.dataset.k === picks[f.name].pick));
+      place(card, picks[f.name].pick);
       save();
     };
     const pickRow = $('div', { class: 'row' }, ...['yes', 'maybe', 'no'].map((k) => $('button', { class: 'pick ' + k + (picks[f.name]?.pick === k ? ' on' : ''), 'data-k': k, onclick: () => pick(k) }, k)));
@@ -95,7 +112,7 @@ const rates = [];
       $('button', { title: 'record this clip again from a different start, keeping its colours', onclick: () => reroll('seed') }, '🌱 seed'), state);
     card.append(frame, $('div', { class: 'meta' }, $('div', { class: 'name' }, f.name), $('div', { class: 'desc' }, notes[f.name] ?? (f.size / 1e6).toFixed(1) + ' MB')),
       $('div', { class: 'row' }, speed, zoom), pickRow, rerollRow);
-    document.getElementById('grid').append(card);
+    place(card, picks[f.name]?.pick);
     setRate(1); setZoom(1);
     v.addEventListener('loadedmetadata', () => v.playbackRate = +speed.querySelector('.on').dataset.r);
   }
