@@ -5,13 +5,16 @@
 // steps/frame; scale 0.5, 1, 2 or 4 (times the grid); quality light, good or high; warm: sim steps to run before
 // recording (the main loop runs them, so it's rough); size: the grid (0 keeps the rule's or scene's own); palette: a
 // palette by name (applied after dice); preset: an F/k preset by name (coral, maze...) as the field's background; set: parameters by name
-// ({"D_a":0.2}); dice: press 🎲 that many times for new custom colours (random, so each run differs), after diceWarm
-// seconds (default 6) so they fit a grown pattern; blend: seconds to wait for them, default 4.
+// ({"D_a":0.2}); dice: press 🎲 that many times for new custom colours (random, so each run differs), with every reagent
+// switched on (channels: 'shown' leaves them), after diceWarm seconds (default 6) so they fit a grown pattern, rolled again
+// till a probe's brightness reaches bright (default 40 of 255, at most tries times, default 10); blend: seconds to wait
+// for them, default 4; restart: false records on from the grown field instead of starting over.
 // Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
 import path from 'path';
 import { createServer } from 'vite';
+import { execFileSync } from 'child_process';
 
 const [id, out, cfgText = '{}'] = process.argv.slice(2);
 if (!id || !out) throw new Error('usage: node lab/record-app.mjs <rule id> <out.mp4> [config]');
@@ -69,18 +72,69 @@ try {
   }, cfg.preset) : null;
   await setParams();
   await setPreset();
+  // record with the Record panel's settings in c; returns the downloaded file's path
+  async function recordClip(c, quiet = false) {
+    for (const f of fs.readdirSync(dlDir)) fs.rmSync(path.join(dlDir, f));
+    const status = await page.evaluate(async (c) => {
+      const sec = [...document.querySelectorAll('section')].find((s) => s.querySelector('h2')?.textContent === 'Record');
+      if (!sec) throw new Error('no Record section');
+      const set = (el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
+      const byTitle = (t) => sec.querySelector(`input[title^="${t}"]`);
+      set(byTitle('length of the video'), c.seconds);
+      set(byTitle('video frames per second'), c.fps);
+      set(byTitle('sim steps between video frames'), c.steps || '');
+      const [scale, quality] = sec.querySelectorAll('select');
+      set(scale, c.scale);
+      set(quality, { light: 0.1, good: 0.25, high: 0.6 }[c.quality] ?? c.quality);
+      const go = [...sec.querySelectorAll('button')].find((b) => b.textContent.includes('Record'));
+      go.click();
+      const t0 = performance.now();
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 500));
+        const s = [...sec.querySelectorAll('p.hint')].map((p) => p.textContent).find((t) => /^(Saved|Stopped|Couldn't)/.test(t));
+        if (s) return s;
+        if (performance.now() - t0 > 3600000) return 'timed out';
+      }
+    }, c);
+    if (!quiet) console.log(status);
+    // the download lands a moment after the status line
+    let file = null;
+    for (let i = 0; i < 100 && !file; i++) {
+      file = fs.readdirSync(dlDir).find((f) => f.endsWith('.mp4'));
+      if (!file) await new Promise((r) => setTimeout(r, 200));
+    }
+    if (!file) throw new Error('no video was downloaded');
+    return path.join(dlDir, file);
+  }
   // 🎲 pressed `dice` times: new custom colours, fitted to the field as it is then, so first let the pattern grow
   // (diceWarm seconds, default 6: pressed at the start, they fitted a near-empty field and came out dim), then wait for
   // them to blend in (blend, default 4). The restart below keeps them (the same rule, reloaded)
   if (cfg.dice) {
     await new Promise((r) => setTimeout(r, (cfg.diceWarm ?? 6) * 1000));
-    for (let i = 0; i < cfg.dice; i++) await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '🎲').click());
-    await new Promise((r) => setTimeout(r, (cfg.blend ?? 4) * 1000));
+    // every reagent coloured (enable all; else only the shown one is, and Gray-Scott's background, all a, stays black),
+    // unless channels: 'shown'
+    if (cfg.channels !== 'shown') await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent === 'Enable All' || b.textContent === 'enable all').click());
+    // 🎲 can land dim (it aims each reagent's typical value at 20-45% brightness, so it all depends on the fit): roll, record
+    // a 0.3 s probe, measure its mean brightness (0-255), and roll again until it reaches `bright` (default 40), at most
+    // `tries` times (default 10; then it keeps the last roll)
+    const brightness = (f) => Number(/YAVG=([\d.]+)/.exec(execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' }))?.[1] ?? 0);
+    const roll = async () => {
+      for (let i = 0; i < cfg.dice; i++) await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '🎲').click());
+      await new Promise((r) => setTimeout(r, (cfg.blend ?? 4) * 1000));
+    };
+    for (let i = 0; i < (cfg.tries ?? 10); i++) {
+      await roll();
+      const y = brightness(await recordClip({ ...cfg, seconds: 0.3, scale: 1, quality: 'light' }, true));
+      console.log(`🎲 ${i + 1}: brightness ${y.toFixed(0)}`);
+      if (y >= (cfg.bright ?? 40)) break;
+    }
   }
-  // start the rule or scene over, then record from there
-  await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '⟲').click());
-  // (the restart rebuilds the sim: recording straight away caught the old one, destroyed, and gave black frames)
-  await new Promise((r) => setTimeout(r, 2000));
+  // start the rule or scene over (unless restart: false), then record from there
+  if (cfg.restart !== false) {
+    await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '⟲').click());
+    // (the restart rebuilds the sim: recording straight away caught the old one, destroyed, and gave black frames)
+    await new Promise((r) => setTimeout(r, 2000));
+  }
   // (the restart reloads the rule, putting its own parameters back: set them again)
   await setParams();
   await setPreset();
@@ -98,37 +152,9 @@ try {
     const t0 = performance.now();
     while (steps() < n && performance.now() - t0 < 600000) await new Promise((r) => setTimeout(r, 200));
   }, cfg.warm);
-  const status = await page.evaluate(async (c) => {
-    const sec = [...document.querySelectorAll('section')].find((s) => s.querySelector('h2')?.textContent === 'Record');
-    if (!sec) throw new Error('no Record section');
-    const set = (el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
-    const byTitle = (t) => sec.querySelector(`input[title^="${t}"]`);
-    set(byTitle('length of the video'), c.seconds);
-    set(byTitle('video frames per second'), c.fps);
-    set(byTitle('sim steps between video frames'), c.steps || '');
-    const [scale, quality] = sec.querySelectorAll('select');
-    set(scale, c.scale);
-    set(quality, { light: 0.1, good: 0.25, high: 0.6 }[c.quality] ?? c.quality);
-    const go = [...sec.querySelectorAll('button')].find((b) => b.textContent.includes('Record'));
-    go.click();
-    const t0 = performance.now();
-    for (;;) {
-      await new Promise((r) => setTimeout(r, 500));
-      const s = [...sec.querySelectorAll('p.hint')].map((p) => p.textContent).find((t) => /^(Saved|Stopped|Couldn't)/.test(t));
-      if (s) return s;
-      if (performance.now() - t0 > 3600000) return 'timed out';
-    }
-  }, cfg);
-  console.log(status);
-  // the download lands a moment after the status line
-  let file = null;
-  for (let i = 0; i < 100 && !file; i++) {
-    file = fs.readdirSync(dlDir).find((f) => f.endsWith('.mp4'));
-    if (!file) await new Promise((r) => setTimeout(r, 200));
-  }
-  if (!file) throw new Error('no video was downloaded');
+  const file = await recordClip(cfg);
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
-  fs.copyFileSync(path.join(dlDir, file), out);
+  fs.copyFileSync(file, out);
   console.log(`${out}: ${(fs.statSync(out).size / 1e6).toFixed(1)} MB`);
 } finally {
   await browser.close();
