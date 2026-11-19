@@ -64,6 +64,12 @@ try {
   await page.goto(new URL(`#rule=${encodeURIComponent(id)}`, server.resolvedUrls.local[0]).href, { waitUntil: 'networkidle0', timeout: 120000 });
   await page.waitForSelector('header h1');
   const ok = await page.evaluate(() => !document.body.innerText.includes('WebGPU'));
+  // (a slow rule, Schrödinger's, came in seconds after the page: recording on, it recorded the Gray-Scott the page starts
+  // with, and the restart kept it. Wait for the rule asked for)
+  await page.waitForFunction((id) => window.rdui?.ruleId === id, { timeout: 120000, polling: 200 }, id)
+    .catch(async () => console.log(`warning: still on ${await page.evaluate(() => window.rdui?.ruleId)}, not ${id}`));
+  await new Promise((r) => setTimeout(r, 1000));
+  console.log(`loaded: ${await page.evaluate(() => window.rdui.rule.name)}`);
   if (!ok) console.log('warning: the page mentions WebGPU (unavailable?)');
   // (a function: the restart puts the scene's own grid back, so it's set again after each)
   const setSize = () => cfg.size && page.evaluate((n) => {
@@ -207,6 +213,34 @@ try {
     await new Promise((r) => setTimeout(r, 1000));
     await page.evaluate(() => { window.rdui.settings.running = false; window.rdui.sync(); });
   };
+  // noise: soft blotches of each reagent's seed value (the rule's, as its seed brush paints) scattered over the field at
+  // the start ({} or true for the defaults), for scenes seeded sparse or with hard shapes: smooth noise (`cells` across
+  // per blob, 24), only its peaks (a soft step from `lo` to `hi`: 0.6, 0.85), blended up to `amount` (0.9) of the way to
+  // the seed. Each reagent its own noise, unless together (an excitable medium's activator and inhibitor blobs side by
+  // side make broken waves, its spirals; one noise for all fired the whole field at once). No hard edges
+  // (after each restart, from setUp)
+  const addNoise = () => cfg.noise && page.evaluate(async (o) => {
+    const { amount = 0.9, cells = 24, lo = 0.6, hi = 0.85, together = false } = o === true ? {} : o;
+    const sim = window.rdui.sim, rule = window.rdui.rule, w = sim.width, h = sim.height, S4 = sim.layout.S * 4;
+    const gw = Math.ceil(w / cells) + 1, gh = Math.ceil(h / cells) + 1;
+    const grid = (() => { const g = new Float32Array(gw * gh); for (let i = 0; i < g.length; i++) g[i] = Math.random(); return g; });
+    const smooth = (g, x, y) => {
+      const fx = x / cells, fy = y / cells, ix = Math.floor(fx), iy = Math.floor(fy), tx = fx - ix, ty = fy - iy;
+      const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty), at = (i, j) => g[Math.min(gh - 1, j) * gw + Math.min(gw - 1, i)];
+      return (at(ix, iy) * (1 - sx) + at(ix + 1, iy) * sx) * (1 - sy) + (at(ix, iy + 1) * (1 - sx) + at(ix + 1, iy + 1) * sx) * sy;
+    };
+    const { state } = await sim.readRegion(0, 0, w, h);
+    const one = grid(), gs = rule.reagents.map(() => (together ? one : grid()));
+    const peak = (n) => { const t = Math.min(1, Math.max(0, (n - lo) / (hi - lo))); return t * t * (3 - 2 * t); };
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const c = (y * w + x) * S4;
+      rule.reagents.forEach((_, r) => {
+        const v = rule.seed[r];
+        if (v !== null && v !== undefined) state[c + r] += amount * peak(smooth(gs[r], x, y)) * (v - state[c + r]);
+      });
+    }
+    sim.writeRegion(0, 0, w, h, undefined, state);
+  }, cfg.noise);
   // (the restart reloads the rule, putting its own parameters and steps/frame back: set them again after each)
   const setUp = async () => {
     // (a new grid starts the field over: given the moment the restart needed)
@@ -220,6 +254,7 @@ try {
     await liveSteps(cfg.liveSteps);
     await setParams();
     await setPreset();
+    await addNoise();
   };
   if (cfg.restart !== false) await restart();
   await setUp();
@@ -329,6 +364,7 @@ try {
     }
     window.rdui.eachFrame = hooks.length ? async (i) => { for (const h of hooks) await h(i); } : null;
   }, cfg.erase ?? false, cfg.drop ?? false, cfg.unwall ?? false, cfg.fps, cfg.seconds);
+  console.log(`rule: ${await page.evaluate(() => window.rdui.rule.name)}, ${await page.evaluate(() => `${window.rdui.sim.width}²`)}`);
   let file = await recordClip(cfg);
   // (the probe is early on, while the pattern grows: a clip can still end up plain blue, or dark (under 3/4 of bright).
   // Rolled again on the grown field and recorded again, at most 3 times)

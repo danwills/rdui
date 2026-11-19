@@ -964,7 +964,7 @@ async function init() {
     Object.assign(window, {
       rdui: {
         get sim() { return sim; }, get rule() { return rule; }, get globals() { return globals; },
-        settings: s, probes, stamps, applyRule, selectRule, get hover() { return hover; }, sync: () => ui.sync(),
+        settings: s, probes, stamps, applyRule, selectRule, get ruleId() { return ruleId; }, get hover() { return hover; }, sync: () => ui.sync(),
         BrushMode, set eachFrame(f: typeof recordEachFrame) { recordEachFrame = f; },
       },
     });
