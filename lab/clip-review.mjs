@@ -1,0 +1,121 @@
+// A little page for reviewing a folder of clips: each video with playback speed and crisp zoom, a description, yes /
+// no / maybe and a note, saved as you click to picks.json in the folder (so Claude can read them back).
+//   node lab/clip-review.mjs [folder, default ~/Videos/rdui-examples] [port, default 5180]
+// Descriptions come from notes.json in the folder ({"file.mp4": "what it shows"}), if there is one.
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+const dir = path.resolve(process.argv[2] ?? path.join(os.homedir(), 'Videos', 'rdui-examples'));
+const port = Number(process.argv[3] ?? 5180);
+const picksFile = path.join(dir, 'picks.json');
+const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
+
+const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rdui clips</title><style>
+:root { --bg: #08090c; --panel: #11141a; --line: #222834; --text: #c9d1dd; --muted: #6c7789; --accent: #ffcc66; --btn: #1a1f28;
+  --yes: #4caf73; --no: #d9534f; --maybe: #e0a83a; color-scheme: dark; font: 14px/1.4 ui-sans-serif, system-ui, sans-serif; }
+body { margin: 0; background: var(--bg); color: var(--text); }
+header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 16px;
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+h1 { font-size: 18px; margin: 0; color: var(--accent); letter-spacing: 0.04em; }
+.sub { color: var(--muted); }
+main { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; padding: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+.card.yes { border-color: var(--yes); } .card.no { border-color: var(--no); opacity: 0.6; } .card.maybe { border-color: var(--maybe); }
+.frame { background: #000; overflow: auto; max-height: 70vh; display: flex; }
+.frame.zoomed { display: block; }
+video { width: 100%; height: auto; display: block; image-rendering: pixelated; margin: auto; }
+.meta { padding: 8px 10px 0; }
+.name { font-weight: 600; } .desc { color: var(--muted); margin-top: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; }
+.row .label { color: var(--muted); font-size: 12px; margin-right: 2px; }
+button { font: inherit; color: var(--text); background: var(--btn); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+button.on { border-color: var(--accent); color: var(--accent); }
+button.pick.yes.on { background: var(--yes); border-color: var(--yes); color: #fff; }
+button.pick.no.on { background: var(--no); border-color: var(--no); color: #fff; }
+button.pick.maybe.on { background: var(--maybe); border-color: var(--maybe); color: #111; }
+input.note { flex: 1; min-width: 120px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.saved { color: var(--muted); font-size: 12px; }
+</style></head><body>
+<header><h1>rdui clips</h1><span class="sub" id="count"></span><span class="sub">Your picks save as you click.</span>
+<span class="row" style="padding:0"><span class="label">all at</span><button data-all="1">1×</button><button data-all="2">2×</button><button data-all="4">4×</button></span>
+<span class="saved" id="saved"></span></header>
+<main id="grid"></main>
+<script>
+const $ = (t, a = {}, ...kids) => { const e = document.createElement(t); for (const [k, v] of Object.entries(a)) k.startsWith('on') ? e.addEventListener(k.slice(2), v) : e.setAttribute(k, v); e.append(...kids); return e; };
+let picks = {};
+async function save() {
+  const r = await fetch('picks', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(picks) });
+  document.getElementById('saved').textContent = r.ok ? 'saved ' + new Date().toLocaleTimeString() : 'not saved!';
+}
+const rates = [];
+(async () => {
+  const [{ files, notes }, p] = await Promise.all([fetch('list').then((r) => r.json()), fetch('picks').then((r) => r.json())]);
+  picks = p;
+  document.getElementById('count').textContent = files.length + ' clips';
+  for (const f of files) {
+    const v = $('video', { src: encodeURIComponent(f.name), controls: '', loop: '', muted: '', playsinline: '', preload: 'metadata' });
+    v.muted = true;
+    const frame = $('div', { class: 'frame' }, v);
+    const card = $('article', { class: 'card ' + (picks[f.name]?.pick ?? '') });
+    const setRate = (x) => { v.playbackRate = x; speed.querySelectorAll('button').forEach((b) => b.classList.toggle('on', +b.dataset.r === x)); };
+    rates.push(setRate);
+    const speed = $('span', { class: 'row', style: 'padding:0' }, $('span', { class: 'label' }, 'speed'),
+      ...[0.5, 1, 2, 4].map((x) => $('button', { 'data-r': x, onclick: () => setRate(x) }, x + '×')));
+    const setZoom = (z) => {
+      frame.classList.toggle('zoomed', z > 1);
+      v.style.width = z > 1 ? (v.videoWidth * z / devicePixelRatio) + 'px' : '100%';
+      zoom.querySelectorAll('button').forEach((b) => b.classList.toggle('on', +b.dataset.z === z));
+    };
+    const zoom = $('span', { class: 'row', style: 'padding:0' }, $('span', { class: 'label' }, 'zoom'),
+      ...[[1, 'fit'], [2, '2×'], [4, '4×']].map(([z, t]) => $('button', { 'data-z': z, onclick: () => setZoom(z) }, t)));
+    const pick = (k) => {
+      picks[f.name] = { ...picks[f.name], pick: picks[f.name]?.pick === k ? undefined : k };
+      card.className = 'card ' + (picks[f.name].pick ?? '');
+      pickRow.querySelectorAll('.pick').forEach((b) => b.classList.toggle('on', b.dataset.k === picks[f.name].pick));
+      save();
+    };
+    const pickRow = $('div', { class: 'row' }, ...['yes', 'maybe', 'no'].map((k) => $('button', { class: 'pick ' + k + (picks[f.name]?.pick === k ? ' on' : ''), 'data-k': k, onclick: () => pick(k) }, k)));
+    const note = $('input', { class: 'note', placeholder: 'note (optional)', value: picks[f.name]?.note ?? '' });
+    let t; note.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { picks[f.name] = { ...picks[f.name], note: note.value }; save(); }, 500); });
+    pickRow.append(note);
+    card.append(frame, $('div', { class: 'meta' }, $('div', { class: 'name' }, f.name), $('div', { class: 'desc' }, notes[f.name] ?? (f.size / 1e6).toFixed(1) + ' MB')),
+      $('div', { class: 'row' }, speed, zoom), pickRow);
+    document.getElementById('grid').append(card);
+    setRate(1); setZoom(1);
+    v.addEventListener('loadedmetadata', () => v.playbackRate = +speed.querySelector('.on').dataset.r);
+  }
+  document.querySelectorAll('[data-all]').forEach((b) => b.addEventListener('click', () => rates.forEach((s) => s(+b.dataset.all))));
+  // play only what's on screen (a dozen 1024² videos at once is a lot)
+  const io = new IntersectionObserver((es) => es.forEach((e) => e.isIntersecting ? e.target.play().catch(() => {}) : e.target.pause()), { threshold: 0.3 });
+  document.querySelectorAll('video').forEach((v) => io.observe(v));
+})();
+</script></body></html>`;
+
+http.createServer((req, res) => {
+  const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  if (url === '/') return res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end(page);
+  if (url === '/list') {
+    const files = fs.readdirSync(dir).filter((f) => /\.(mp4|webm)$/i.test(f)).sort().map((name) => ({ name, size: fs.statSync(path.join(dir, name)).size }));
+    return res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ files, notes: readJson(path.join(dir, 'notes.json'), {}) }));
+  }
+  if (url === '/picks' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      try { fs.writeFileSync(picksFile, JSON.stringify(JSON.parse(body), null, 1)); res.writeHead(204).end(); } catch (e) { res.writeHead(400).end(String(e)); }
+    });
+    return;
+  }
+  if (url === '/picks') return res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify(readJson(picksFile, {})));
+  // the clips themselves, with byte ranges (so the browser can seek)
+  const file = path.join(dir, path.basename(url));
+  if (!/\.(mp4|webm)$/i.test(file) || !fs.existsSync(file)) return res.writeHead(404).end();
+  const size = fs.statSync(file).size, type = file.endsWith('.webm') ? 'video/webm' : 'video/mp4';
+  const m = /bytes=(\d*)-(\d*)/.exec(req.headers.range ?? '');
+  if (!m) return fs.createReadStream(file).pipe(res.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' }));
+  const start = m[1] ? +m[1] : size - +m[2], end = m[1] && m[2] ? Math.min(+m[2], size - 1) : size - 1;
+  fs.createReadStream(file, { start, end }).pipe(res.writeHead(206, { 'content-type': type, 'content-length': end - start + 1, 'content-range': `bytes ${start}-${end}/${size}`, 'accept-ranges': 'bytes' }));
+}).listen(port, '127.0.0.1', () => console.log(`clips from ${dir} at http://127.0.0.1:${port}/`));

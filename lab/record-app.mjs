@@ -1,11 +1,12 @@
 // Records a clip from the real app, headless, with its own Record panel, so the video looks exactly as the app shows
 // it (the rule's or scene's view, palette and all):
-//   node lab/record-app.mjs <rule id> <out.mp4> ['{"seconds":15,"fps":60,"steps":0,"scale":2,"quality":"high","warm":0,"size":0,"palette":"","dice":0}']
+//   node lab/record-app.mjs <rule id> <out.mp4> ['{"seconds":15,"fps":60,"steps":0,"scale":2,"quality":"high","warm":0,"size":0,"palette":"","dice":0,"set":{},"preset":""}']
 // <rule id> is as the Rules menu has it: scene:<file name>, builtin:<n>, pattern:<name>. steps 0 keeps the sim's own
 // steps/frame; scale 0.5, 1, 2 or 4 (times the grid); quality light, good or high; warm: sim steps to run before
 // recording (the main loop runs them, so it's rough); size: the grid (0 keeps the rule's or scene's own); palette: a
-// palette by name; dice: press 🎲 that many times for new custom colours (random, so each run differs; blend: seconds to
-// wait for them, default 4).
+// palette by name (applied after dice); preset: an F/k preset by name (coral, maze...) as the field's background; set: parameters by name
+// ({"D_a":0.2}); dice: press 🎲 that many times for new custom colours (random, so each run differs), after diceWarm
+// seconds (default 6) so they fit a grown pattern; blend: seconds to wait for them, default 4.
 // Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
@@ -41,13 +42,50 @@ try {
     sel.value = String(n);
     sel.dispatchEvent(new Event('change', { bubbles: true }));
   }, cfg.size);
-  // start the rule or scene over, let it run for warm-up, then record from there
+  // parameters, by name: typed into their rows in the panel. A global's row has a 🖌 button; a paintable one's paint
+  // value has none, and is spread over the field with Fill all
+  const setParams = () => cfg.set ? page.evaluate((set) => {
+    const rows = [...document.querySelectorAll('label.row.param')];
+    const has = (r, b) => [...r.querySelectorAll('button')].some((x) => x.textContent === b);
+    let painted = false;
+    for (const [name, v] of Object.entries(set)) {
+      const named = rows.filter((r) => r.querySelector('span')?.textContent === name);
+      const row = named.find((r) => has(r, '🖌')) ?? named[0];
+      if (!row) throw new Error(`no parameter called ${name}`);
+      if (!has(row, '🖌')) painted = true;
+      const num = row.querySelector('input.num');
+      num.value = String(v);
+      num.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (painted) [...document.querySelectorAll('button')].find((b) => b.title.startsWith('apply the paint values')).click();
+  }, cfg.set) : null;
+  // an F/k preset (rules with paintable F and k, like Gray-Scott): set as the background, what the whole unpainted field holds
+  const setPreset = () => cfg.preset ? page.evaluate((name) => {
+    const all = [...document.querySelectorAll('button')];
+    all.find((b) => b.textContent === 'Background' && b.closest('.fk-target')).click();
+    const b = all.find((x) => x.textContent === name && x.closest('.presets') && !x.closest('.fk-target'));
+    if (!b) throw new Error(`no preset called ${name}`);
+    b.click();
+  }, cfg.preset) : null;
+  await setParams();
+  await setPreset();
+  // 🎲 pressed `dice` times: new custom colours, fitted to the field as it is then, so first let the pattern grow
+  // (diceWarm seconds, default 6: pressed at the start, they fitted a near-empty field and came out dim), then wait for
+  // them to blend in (blend, default 4). The restart below keeps them (the same rule, reloaded)
+  if (cfg.dice) {
+    await new Promise((r) => setTimeout(r, (cfg.diceWarm ?? 6) * 1000));
+    for (let i = 0; i < cfg.dice; i++) await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '🎲').click());
+    await new Promise((r) => setTimeout(r, (cfg.blend ?? 4) * 1000));
+  }
+  // start the rule or scene over, then record from there
   await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '⟲').click());
   // (the restart rebuilds the sim: recording straight away caught the old one, destroyed, and gave black frames)
   await new Promise((r) => setTimeout(r, 2000));
-  // colours: a named palette (as the View section lists it), and/or 🎲 pressed `dice` times (new custom colours, which
-  // blend in over a few seconds, so wait for them)
-  // (the palette button opens a grid of tiles: click the named one, the first of that name, then close the grid)
+  // (the restart reloads the rule, putting its own parameters back: set them again)
+  await setParams();
+  await setPreset();
+  // a named palette (the palette button opens a grid of tiles: click the named one, the first of that name, then close
+  // the grid)
   if (cfg.palette) await page.evaluate((name) => {
     document.querySelector('button.pal-button').click();
     const tile = [...document.querySelectorAll('.pal-tile')].find((t) => t.querySelector('.pal-name')?.textContent === name);
@@ -55,8 +93,6 @@ try {
     tile.click();
     [...document.querySelectorAll('.pal-head button')].find((b) => b.textContent === '✕').click();
   }, cfg.palette);
-  for (let i = 0; i < (cfg.dice || 0); i++) await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '🎲').click());
-  if (cfg.dice) await new Promise((r) => setTimeout(r, (cfg.blend ?? 4) * 1000));
   if (cfg.warm) await page.evaluate(async (n) => {
     const steps = () => Number(document.body.innerText.match(/([\d,]+)\s*steps/)?.[1].replace(/,/g, '') ?? 0);
     const t0 = performance.now();
