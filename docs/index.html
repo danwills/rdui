@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>rdui</title>
+<meta name="description" content="rdui: a WebGPU sandbox for reaction-diffusion and related field rules. Run them, paint into them, tune them live, and collect what they grow.">
+<meta property="og:title" content="rdui">
+<meta property="og:description" content="A WebGPU sandbox for reaction-diffusion and related field rules.">
+<meta property="og:image" content="clips/04-gray-scott-maze-erase.jpg">
+<style>
+/* the app's own colours (src/style.css) */
+:root {
+  --bg: #08090c; --panel: #11141a; --line: #222834; --text: #c9d1dd; --muted: #6c7789; --accent: #ffcc66; --btn: #1a1f28; --btn-hover: #232a36;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--accent); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+
+header.hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: center; padding: 56px 0 40px; }
+h1 { font-size: clamp(48px, 9vw, 88px); line-height: 1; margin: 0 0 12px; color: var(--accent); letter-spacing: 0.02em; }
+.tagline { font-size: clamp(18px, 2.4vw, 22px); color: var(--text); margin: 0 0 16px; }
+.lede { color: var(--muted); margin: 0 0 24px; max-width: 46ch; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.button { display: inline-block; padding: 10px 18px; border-radius: 8px; border: 1px solid var(--line); background: var(--btn); color: var(--text); text-decoration: none; font-weight: 600; }
+.button:hover { background: var(--btn-hover); }
+.button.primary { background: var(--accent); border-color: var(--accent); color: #17130a; }
+.button.primary:hover { filter: brightness(1.08); }
+.note { color: var(--muted); font-size: 14px; margin-top: 14px; }
+.hero-video { width: 100%; aspect-ratio: 1; border-radius: 12px; border: 1px solid var(--line); background: #000; display: block; object-fit: cover; }
+
+section { padding: 32px 0; border-top: 1px solid var(--line); }
+h2 { font-size: 22px; margin: 0 0 6px; }
+.section-sub { color: var(--muted); margin: 0 0 22px; }
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.feature { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.feature h3 { margin: 0 0 6px; font-size: 16px; color: var(--accent); }
+.feature p { margin: 0; color: var(--muted); font-size: 15px; }
+
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 18px; }
+.clip { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.clip video { width: 100%; aspect-ratio: 1; display: block; background: #000; object-fit: cover; }
+.clip figcaption { padding: 10px 14px 14px; }
+.clip strong { display: block; color: var(--text); }
+.clip span { color: var(--muted); font-size: 14px; }
+
+footer { border-top: 1px solid var(--line); padding: 24px 0 40px; color: var(--muted); font-size: 14px; }
+
+@media (max-width: 760px) {
+  header.hero { grid-template-columns: 1fr; gap: 24px; padding-top: 32px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div>
+      <h1>rdui</h1>
+      <p class="tagline">A sandbox for reaction-diffusion, running live on your GPU.</p>
+      <p class="lede">Run reaction-diffusion and related field rules, paint into them, tune them as they run, and collect what they grow. Rules are written in <a href="https://github.com/GollyGang/ready">Ready</a>’s formula language, and Ready patterns open directly.</p>
+      <div class="actions">
+        <a class="button primary" href="https://rdui.rdui.workers.dev/">Open rdui</a>
+        <a class="button" href="https://github.com/danwills/rdui">Source on GitHub</a>
+      </div>
+      <p class="note">Needs a browser with WebGPU: recent Chrome or Edge, or Safari 26. On Linux, Chrome may need <code>--enable-unsafe-webgpu --enable-features=Vulkan</code>.</p>
+    </div>
+    <video class="hero-video" src="clips/04-gray-scott-maze-erase.mp4" poster="clips/04-gray-scott-maze-erase.jpg" autoplay muted loop playsinline></video>
+  </header>
+
+  <section>
+    <h2>What it does</h2>
+    <p class="section-sub">Every picture on this page is a live simulation, recorded straight from the app.</p>
+    <div class="features">
+      <div class="feature"><h3>Run</h3><p>Over 50 built-in rules and more than 100 ready-made scenes: Gray-Scott, smoke, phase-field bubbles, Schrödinger waves, solitons and gliders.</p></div>
+      <div class="feature"><h3>Paint</h3><p>Seed, erase, draw walls and paint parameters into the field while it runs.</p></div>
+      <div class="feature"><h3>Explore</h3><p>See variants of a rule side by side, or a whole map of its parameters, and tap the one you like.</p></div>
+      <div class="feature"><h3>Colour</h3><p>Every reagent gets its own colour. 🎲 rolls a new palette fitted to what's on screen.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Gallery</h2>
+    <p class="section-sub">Short clips, recorded in the app.</p>
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <footer>
+    rdui is free software under the <a href="https://www.gnu.org/licenses/gpl-3.0.html">GNU GPL v3 or later</a>.
+    Made by Dan Wills, with Claude. Built on ideas and rules from <a href="https://github.com/GollyGang/ready">Ready</a>.
+  </footer>
+</div>
+<script>
+// the gallery, from clips.json (made by lab/site-clips.mjs; edit the titles, texts and order there)
+fetch('clips.json').then((r) => r.json()).then((clips) => {
+  const gallery = document.getElementById('gallery');
+  for (const c of clips) {
+    const fig = document.createElement('figure');
+    fig.className = 'clip';
+    const v = Object.assign(document.createElement('video'), { src: c.video, poster: c.poster, muted: true, loop: true, playsInline: true, preload: 'none' });
+    const cap = document.createElement('figcaption');
+    cap.append(Object.assign(document.createElement('strong'), { textContent: c.title }), Object.assign(document.createElement('span'), { textContent: c.text }));
+    fig.append(v, cap);
+    gallery.append(fig);
+  }
+  // only the clips on screen play
+  const io = new IntersectionObserver((es) => es.forEach((e) => (e.isIntersecting ? e.target.play().catch(() => {}) : e.target.pause())), { threshold: 0.4 });
+  gallery.querySelectorAll('video').forEach((v) => io.observe(v));
+});
+</script>
+</body>
+</html>

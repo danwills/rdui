@@ -1,0 +1,149 @@
+[
+ {
+  "source": "01-gray-scott-growing.mp4",
+  "title": "Gray-Scott",
+  "text": "The classic: spots that grow and divide until they fill the field.",
+  "video": "clips/01-gray-scott-growing.mp4",
+  "poster": "clips/01-gray-scott-growing.jpg"
+ },
+ {
+  "source": "02-gray-scott-dice-1.mp4",
+  "title": "One rule, new colours",
+  "text": "The same Gray-Scott field under a fresh random palette from 🎲.",
+  "video": "clips/02-gray-scott-dice-1.mp4",
+  "poster": "clips/02-gray-scott-dice-1.jpg"
+ },
+ {
+  "source": "02-gray-scott-dice-2.mp4",
+  "title": "One rule, new colours",
+  "text": "Another 🎲 roll: every reagent coloured and blended together.",
+  "video": "clips/02-gray-scott-dice-2.mp4",
+  "poster": "clips/02-gray-scott-dice-2.jpg"
+ },
+ {
+  "source": "03-gray-scott-coral.mp4",
+  "title": "Coral",
+  "text": "Gray-Scott's coral preset: branching growth that crowds the field.",
+  "video": "clips/03-gray-scott-coral.mp4",
+  "poster": "clips/03-gray-scott-coral.jpg"
+ },
+ {
+  "source": "04-gray-scott-maze-erase.mp4",
+  "title": "Maze, erased and regrown",
+  "text": "A maze grows from a few seeds; soft erase strokes cut through it and it fills them back in.",
+  "video": "clips/04-gray-scott-maze-erase.mp4",
+  "poster": "clips/04-gray-scott-maze-erase.jpg"
+ },
+ {
+  "source": "05-gray-scott-waves.mp4",
+  "title": "Waves",
+  "text": "Rings expand, collide and cancel.",
+  "video": "clips/05-gray-scott-waves.mp4",
+  "poster": "clips/05-gray-scott-waves.jpg"
+ },
+ {
+  "source": "06c-gray-scott-u-skate.mp4",
+  "title": "U-skate",
+  "text": "A few skaters glide among slowly settling stripes.",
+  "video": "clips/06c-gray-scott-u-skate.mp4",
+  "poster": "clips/06c-gray-scott-u-skate.jpg"
+ },
+ {
+  "source": "07-explore-grid.mp4",
+  "title": "Explorer",
+  "text": "Nine variants of a rule side by side. Tap one and it becomes the centre, with new variants around it.",
+  "video": "clips/07-explore-grid.mp4",
+  "poster": "clips/07-explore-grid.jpg"
+ },
+ {
+  "source": "10-glider-lamp-b.mp4",
+  "title": "Glider meets lamp",
+  "text": "The same glider and lamp, in other colours.",
+  "video": "clips/10-glider-lamp-b.mp4",
+  "poster": "clips/10-glider-lamp-b.jpg"
+ },
+ {
+  "source": "10-glider-lamp.mp4",
+  "title": "Glider meets lamp",
+  "text": "A glider runs into a lamp, a painted region where its trail never fades: the lamp lights up and stays lit after the glider has gone.",
+  "video": "clips/10-glider-lamp.mp4",
+  "poster": "clips/10-glider-lamp.jpg"
+ },
+ {
+  "source": "12-soliton-reflector.mp4",
+  "title": "Soliton reflector",
+  "text": "Gliders turned through 90° by a chain of still solitons: a reflector built only from the medium's own structures.",
+  "video": "clips/12-soliton-reflector.mp4",
+  "poster": "clips/12-soliton-reflector.jpg"
+ },
+ {
+  "source": "13-memory-latch-b.mp4",
+  "title": "Memory latch",
+  "text": "The same latch in other colours: set by one glider, reset by another.",
+  "video": "clips/13-memory-latch-b.mp4",
+  "poster": "clips/13-memory-latch-b.jpg"
+ },
+ {
+  "source": "13-memory-latch-c.mp4",
+  "title": "Memory latch",
+  "text": "The same latch, further along, in other colours.",
+  "video": "clips/13-memory-latch-c.mp4",
+  "poster": "clips/13-memory-latch-c.jpg"
+ },
+ {
+  "source": "13-memory-latch.mp4",
+  "title": "Memory latch",
+  "text": "A memory cell after Levin's bioelectric pattern memory: one glider switches it on, and it stays on until a second glider switches it off.",
+  "video": "clips/13-memory-latch.mp4",
+  "poster": "clips/13-memory-latch.jpg"
+ },
+ {
+  "source": "14-meta-gs-fast-gliders.mp4",
+  "title": "Fast gliders",
+  "text": "A dozen elongated spots gliding across the field, from a search for fast gliders in a Gray-Scott variant.",
+  "video": "clips/14-meta-gs-fast-gliders.mp4",
+  "poster": "clips/14-meta-gs-fast-gliders.jpg"
+ },
+ {
+  "source": "18-lineages-heredity-c.mp4",
+  "title": "Lineages",
+  "text": "Four dishes grow their own patterns; then the walls come down and they meet.",
+  "video": "clips/18-lineages-heredity-c.mp4",
+  "poster": "clips/18-lineages-heredity-c.jpg"
+ },
+ {
+  "source": "19-lava-lamp-swirl.mp4",
+  "title": "Lava lamp",
+  "text": "Phase-field bubbles rising warm and sinking cool, carried round each other by a slowly changing swirl.",
+  "video": "clips/19-lava-lamp-swirl.mp4",
+  "poster": "clips/19-lava-lamp-swirl.jpg"
+ },
+ {
+  "source": "20-bubbles-foam-b.mp4",
+  "title": "Foam",
+  "text": "Phase-field bubbles pressed into a foam.",
+  "video": "clips/20-bubbles-foam-b.mp4",
+  "poster": "clips/20-bubbles-foam-b.jpg"
+ },
+ {
+  "source": "21-smoke-ribbons-b.mp4",
+  "title": "Smoke ribbons",
+  "text": "The same smoke rule, from the start, in other colours.",
+  "video": "clips/21-smoke-ribbons-b.mp4",
+  "poster": "clips/21-smoke-ribbons-b.jpg"
+ },
+ {
+  "source": "21-smoke-ribbons.mp4",
+  "title": "Smoke ribbons",
+  "text": "A smoke rule from Ready holding at full strength in busy, curling ribbons and vortices.",
+  "video": "clips/21-smoke-ribbons.mp4",
+  "poster": "clips/21-smoke-ribbons.jpg"
+ },
+ {
+  "source": "22-smoke-gs-threads-c.mp4",
+  "title": "Smoke threads",
+  "text": "Smoke mixed with Gray-Scott: threads that wander through drifting clouds.",
+  "video": "clips/22-smoke-gs-threads-c.mp4",
+  "poster": "clips/22-smoke-gs-threads-c.jpg"
+ }
+]
