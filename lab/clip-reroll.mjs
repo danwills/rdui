@@ -2,11 +2,12 @@
 // its recipe (.recipes/<clip>.json, written by record-app.mjs) and puts the new take in its place, the old one moved to
 // old/ (as <clip>-<time>.mp4).
 //   node lab/clip-reroll.mjs [folder, default ~/Videos/rdui-examples]
-// A colour re-roll rolls 🎲 again, kept apart from the take's colours (and from the takes it has replaced); a seed
-// re-roll keeps the take's colours (its saved look; a take without one gets new colours) and starts the rule over (rules
-// that seed at random start differently). Either way the clip keeps the start, slowed to fill the clip if the pattern
-// settles early (record-app's fit). The queue is rerolls.json in the folder: [{ name, kind, state }],
-// state queued, recording, done or failed. Recordings share the GPU's slots with other recorders (lab/gpu-slot.sh).
+// A job asks for any of (kinds): colour, rolling 🎲 again, kept apart from the take's colours (and from the takes it
+// has replaced); dark (too dark), rolling till clearly brighter than the take; seed alone keeps the take's colours (its
+// saved look; a take without one gets new colours). Every re-roll starts the rule over (rules that seed at random start
+// differently) and keeps the start, slowed to fill the clip if the pattern settles early (record-app's fit). The queue
+// is rerolls.json in the folder: [{ name, kinds, state }] (older jobs: kind, one of them), state queued, recording, done
+// or failed. Recordings take turns on the GPU (lab/gpu-slot.sh).
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -23,6 +24,7 @@ const update = (at, change) => {
   if (job) Object.assign(job, change);
   fs.writeFileSync(queueFile, JSON.stringify(q, null, 1));
 };
+const brightness = (f) => Number(/YAVG=([\d.]+)/.exec(execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' }))?.[1] ?? 0);
 const meanColour = (f) => [...execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.5', '-i', f, '-frames:v', '1', '-vf', 'scale=1:1:flags=area', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
 
 console.log(`re-rolls for ${dir}`);
@@ -33,7 +35,8 @@ for (;;) {
   const recipe = readJson(path.join(dir, '.recipes', base + '.json'), null);
   if (!recipe || !fs.existsSync(clip)) { update(job.at, { state: 'failed', why: recipe ? 'no clip' : 'no recipe' }); continue; }
   update(job.at, { state: 'recording' });
-  console.log(job.kind, job.name);
+  const kinds = job.kinds ?? [job.kind];
+  console.log(kinds.join('+'), job.name);
   const { look, ...cfgRest } = { ...recipe.cfg, look: recipe.look };
   // (older takes recorded on from a grown field, cutting off the start: start over instead)
   const { restart: _r, diceWarm: _d, warm: _w, ...cfgStart } = cfgRest;
@@ -41,8 +44,12 @@ for (;;) {
   // the colours to stay apart from: this take's and those it replaced
   const avoid = [meanColour(clip), ...(recipe.replaced ?? [])];
   const custom = !cfg.palette;
-  if (job.kind === 'colour' && custom) Object.assign(cfg, { dice: 1, avoid, tries: 25 });
-  if (job.kind === 'seed' && !cfg.palette) Object.assign(cfg, look?.custom ? { dice: 0, look } : { dice: 1 });
+  if (custom && (kinds.includes('colour') || kinds.includes('dark'))) {
+    Object.assign(cfg, { dice: 1, tries: 25 });
+    if (kinds.includes('colour')) cfg.avoid = avoid;
+    // too dark: rolled till clearly brighter than this take
+    if (kinds.includes('dark')) cfg.bright = Math.max(48, brightness(clip) + 15);
+  } else if (custom) Object.assign(cfg, look?.custom ? { dice: 0, look } : { dice: 1 }); // (seed alone: same colours)
   const tmp = path.join(dir, '.reroll-' + job.name);
   const r = spawnSync('lab/gpu-slot.sh', [dir, 'node', 'lab/record-app.mjs', recipe.id, tmp, JSON.stringify(cfg)], { cwd: root, encoding: 'utf8', timeout: 1800000 });
   if (r.status !== 0 || !fs.existsSync(tmp)) { update(job.at, { state: 'failed', why: ((r.stderr || '') + (r.stdout || '')).split('\n').filter((l) => /Error|lost/.test(l)).pop()?.slice(0, 160) ?? 'no video' }); continue; }

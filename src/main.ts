@@ -823,8 +823,11 @@ async function init() {
 
   // recording: the recorder steps the sim itself, so the main loop holds still meanwhile
   let heldRunning = false;
+  // (dev: set through window.rdui.eachFrame, e.g. lab/record-app.mjs's erase strokes)
+  let recordEachFrame: ((frame: number, total: number) => void | Promise<void>) | null = null;
   const recordPanel = recordSection({
     device, sim: () => sim, view: viewOptions, stepsPerFrame: () => s.stepsPerFrame, name: () => rule.name,
+    eachFrame: (i, n) => recordEachFrame?.(i, n),
     hold: (on) => {
       if (on) {
         heldRunning = s.running;
@@ -960,6 +963,7 @@ async function init() {
       rdui: {
         get sim() { return sim; }, get rule() { return rule; }, get globals() { return globals; },
         settings: s, probes, stamps, applyRule, selectRule, get hover() { return hover; }, sync: () => ui.sync(),
+        BrushMode, set eachFrame(f: typeof recordEachFrame) { recordEachFrame = f; },
       },
     });
   }

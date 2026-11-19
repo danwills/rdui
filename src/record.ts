@@ -22,7 +22,7 @@ const CODECS: [string, 'avc' | 'vp9'][] = [['avc1.640034', 'avc'], ['avc1.4d0034
 
 /** Records `o.seconds` of video from `sim`; `progress(done, total)` after each frame; stops early (with what it has) when `cancelled()`. */
 export async function recordVideo(device: GPUDevice, sim: Simulation, view: () => ViewOptions, o: RecordOptions,
-  progress: (done: number, total: number) => void, cancelled: () => boolean): Promise<Blob> {
+  progress: (done: number, total: number) => void, cancelled: () => boolean, each?: (frame: number, total: number) => void | Promise<void>): Promise<Blob> {
   const even = (v: number) => Math.max(2, Math.round(v / 2) * 2);
   const width = even(sim.width * o.scale), height = even(sim.height * o.scale);
   const total = Math.max(1, Math.round(o.seconds * o.fps));
@@ -49,7 +49,7 @@ export async function recordVideo(device: GPUDevice, sim: Simulation, view: () =
     for (let i = 0; i < total && !cancelled(); i++) {
       if (failure) throw failure;
       const enc = device.createCommandEncoder();
-      if (i > 0) sim.step(enc, o.stepsPerFrame);
+      if (i > 0) { await each?.(i, total); sim.step(enc, o.stepsPerFrame); }
       sim.render(enc, target.createView(), width, height, view());
       enc.copyTextureToBuffer({ texture: target }, { buffer: readback, bytesPerRow: stride }, [width, height]);
       device.queue.submit([enc.finish()]);
@@ -84,6 +84,8 @@ export interface RecordEnv {
   /** Pauses the main loop (true) or puts it back as it was (false). */
   hold(on: boolean): void;
   name(): string;
+  /** Called before each frame after the first is stepped (lab scripts paint while recording). */
+  eachFrame?(frame: number, total: number): void | Promise<void>;
 }
 
 /** The Record section of the panel. */
@@ -148,7 +150,7 @@ export function recordSection(env: RecordEnv) {
         bar.value = d / n;
         const left = ((performance.now() - t0) / d) * (n - d) / 1000;
         status.textContent = `frame ${d} of ${n}${d < n ? ` · about ${left < 90 ? `${Math.ceil(left)} s` : `${Math.ceil(left / 60)} min`} left` : ''}`;
-      }, () => stop);
+      }, () => stop, env.eachFrame);
       const a = el('a', { href: URL.createObjectURL(blob), download: `rdui-${env.name().replace(/[^\w.-]+/g, '_')}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.mp4` });
       document.body.append(a);
       a.click();

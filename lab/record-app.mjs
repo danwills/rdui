@@ -12,7 +12,8 @@
 // a recipe, put back instead of rolling (the recipe, .recipes/<out>.json beside the clip, is written for every take);
 // liveSteps: the live loop's steps/frame before recording (heavy scenes lose the GPU device headless at their own).
 // Clips start at the very start (the sim paused through the restart). fit: true slows a pattern that settles early, so
-// its growth fills the clip (see below).
+// its growth fills the clip; erase paints soft erase strokes while recording; drop adds solitons to a ring track (see
+// below for each).
 // Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
@@ -128,6 +129,17 @@ try {
     // stay `apart` from (default 60, as RGB distance), for variants in clearly different colours; the take's own mean
     // colour is printed (colour: [r,g,b]) to pass on
     const brightness = (f) => Number(/YAVG=([\d.]+)/.exec(execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' }))?.[1] ?? 0);
+    // plain blue: the share of the frame in dark, saturated blue (Dan prefers light blue; the custom palette's exponent
+    // turns light blues into plain primary blue), rolled again past `blue` (default 0.1)
+    const plainBlue = (f) => {
+      const px = execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'scale=64:64:flags=area', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+      let n = 0;
+      for (let i = 0; i < px.length; i += 3) {
+        const [r, g, b] = [px[i], px[i + 1], px[i + 2]];
+        if (b > 110 && b > 1.6 * Math.max(r, g, 1) && 0.2126 * r + 0.7152 * g + 0.0722 * b < 75) n++;
+      }
+      return n / (px.length / 3);
+    };
     const meanColour = (f) => [...execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'scale=1:1:flags=area', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
     const roll = async () => {
       for (let i = 0; i < cfg.dice; i++) await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '🎲').click());
@@ -140,8 +152,9 @@ try {
       const y = brightness(probe);
       colour = meanColour(probe);
       const near = Math.min(Infinity, ...(cfg.avoid ?? []).map((c) => Math.hypot(c[0] - colour[0], c[1] - colour[1], c[2] - colour[2])));
-      console.log(`🎲 ${i + 1}: brightness ${y.toFixed(0)}, colour ${colour}${cfg.avoid?.length ? `, ${near.toFixed(0)} from the nearest earlier take` : ''}`);
-      if (y >= (cfg.bright ?? 32) && near >= (cfg.apart ?? 60)) break;
+      const blue = plainBlue(probe);
+      console.log(`🎲 ${i + 1}: brightness ${y.toFixed(0)}, plain blue ${(blue * 100).toFixed(0)}%, colour ${colour}${cfg.avoid?.length ? `, ${near.toFixed(0)} from the nearest earlier take` : ''}`);
+      if (y >= (cfg.bright ?? 32) && near >= (cfg.apart ?? 60) && blue <= (cfg.blue ?? 0.1)) break;
     }
     console.log(`colour: ${JSON.stringify(colour)}`);
   }
@@ -212,6 +225,56 @@ try {
     await restart();
     await setUp();
   }
+  // erase: soft erase strokes wandering over the field while recording, so a pattern that settles has room to grow again
+  // ({} or true for the defaults): one every `every` seconds of video (3), from `from` (3), each `len` seconds long (1),
+  // `radius` across (0.12 of the field, soft: no hard edge), at `strength` per frame (0.8)
+  // drop: Saturable Schrödinger solitons added on a ring track while recording, moving round it (clockwise) like the ring
+  // scenes' own: one every `every` seconds of video (3), from `from` (2), on the ring at (cx, cy) radius r (fractions of
+  // the field: 0.5, 0.5, 0.359, the track's centre line), a Gaussian packet of `amp` (2.2) and `sigma` cells (7) at wave
+  // number k (0.2), random phase, at a random place on the track (where the field is quiet enough, else skipped)
+  await page.evaluate((e, d, fps) => {
+    const hooks = [];
+    if (e) {
+      const { every = 3, from = 3, len = 1.5, radius = 0.12, strength = 0.8 } = e === true ? {} : e;
+      let x = 0, y = 0, a = 0;
+      hooks.push((i) => {
+        const sim = window.rdui.sim, w = sim.width, h = sim.height, t = i / fps - from;
+        if (t < 0 || t % every >= len) return;
+        // a new stroke: a random place and heading; then on along a gentle curve, about a third of the field per stroke
+        if (t % every < 1 / fps) { x = Math.random() * w; y = Math.random() * h; a = Math.random() * 2 * Math.PI; }
+        a += (Math.random() - 0.5) * 0.3;
+        const step = w / 3 / (len * fps), nx = x + Math.cos(a) * step, ny = y + Math.sin(a) * step;
+        sim.brush({ ax: x, ay: y, bx: nx, by: ny, mode: window.rdui.BrushMode.Erase, radius: radius * w, strength, hardness: 0, paint: [] });
+        // (wrapped round the edge: carry on from the other side, without a stroke across the field)
+        x = (nx + w) % w; y = (ny + h) % h;
+      });
+    }
+    if (d) {
+      const { every = 3, from = 2, cx = 0.5, cy = 0.5, r = 0.359, amp = 2.2, sigma = 7, k = 0.2 } = d === true ? {} : d;
+      hooks.push(async (i) => {
+        const t = i / fps - from;
+        if (t < 0 || t % every >= 1 / fps) return;
+        const sim = window.rdui.sim, rule = window.rdui.rule, w = sim.width, S4 = sim.layout.S * 4;
+        const [p, q, n] = ['p', 'q', 'n'].map((c) => rule.reagents.indexOf(c));
+        const th = Math.random() * 2 * Math.PI, phase = Math.random() * 2 * Math.PI;
+        const x0 = (cx + r * Math.cos(th)) * w, y0 = (cy + r * Math.sin(th)) * w, kx = -Math.sin(th) * k, ky = Math.cos(th) * k;
+        const R = Math.ceil(sigma * 4), side = 2 * R + 1, ox = Math.round(x0) - R, oy = Math.round(y0) - R;
+        const { state } = await sim.readRegion(ox, oy, side, side);
+        // (not on top of a soliton already there)
+        let most = 0;
+        for (let c = 0; c < side * side; c++) most = Math.max(most, state[c * S4 + n]);
+        if (most > amp * amp * 0.3) return;
+        for (let yy = 0; yy < side; yy++) for (let xx = 0; xx < side; xx++) {
+          const dx = ox + xx - x0, dy = oy + yy - y0, g = amp * Math.exp(-(dx * dx + dy * dy) / (2 * sigma * sigma)), ph = phase + kx * dx + ky * dy;
+          const c = (yy * side + xx) * S4;
+          state[c + p] += g * Math.cos(ph); state[c + q] += g * Math.sin(ph);
+          if (n >= 0) state[c + n] = state[c + p] ** 2 + state[c + q] ** 2;
+        }
+        sim.writeRegion(ox, oy, side, side, undefined, state);
+      });
+    }
+    window.rdui.eachFrame = hooks.length ? async (i) => { for (const h of hooks) await h(i); } : null;
+  }, cfg.erase ?? false, cfg.drop ?? false, cfg.fps);
   const file = await recordClip(cfg);
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
   fs.copyFileSync(file, out);
