@@ -226,8 +226,9 @@ try {
     await setUp();
   }
   // erase: soft erase strokes wandering over the field while recording, so a pattern that settles has room to grow again
-  // ({} or true for the defaults): one every `every` seconds of video (3), from `from` (3), each `len` seconds long (1),
-  // `radius` across (0.12 of the field, soft: no hard edge), at `strength` per frame (0.8)
+  // ({} or true for the defaults): one every `every` seconds of video (3), from `from` (3), each `len` seconds long (1.5),
+  // `radius` across (0.18 of the field, soft: no hard edge), at `strength` per frame (0.8); each starts 0.3 of the field
+  // from the centre, heading through or near it (Dan: paint through the middle)
   // drop: Saturable Schrödinger solitons added on a ring track while recording, moving round it (clockwise) like the ring
   // scenes' own: one every `every` seconds of video (3), from `from` (2), on the ring at (cx, cy) radius r (fractions of
   // the field: 0.5, 0.5, 0.359, the track's centre line), a Gaussian packet of `amp` (2.2) and `sigma` cells (7) at wave
@@ -235,15 +236,19 @@ try {
   await page.evaluate((e, d, fps) => {
     const hooks = [];
     if (e) {
-      const { every = 3, from = 3, len = 1.5, radius = 0.12, strength = 0.8 } = e === true ? {} : e;
+      const { every = 3, from = 3, len = 1.5, radius = 0.18, strength = 0.8 } = e === true ? {} : e;
       let x = 0, y = 0, a = 0;
       hooks.push((i) => {
         const sim = window.rdui.sim, w = sim.width, h = sim.height, t = i / fps - from;
         if (t < 0 || t % every >= len) return;
-        // a new stroke: a random place and heading; then on along a gentle curve, about a third of the field per stroke
-        if (t % every < 1 / fps) { x = Math.random() * w; y = Math.random() * h; a = Math.random() * 2 * Math.PI; }
-        a += (Math.random() - 0.5) * 0.3;
-        const step = w / 3 / (len * fps), nx = x + Math.cos(a) * step, ny = y + Math.sin(a) * step;
+        // a new stroke: from a random side, aimed through the centre give or take; then on along a gentle curve, across
+        // 0.6 of the field
+        if (t % every < 1 / fps) {
+          const b = Math.random() * 2 * Math.PI;
+          x = w / 2 + Math.cos(b) * 0.3 * w; y = h / 2 + Math.sin(b) * 0.3 * h; a = b + Math.PI + (Math.random() - 0.5) * 0.6;
+        }
+        a += (Math.random() - 0.5) * 0.2;
+        const step = 0.6 * w / (len * fps), nx = x + Math.cos(a) * step, ny = y + Math.sin(a) * step;
         sim.brush({ ax: x, ay: y, bx: nx, by: ny, mode: window.rdui.BrushMode.Erase, radius: radius * w, strength, hardness: 0, paint: [] });
         // (wrapped round the edge: carry on from the other side, without a stroke across the field)
         x = (nx + w) % w; y = (ny + h) % h;
