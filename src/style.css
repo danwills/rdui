@@ -68,7 +68,8 @@ html, body {
   padding: 12px 14px 20px;
 }
 
-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+header { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+h1.about-link { cursor: pointer; }
 h1 { font-size: 18px; margin: 0; letter-spacing: 0.04em; color: var(--accent); }
 .sub { color: var(--muted); }
 .sub.build { margin-left: auto; font-size: 10px; }
@@ -332,3 +333,21 @@ button.mini.on { opacity: 1; color: #ff9a6a; border-color: var(--line); }
 }
 .blow-note .buttons { margin-top: 8px; display: flex; gap: 6px; }
 .blow-note[hidden] { display: none; }
+
+dialog.about {
+  padding: 0;
+  max-width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+dialog.about::backdrop { background: rgb(0 0 0 / 0.6); }
+dialog.about > div { padding: 16px 20px 18px; }
+dialog.about h1 { font-size: 22px; }
+dialog.about h2 { margin-top: 14px; }
+dialog.about p, dialog.about li { margin: 6px 0; }
+dialog.about ul { padding-left: 18px; margin: 6px 0; }
+dialog.about a { color: var(--accent); }
+dialog.about form { text-align: right; margin-top: 12px; }
