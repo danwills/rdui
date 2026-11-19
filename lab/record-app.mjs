@@ -40,18 +40,39 @@ try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1400, height: 900 });
   page.on('pageerror', (e) => console.log('pageerror:', e.message));
+  // WebGPU canvases draw into plain textures instead (RDUI_REAL_CANVAS=1 leaves them): the recorder draws offscreen
+  // itself, and headless Chrome sharing a canvas's textures lost the device every so often ("Importing a semaphore with
+  // an invalid handle", above all around a restart), hidden canvas or not
+  if (!process.env.RDUI_REAL_CANVAS) await page.evaluateOnNewDocument(() => {
+    if (typeof GPUCanvasContext === 'undefined') return;
+    const P = GPUCanvasContext.prototype;
+    P.configure = function (c) { this.__cfg = c; };
+    P.unconfigure = function () { this.__tex?.destroy(); this.__tex = null; this.__cfg = null; };
+    P.getConfiguration = function () { return this.__cfg ?? null; };
+    P.getCurrentTexture = function () {
+      const c = this.canvas, cfg = this.__cfg;
+      if (!this.__tex || this.__tex.width !== c.width || this.__tex.height !== c.height || this.__dev !== cfg.device) {
+        this.__tex?.destroy();
+        this.__tex = cfg.device.createTexture({ size: [Math.max(1, c.width), Math.max(1, c.height)], format: cfg.format, usage: (cfg.usage ?? 0) | GPUTextureUsage.RENDER_ATTACHMENT });
+        this.__dev = cfg.device;
+      }
+      return this.__tex;
+    };
+  });
   const cdp = await page.createCDPSession();
   await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: dlDir });
   await page.goto(new URL(`#rule=${encodeURIComponent(id)}`, server.resolvedUrls.local[0]).href, { waitUntil: 'networkidle0', timeout: 120000 });
   await page.waitForSelector('header h1');
   const ok = await page.evaluate(() => !document.body.innerText.includes('WebGPU'));
   if (!ok) console.log('warning: the page mentions WebGPU (unavailable?)');
-  if (cfg.size) await page.evaluate((n) => {
+  // (a function: the restart puts the scene's own grid back, so it's set again after each)
+  const setSize = () => cfg.size && page.evaluate((n) => {
     const sel = [...document.querySelectorAll('select')].find((s) => [...s.options].some((o) => o.value === String(n)) && /size|grid/i.test(s.title + s.closest('label')?.textContent));
     if (!sel) throw new Error('no grid size control found');
     sel.value = String(n);
     sel.dispatchEvent(new Event('change', { bubbles: true }));
   }, cfg.size);
+  await setSize();
   // parameters, by name: typed into their rows in the panel. A global's row has a 🖌 button; a paintable one's paint
   // value has none, and is spread over the field with Fill all
   const setParams = () => cfg.set ? page.evaluate((set) => {
@@ -174,16 +195,28 @@ try {
   // (paused first, so the clip starts at the very start: the live loop ran on through the wait below and cut it off; the
   // recorder steps the sim itself)
   const restart = async () => {
-    await page.evaluate(() => {
+    // (the restart rebuilds the sim: recording straight away caught the old one, destroyed, and gave black frames; a big
+    // scene's new sim came after the 2 s that used to be waited, so the grid was checked on the old one: wait for it)
+    await page.evaluate(async () => {
+      const old = window.rdui.sim;
       window.rdui.settings.running = false;
       [...document.querySelectorAll('header button')].find((b) => b.textContent === '⟲').click();
+      const t0 = performance.now();
+      while (window.rdui.sim === old && performance.now() - t0 < 15000) await new Promise((r) => setTimeout(r, 100));
     });
-    // (the restart rebuilds the sim: recording straight away caught the old one, destroyed, and gave black frames)
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 1000));
     await page.evaluate(() => { window.rdui.settings.running = false; window.rdui.sync(); });
   };
   // (the restart reloads the rule, putting its own parameters and steps/frame back: set them again after each)
   const setUp = async () => {
+    // (a new grid starts the field over: given the moment the restart needed)
+    if (cfg.size && await page.evaluate((n) => window.rdui.sim.width !== n, cfg.size)) {
+      const old = await page.evaluateHandle(() => window.rdui.sim);
+      await setSize();
+      await page.waitForFunction((o) => window.rdui.sim !== o, { timeout: 15000 }, old).catch(() => {});
+      await new Promise((r) => setTimeout(r, 1000));
+      await page.evaluate(() => { window.rdui.settings.running = false; window.rdui.sync(); });
+    }
     await liveSteps(cfg.liveSteps);
     await setParams();
     await setPreset();
