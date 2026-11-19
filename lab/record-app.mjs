@@ -8,7 +8,8 @@
 // ({"D_a":0.2}); dice: press 🎲 that many times for new custom colours (random, so each run differs), with every reagent
 // switched on (channels: 'shown' leaves them), after diceWarm seconds (default 6) so they fit a grown pattern, rolled again
 // till a probe's brightness reaches bright (default 32 of 255, at most tries times, default 20); blend: seconds to wait
-// for them, default 4; restart: false records on from the grown field instead of starting over.
+// for them, default 4; restart: false records on from the grown field instead of starting over; look: a palette saved in
+// a recipe, put back instead of rolling (the recipe, .recipes/<out>.json beside the clip, is written for every take).
 // Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
@@ -137,6 +138,13 @@ try {
     }
     console.log(`colour: ${JSON.stringify(colour)}`);
   }
+  // a saved look (a take's palette, from its recipe, for a re-roll of the seed only): put back after the field has grown
+  // diceWarm seconds (so the rule's own first auto-randomise is over), then blend
+  if (cfg.look && !cfg.dice) {
+    await new Promise((r) => setTimeout(r, (cfg.diceWarm ?? 6) * 1000));
+    await page.evaluate((look) => { Object.assign(window.rdui.settings, structuredClone(look)); window.rdui.sync(); }, cfg.look);
+    await new Promise((r) => setTimeout(r, (cfg.blend ?? 4) * 1000));
+  }
   // start the rule or scene over (unless restart: false), then record from there
   if (cfg.restart !== false) {
     await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '⟲').click());
@@ -163,6 +171,15 @@ try {
   const file = await recordClip(cfg);
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
   fs.copyFileSync(file, out);
+  // the recipe (rule, config and look), beside the clip in .recipes/, for re-rolls (lab/clip-reroll.mjs)
+  const look = await page.evaluate(() => {
+    const s = window.rdui?.settings;
+    return s && { palette: s.palette, custom: s.custom, customContrast: s.customContrast, customSaturation: s.customSaturation, customGamma: s.customGamma, customHeadroom: s.customHeadroom };
+  });
+  const recipes = path.join(path.dirname(path.resolve(out)), '.recipes');
+  fs.mkdirSync(recipes, { recursive: true });
+  const { avoid: _, look: __, ...keep } = cfg;
+  fs.writeFileSync(path.join(recipes, path.basename(out, '.mp4') + '.json'), JSON.stringify({ id, cfg: keep, look }, null, 1));
   console.log(`${out}: ${(fs.statSync(out).size / 1e6).toFixed(1)} MB`);
 } finally {
   await browser.close();

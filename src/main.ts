@@ -959,7 +959,7 @@ async function init() {
     Object.assign(window, {
       rdui: {
         get sim() { return sim; }, get rule() { return rule; }, get globals() { return globals; },
-        settings: s, probes, stamps, applyRule, selectRule, get hover() { return hover; },
+        settings: s, probes, stamps, applyRule, selectRule, get hover() { return hover; }, sync: () => ui.sync(),
       },
     });
   }

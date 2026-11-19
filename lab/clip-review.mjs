@@ -1,5 +1,6 @@
 // A little page for reviewing a folder of clips: each video with playback speed and crisp zoom, a description, yes /
-// no / maybe and a note, saved as you click to picks.json in the folder (so Claude can read them back).
+// no / maybe and a note, saved as you click to picks.json in the folder (so Claude can read them back), and 🎲 colours
+// / 🌱 seed re-rolls, queued in rerolls.json for lab/clip-reroll.mjs.
 //   node lab/clip-review.mjs [folder, default ~/Videos/rdui-examples] [port, default 5180]
 // Descriptions come from notes.json in the folder ({"file.mp4": "what it shows"}), if there is one.
 import http from 'http';
@@ -10,6 +11,7 @@ import os from 'os';
 const dir = path.resolve(process.argv[2] ?? path.join(os.homedir(), 'Videos', 'rdui-examples'));
 const port = Number(process.argv[3] ?? 5180);
 const picksFile = path.join(dir, 'picks.json');
+const rerollsFile = path.join(dir, 'rerolls.json');
 const readJson = (f, d) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } };
 
 const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -53,7 +55,7 @@ async function save() {
 }
 const rates = [];
 (async () => {
-  const [{ files, notes }, p] = await Promise.all([fetch('list').then((r) => r.json()), fetch('picks').then((r) => r.json())]);
+  const [{ files, notes, rerolls }, p] = await Promise.all([fetch('list').then((r) => r.json()), fetch('picks').then((r) => r.json())]);
   picks = p;
   document.getElementById('count').textContent = files.length + ' clips';
   for (const f of files) {
@@ -82,15 +84,24 @@ const rates = [];
     const note = $('input', { class: 'note', placeholder: 'note (optional)', value: picks[f.name]?.note ?? '' });
     let t; note.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { picks[f.name] = { ...picks[f.name], note: note.value }; save(); }, 500); });
     pickRow.append(note);
+    // re-rolls: queued here, done by lab/clip-reroll.mjs (the clip is replaced; the page reloads when it is)
+    const mine = rerolls.filter((j) => j.name === f.name && j.state !== 'done');
+    const state = $('span', { class: 'saved' }, mine.map((j) => (j.kind === 'colour' ? '🎲 ' : '🌱 ') + j.state + (j.why ? ' (' + j.why + ')' : '')).join(' · '));
+    const reroll = (kind) => fetch('reroll', { method: 'POST', body: JSON.stringify({ name: f.name, kind }) }).then((r) => {
+      state.textContent = (state.textContent ? state.textContent + ' · ' : '') + (kind === 'colour' ? '🎲 ' : '🌱 ') + (r.ok ? 'queued' : 'not queued!');
+    });
+    const rerollRow = $('div', { class: 'row' }, $('span', { class: 'label' }, 're-roll'),
+      $('button', { title: 'record this clip again with new 🎲 colours, different from these', onclick: () => reroll('colour') }, '🎲 colours'),
+      $('button', { title: 'record this clip again from a different start, keeping its colours', onclick: () => reroll('seed') }, '🌱 seed'), state);
     card.append(frame, $('div', { class: 'meta' }, $('div', { class: 'name' }, f.name), $('div', { class: 'desc' }, notes[f.name] ?? (f.size / 1e6).toFixed(1) + ' MB')),
-      $('div', { class: 'row' }, speed, zoom), pickRow);
+      $('div', { class: 'row' }, speed, zoom), pickRow, rerollRow);
     document.getElementById('grid').append(card);
     setRate(1); setZoom(1);
     v.addEventListener('loadedmetadata', () => v.playbackRate = +speed.querySelector('.on').dataset.r);
   }
   // reload when a clip or a description is added or changed (keeping the scroll position), unless a note is being typed
-  const sig = (d) => JSON.stringify([d.files.map((f) => [f.name, f.mtime]), d.notes]);
-  const was = sig({ files, notes });
+  const sig = (d) => JSON.stringify([d.files.map((f) => [f.name, f.mtime]), d.notes, d.rerolls.map((j) => j.state)]);
+  const was = sig({ files, notes, rerolls });
   setInterval(async () => {
     const d = await fetch('list').then((r) => r.json()).catch(() => null);
     if (!d || sig(d) === was || document.activeElement?.classList.contains('note')) return;
@@ -109,8 +120,24 @@ http.createServer((req, res) => {
   const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   if (url === '/') return res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(page);
   if (url === '/list') {
-    const files = fs.readdirSync(dir).filter((f) => /\.(mp4|webm)$/i.test(f)).sort().map((name) => { const st = fs.statSync(path.join(dir, name)); return { name, size: st.size, mtime: Math.round(st.mtimeMs) }; });
-    return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify({ files, notes: readJson(path.join(dir, 'notes.json'), {}) }));
+    const files = fs.readdirSync(dir).filter((f) => /^[^.].*\.(mp4|webm)$/i.test(f)).sort().map((name) => { const st = fs.statSync(path.join(dir, name)); return { name, size: st.size, mtime: Math.round(st.mtimeMs) }; });
+    return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify({ files, notes: readJson(path.join(dir, 'notes.json'), {}), rerolls: readJson(rerollsFile, []) }));
+  }
+  // a re-roll asked for (colour or seed), queued for lab/clip-reroll.mjs
+  if (url === '/reroll' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      try {
+        const { name, kind } = JSON.parse(body);
+        if (!['colour', 'seed'].includes(kind) || !fs.existsSync(path.join(dir, path.basename(name)))) throw new Error('bad re-roll');
+        const q = readJson(rerollsFile, []);
+        q.push({ name: path.basename(name), kind, at: Date.now(), state: 'queued' });
+        fs.writeFileSync(rerollsFile, JSON.stringify(q, null, 1));
+        res.writeHead(204).end();
+      } catch (e) { res.writeHead(400).end(String(e)); }
+    });
+    return;
   }
   if (url === '/picks' && req.method === 'POST') {
     let body = '';
