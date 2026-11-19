@@ -302,8 +302,9 @@ try {
   // ({} or true for the defaults): one every `every` seconds of video (3), from `from` (3), each `len` seconds long (1.5),
   // `radius` across (0.18 of the field, soft: no hard edge), at `strength` per frame (0.8); each starts 0.3 of the field
   // from the centre, heading through or near it (Dan: paint through the middle)
-  // drop: Saturable Schrödinger solitons added on a ring track while recording, moving round it (clockwise) like the ring
-  // scenes' own: one every `every` seconds of video (3), from `from` (2), on the ring at (cx, cy) radius r (fractions of
+  // drop: Saturable Schrödinger solitons added on a ring track while recording, moving round it like the ring scenes' own,
+  // turn about anticlockwise and clockwise (cw: true for all clockwise; Dan wanted to see them collide): one every
+  // `every` seconds of video (3), from `from` (2), on the ring at (cx, cy) radius r (fractions of
   // the field: 0.5, 0.5, 0.359, the track's centre line), a Gaussian packet of `amp` (2.2) and `sigma` cells (7) at wave
   // number k (0.2), random phase, at a random place on the track (where the field is quiet enough, else skipped)
   // unwall: the walls taken away partway through, from the centre out (a circle growing to the corners), so what grew
@@ -330,14 +331,16 @@ try {
       });
     }
     if (d) {
-      const { every = 3, from = 2, cx = 0.5, cy = 0.5, r = 0.359, amp = 2.2, sigma = 7, k = 0.2 } = d === true ? {} : d;
+      const { every = 3, from = 2, cx = 0.5, cy = 0.5, r = 0.359, amp = 2.2, sigma = 7, k = 0.2, cw = false } = d === true ? {} : d;
+      let dropped = 0;
       hooks.push(async (i) => {
         const t = i / fps - from;
         if (t < 0 || t % every >= 1 / fps) return;
         const sim = window.rdui.sim, rule = window.rdui.rule, w = sim.width, S4 = sim.layout.S * 4;
         const [p, q, n] = ['p', 'q', 'n'].map((c) => rule.reagents.indexOf(c));
         const th = Math.random() * 2 * Math.PI, phase = Math.random() * 2 * Math.PI;
-        const x0 = (cx + r * Math.cos(th)) * w, y0 = (cy + r * Math.sin(th)) * w, kx = -Math.sin(th) * k, ky = Math.cos(th) * k;
+        const dir = cw || dropped++ % 2 === 1 ? 1 : -1;
+        const x0 = (cx + r * Math.cos(th)) * w, y0 = (cy + r * Math.sin(th)) * w, kx = -Math.sin(th) * k * dir, ky = Math.cos(th) * k * dir;
         const R = Math.ceil(sigma * 4), side = 2 * R + 1, ox = Math.round(x0) - R, oy = Math.round(y0) - R;
         const { state } = await sim.readRegion(ox, oy, side, side);
         // (not on top of a soliton already there)
