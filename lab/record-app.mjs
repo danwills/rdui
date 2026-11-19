@@ -1,0 +1,101 @@
+// Records a clip from the real app, headless, with its own Record panel, so the video looks exactly as the app shows
+// it (the rule's or scene's view, palette and all):
+//   node lab/record-app.mjs <rule id> <out.mp4> ['{"seconds":15,"fps":60,"steps":0,"scale":2,"quality":"high","warm":0,"size":0,"palette":"","dice":0}']
+// <rule id> is as the Rules menu has it: scene:<file name>, builtin:<n>, pattern:<name>. steps 0 keeps the sim's own
+// steps/frame; scale 0.5, 1, 2 or 4 (times the grid); quality light, good or high; warm: sim steps to run before
+// recording (the main loop runs them, so it's rough); size: the grid (0 keeps the rule's or scene's own); palette: a
+// palette by name; dice: press 🎲 that many times for new custom colours (random, so each run differs; blend: seconds to
+// wait for them, default 4).
+// Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
+import puppeteer from 'puppeteer-core';
+import fs from 'fs';
+import path from 'path';
+import { createServer } from 'vite';
+
+const [id, out, cfgText = '{}'] = process.argv.slice(2);
+if (!id || !out) throw new Error('usage: node lab/record-app.mjs <rule id> <out.mp4> [config]');
+const cfg = { seconds: 15, fps: 60, steps: 0, scale: 2, quality: 'high', warm: 0, size: 0, ...JSON.parse(cfgText) };
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const dlDir = fs.mkdtempSync(path.join(root, 'lab', 'out', 'rec-'));
+const server = await createServer({ root, logLevel: 'error', server: { port: 0, hmr: false, watch: null } });
+await server.listen();
+const browser = await puppeteer.launch({
+  executablePath: process.env.CHROME ?? '/usr/bin/google-chrome-stable',
+  headless: 'new',
+  protocolTimeout: 0,
+  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=vulkan', '--disable-vulkan-surface'],
+});
+try {
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1400, height: 900 });
+  page.on('pageerror', (e) => console.log('pageerror:', e.message));
+  const cdp = await page.createCDPSession();
+  await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: dlDir });
+  await page.goto(new URL(`#rule=${encodeURIComponent(id)}`, server.resolvedUrls.local[0]).href, { waitUntil: 'networkidle0', timeout: 120000 });
+  await page.waitForSelector('header h1');
+  const ok = await page.evaluate(() => !document.body.innerText.includes('WebGPU'));
+  if (!ok) console.log('warning: the page mentions WebGPU (unavailable?)');
+  if (cfg.size) await page.evaluate((n) => {
+    const sel = [...document.querySelectorAll('select')].find((s) => [...s.options].some((o) => o.value === String(n)) && /size|grid/i.test(s.title + s.closest('label')?.textContent));
+    if (!sel) throw new Error('no grid size control found');
+    sel.value = String(n);
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  }, cfg.size);
+  // start the rule or scene over, let it run for warm-up, then record from there
+  await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '⟲').click());
+  // (the restart rebuilds the sim: recording straight away caught the old one, destroyed, and gave black frames)
+  await new Promise((r) => setTimeout(r, 2000));
+  // colours: a named palette (as the View section lists it), and/or 🎲 pressed `dice` times (new custom colours, which
+  // blend in over a few seconds, so wait for them)
+  // (the palette button opens a grid of tiles: click the named one, the first of that name, then close the grid)
+  if (cfg.palette) await page.evaluate((name) => {
+    document.querySelector('button.pal-button').click();
+    const tile = [...document.querySelectorAll('.pal-tile')].find((t) => t.querySelector('.pal-name')?.textContent === name);
+    if (!tile) throw new Error(`no palette called ${name}`);
+    tile.click();
+    [...document.querySelectorAll('.pal-head button')].find((b) => b.textContent === '✕').click();
+  }, cfg.palette);
+  for (let i = 0; i < (cfg.dice || 0); i++) await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '🎲').click());
+  if (cfg.dice) await new Promise((r) => setTimeout(r, (cfg.blend ?? 4) * 1000));
+  if (cfg.warm) await page.evaluate(async (n) => {
+    const steps = () => Number(document.body.innerText.match(/([\d,]+)\s*steps/)?.[1].replace(/,/g, '') ?? 0);
+    const t0 = performance.now();
+    while (steps() < n && performance.now() - t0 < 600000) await new Promise((r) => setTimeout(r, 200));
+  }, cfg.warm);
+  const status = await page.evaluate(async (c) => {
+    const sec = [...document.querySelectorAll('section')].find((s) => s.querySelector('h2')?.textContent === 'Record');
+    if (!sec) throw new Error('no Record section');
+    const set = (el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
+    const byTitle = (t) => sec.querySelector(`input[title^="${t}"]`);
+    set(byTitle('length of the video'), c.seconds);
+    set(byTitle('video frames per second'), c.fps);
+    set(byTitle('sim steps between video frames'), c.steps || '');
+    const [scale, quality] = sec.querySelectorAll('select');
+    set(scale, c.scale);
+    set(quality, { light: 0.1, good: 0.25, high: 0.6 }[c.quality] ?? c.quality);
+    const go = [...sec.querySelectorAll('button')].find((b) => b.textContent.includes('Record'));
+    go.click();
+    const t0 = performance.now();
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 500));
+      const s = [...sec.querySelectorAll('p.hint')].map((p) => p.textContent).find((t) => /^(Saved|Stopped|Couldn't)/.test(t));
+      if (s) return s;
+      if (performance.now() - t0 > 3600000) return 'timed out';
+    }
+  }, cfg);
+  console.log(status);
+  // the download lands a moment after the status line
+  let file = null;
+  for (let i = 0; i < 100 && !file; i++) {
+    file = fs.readdirSync(dlDir).find((f) => f.endsWith('.mp4'));
+    if (!file) await new Promise((r) => setTimeout(r, 200));
+  }
+  if (!file) throw new Error('no video was downloaded');
+  fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
+  fs.copyFileSync(path.join(dlDir, file), out);
+  console.log(`${out}: ${(fs.statSync(out).size / 1e6).toFixed(1)} MB`);
+} finally {
+  await browser.close();
+  await server.close();
+  fs.rmSync(dlDir, { recursive: true, force: true });
+}
