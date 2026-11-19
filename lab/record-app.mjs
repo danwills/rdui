@@ -118,28 +118,28 @@ try {
   // 🎲 pressed `dice` times: new custom colours, fitted to the field as it is then, so first let the pattern grow
   // (diceWarm seconds, default 6: pressed at the start, they fitted a near-empty field and came out dim), then wait for
   // them to blend in (blend, default 4). The restart below keeps them (the same rule, reloaded)
-  if (cfg.dice) {
-    await new Promise((r) => setTimeout(r, (cfg.diceWarm ?? 6) * 1000));
+  // plain blue: the share of a clip's last frame in dark, saturated blue (Dan prefers light blue; the custom palette's
+  // exponent turns light blues into plain primary blue): 🎲 rolled again past `blue` (default 0.1)
+  const plainBlue = (f) => {
+    const px = execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'scale=64:64:flags=area', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
+    let n = 0;
+    for (let i = 0; i < px.length; i += 3) {
+      const [r, g, b] = [px[i], px[i + 1], px[i + 2]];
+      if (b > 110 && b > 1.6 * Math.max(r, g, 1) && 0.2126 * r + 0.7152 * g + 0.0722 * b < 75) n++;
+    }
+    return n / (px.length / 3);
+  };
+  async function rollColours(first = true) {
+    if (first) await new Promise((r) => setTimeout(r, (cfg.diceWarm ?? 6) * 1000));
     // every reagent coloured (enable all; else only the shown one is, and Gray-Scott's background, all a, stays black),
     // unless channels: 'shown'
-    if (cfg.channels !== 'shown') await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent === 'Enable All' || b.textContent === 'enable all').click());
+    if (first && cfg.channels !== 'shown') await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent === 'Enable All' || b.textContent === 'enable all').click());
     // 🎲 can land dim (it aims each reagent's typical value at 20-45% brightness, so it all depends on the fit): roll, record
     // a 0.3 s probe, measure its mean brightness (0-255), and roll again until it reaches `bright` (default 32), at most
     // `tries` times (default 20; then it keeps the last roll). avoid: mean colours ([r, g, b], 0-255) of earlier takes to
     // stay `apart` from (default 60, as RGB distance), for variants in clearly different colours; the take's own mean
     // colour is printed (colour: [r,g,b]) to pass on
     const brightness = (f) => Number(/YAVG=([\d.]+)/.exec(execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' }))?.[1] ?? 0);
-    // plain blue: the share of the frame in dark, saturated blue (Dan prefers light blue; the custom palette's exponent
-    // turns light blues into plain primary blue), rolled again past `blue` (default 0.1)
-    const plainBlue = (f) => {
-      const px = execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'scale=64:64:flags=area', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-']);
-      let n = 0;
-      for (let i = 0; i < px.length; i += 3) {
-        const [r, g, b] = [px[i], px[i + 1], px[i + 2]];
-        if (b > 110 && b > 1.6 * Math.max(r, g, 1) && 0.2126 * r + 0.7152 * g + 0.0722 * b < 75) n++;
-      }
-      return n / (px.length / 3);
-    };
     const meanColour = (f) => [...execFileSync('ffmpeg', ['-v', 'error', '-sseof', '-0.1', '-i', f, '-frames:v', '1', '-vf', 'scale=1:1:flags=area', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'])];
     const roll = async () => {
       for (let i = 0; i < cfg.dice; i++) await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '🎲').click());
@@ -158,6 +158,7 @@ try {
     }
     console.log(`colour: ${JSON.stringify(colour)}`);
   }
+  if (cfg.dice) await rollColours();
   // a saved look (a take's palette, from its recipe, for a re-roll of the seed only): put back after the field has grown
   // diceWarm seconds (so the rule's own first auto-randomise is over), then blend
   if (cfg.look && !cfg.dice) {
@@ -280,7 +281,16 @@ try {
     }
     window.rdui.eachFrame = hooks.length ? async (i) => { for (const h of hooks) await h(i); } : null;
   }, cfg.erase ?? false, cfg.drop ?? false, cfg.fps);
-  const file = await recordClip(cfg);
+  let file = await recordClip(cfg);
+  // (the probe is early on, while the pattern grows: a clip can still end up plain blue. Rolled again on the grown field
+  // and recorded again, at most 3 times)
+  for (let redo = 0; cfg.dice && redo < 3 && plainBlue(file) > (cfg.blue ?? 0.1); redo++) {
+    console.log(`the clip ends ${(plainBlue(file) * 100).toFixed(0)}% plain blue: 🎲 again`);
+    await rollColours(false);
+    await restart();
+    await setUp();
+    file = await recordClip(cfg);
+  }
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
   fs.copyFileSync(file, out);
   // the recipe (rule, config and look), beside the clip in .recipes/, for re-rolls (lab/clip-reroll.mjs)
