@@ -47,6 +47,7 @@ details.done > summary { cursor: pointer; padding: 10px 16px; color: var(--muted
 <span class="row" style="padding:0"><span class="label">all at</span><button data-all="1">1×</button><button data-all="2">2×</button><button data-all="4">4×</button></span>
 <span class="saved" id="saved"></span></header>
 <main id="grid" class="grid"></main>
+<details class="done" id="queued-box"><summary></summary><div class="grid" id="queued-grid"></div></details>
 <details class="done" id="maybe-box"><summary></summary><div class="grid" id="maybe-grid"></div></details>
 <details class="done" id="yes-box"><summary></summary><div class="grid" id="yes-grid"></div></details>
 <details class="done" id="no-box"><summary></summary><div class="grid" id="no-grid"></div></details>
@@ -58,8 +59,9 @@ async function save() {
   document.getElementById('saved').textContent = r.ok ? 'saved ' + new Date().toLocaleTimeString() : 'not saved!';
 }
 const rates = [];
-// picked clips go out of the way, into folded sections at the bottom (maybe, yes, no); unpicked ones stay in the main grid
-const picks3 = ['maybe', 'yes', 'no'];
+// clips waiting on a re-roll and picked ones go out of the way, into folded sections at the bottom (queued, maybe, yes, no),
+// leaving the main grid to those still needing a decision
+const picks3 = ['queued', 'maybe', 'yes', 'no'];
 const place = (card, k) => {
   document.getElementById(picks3.includes(k) ? k + '-grid' : 'grid').append(card);
   for (const s of picks3) {
@@ -96,7 +98,7 @@ for (const s of picks3) {
       picks[f.name] = { ...picks[f.name], pick: picks[f.name]?.pick === k ? undefined : k };
       card.className = 'card ' + (picks[f.name].pick ?? '');
       pickRow.querySelectorAll('.pick').forEach((b) => b.classList.toggle('on', b.dataset.k === picks[f.name].pick));
-      place(card, picks[f.name].pick);
+      place(card, waiting ? 'queued' : picks[f.name].pick);
       save();
     };
     const pickRow = $('div', { class: 'row' }, ...['yes', 'maybe', 'no'].map((k) => $('button', { class: 'pick ' + k + (picks[f.name]?.pick === k ? ' on' : ''), 'data-k': k, onclick: () => pick(k) }, k)));
@@ -105,16 +107,18 @@ for (const s of picks3) {
     pickRow.append(note);
     // re-rolls: queued here, done by lab/clip-reroll.mjs (the clip is replaced; the page reloads when it is)
     const mine = rerolls.filter((j) => j.name === f.name && j.state !== 'done');
+    let waiting = mine.some((j) => j.state === 'queued' || j.state === 'recording');
     const state = $('span', { class: 'saved' }, mine.map((j) => (j.kind === 'colour' ? '🎲 ' : '🌱 ') + j.state + (j.why ? ' (' + j.why + ')' : '')).join(' · '));
     const reroll = (kind) => fetch('reroll', { method: 'POST', body: JSON.stringify({ name: f.name, kind }) }).then((r) => {
       state.textContent = (state.textContent ? state.textContent + ' · ' : '') + (kind === 'colour' ? '🎲 ' : '🌱 ') + (r.ok ? 'queued' : 'not queued!');
+      if (r.ok) { waiting = true; place(card, 'queued'); }
     });
     const rerollRow = $('div', { class: 'row' }, $('span', { class: 'label' }, 're-roll'),
       $('button', { title: 'record this clip again with new 🎲 colours, different from these', onclick: () => reroll('colour') }, '🎲 colours'),
       $('button', { title: 'record this clip again from a different start, keeping its colours', onclick: () => reroll('seed') }, '🌱 seed'), state);
     card.append(frame, $('div', { class: 'meta' }, $('div', { class: 'name' }, f.name), $('div', { class: 'desc' }, notes[f.name] ?? (f.size / 1e6).toFixed(1) + ' MB')),
       $('div', { class: 'row' }, speed, zoom), pickRow, rerollRow);
-    place(card, picks[f.name]?.pick);
+    place(card, waiting ? 'queued' : picks[f.name]?.pick);
     setRate(1); setZoom(1);
     v.addEventListener('loadedmetadata', () => v.playbackRate = +speed.querySelector('.on').dataset.r);
   }
