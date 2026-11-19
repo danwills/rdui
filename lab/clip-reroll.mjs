@@ -6,8 +6,7 @@
 // re-roll keeps the take's colours (its saved look; a take without one gets new colours) and starts the rule over (rules
 // that seed at random start differently). Either way the clip keeps the start, slowed to fill the clip if the pattern
 // settles early (record-app's fit). The queue is rerolls.json in the folder: [{ name, kind, state }],
-// state queued, recording, done or failed. Recordings take turns on the GPU with other users of .gpu.lock in the folder
-// (two headless browsers recording at once lost their devices).
+// state queued, recording, done or failed. Recordings share the GPU's slots with other recorders (lab/gpu-slot.sh).
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -45,7 +44,7 @@ for (;;) {
   if (job.kind === 'colour' && custom) Object.assign(cfg, { dice: 1, avoid, tries: 25 });
   if (job.kind === 'seed' && !cfg.palette) Object.assign(cfg, look?.custom ? { dice: 0, look } : { dice: 1 });
   const tmp = path.join(dir, '.reroll-' + job.name);
-  const r = spawnSync('flock', [path.join(dir, '.gpu.lock'), 'node', 'lab/record-app.mjs', recipe.id, tmp, JSON.stringify(cfg)], { cwd: root, encoding: 'utf8', timeout: 1800000 });
+  const r = spawnSync('lab/gpu-slot.sh', [dir, 'node', 'lab/record-app.mjs', recipe.id, tmp, JSON.stringify(cfg)], { cwd: root, encoding: 'utf8', timeout: 1800000 });
   if (r.status !== 0 || !fs.existsSync(tmp)) { update(job.at, { state: 'failed', why: ((r.stderr || '') + (r.stdout || '')).split('\n').filter((l) => /Error|lost/.test(l)).pop()?.slice(0, 160) ?? 'no video' }); continue; }
   fs.mkdirSync(path.join(dir, 'old'), { recursive: true });
   fs.renameSync(clip, path.join(dir, 'old', `${base}-${new Date().toISOString().replace(/[:.]/g, '-')}.mp4`));
