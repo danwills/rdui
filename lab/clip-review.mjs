@@ -47,6 +47,7 @@ details.done > summary { cursor: pointer; padding: 10px 16px; color: var(--muted
 <span class="row" style="padding:0"><span class="label">all at</span><button data-all="1">1×</button><button data-all="2">2×</button><button data-all="4">4×</button></span>
 <span class="saved" id="saved"></span></header>
 <main id="grid" class="grid"></main>
+<details class="done" id="maybe-box"><summary></summary><div class="grid" id="maybe-grid"></div></details>
 <details class="done" id="yes-box"><summary></summary><div class="grid" id="yes-grid"></div></details>
 <details class="done" id="no-box"><summary></summary><div class="grid" id="no-grid"></div></details>
 <script>
@@ -57,15 +58,16 @@ async function save() {
   document.getElementById('saved').textContent = r.ok ? 'saved ' + new Date().toLocaleTimeString() : 'not saved!';
 }
 const rates = [];
-// yes and no clips go out of the way, into their folded sections at the bottom (maybe and unpicked stay in the main grid)
+// picked clips go out of the way, into folded sections at the bottom (maybe, yes, no); unpicked ones stay in the main grid
+const picks3 = ['maybe', 'yes', 'no'];
 const place = (card, k) => {
-  document.getElementById(k === 'yes' || k === 'no' ? k + '-grid' : 'grid').append(card);
-  for (const s of ['yes', 'no']) {
+  document.getElementById(picks3.includes(k) ? k + '-grid' : 'grid').append(card);
+  for (const s of picks3) {
     const n = document.getElementById(s + '-grid').children.length, box = document.getElementById(s + '-box');
     box.hidden = !n; box.querySelector('summary').textContent = s + ' (' + n + ')';
   }
 };
-for (const s of ['yes', 'no']) {
+for (const s of picks3) {
   const box = document.getElementById(s + '-box');
   box.open = sessionStorage.getItem(s + '-open') === '1';
   box.addEventListener('toggle', () => sessionStorage.setItem(s + '-open', box.open ? '1' : ''));
