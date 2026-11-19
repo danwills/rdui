@@ -11,6 +11,8 @@
 // for them, default 4; restart: false records on from the grown field instead of starting over; look: a palette saved in
 // a recipe, put back instead of rolling (the recipe, .recipes/<out>.json beside the clip, is written for every take);
 // liveSteps: the live loop's steps/frame before recording (heavy scenes lose the GPU device headless at their own).
+// Clips start at the very start (the sim paused through the restart). fit: true slows a pattern that settles early, so
+// its growth fills the clip (see below).
 // Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
@@ -151,15 +153,25 @@ try {
     await new Promise((r) => setTimeout(r, (cfg.blend ?? 4) * 1000));
   }
   // start the rule or scene over (unless restart: false), then record from there
-  if (cfg.restart !== false) {
-    await page.evaluate(() => [...document.querySelectorAll('header button')].find((b) => b.textContent === '⟲').click());
+  // (paused first, so the clip starts at the very start: the live loop ran on through the wait below and cut it off; the
+  // recorder steps the sim itself)
+  const restart = async () => {
+    await page.evaluate(() => {
+      window.rdui.settings.running = false;
+      [...document.querySelectorAll('header button')].find((b) => b.textContent === '⟲').click();
+    });
     // (the restart rebuilds the sim: recording straight away caught the old one, destroyed, and gave black frames)
     await new Promise((r) => setTimeout(r, 2000));
-  }
-  await liveSteps(cfg.liveSteps); // (the restart puts the scene's own back)
-  // (the restart reloads the rule, putting its own parameters back: set them again)
-  await setParams();
-  await setPreset();
+    await page.evaluate(() => { window.rdui.settings.running = false; window.rdui.sync(); });
+  };
+  // (the restart reloads the rule, putting its own parameters and steps/frame back: set them again after each)
+  const setUp = async () => {
+    await liveSteps(cfg.liveSteps);
+    await setParams();
+    await setPreset();
+  };
+  if (cfg.restart !== false) await restart();
+  await setUp();
   // a named palette (the palette button opens a grid of tiles: click the named one, the first of that name, then close
   // the grid)
   if (cfg.palette) await page.evaluate((name) => {
@@ -169,11 +181,37 @@ try {
     tile.click();
     [...document.querySelectorAll('.pal-head button')].find((b) => b.textContent === '✕').click();
   }, cfg.palette);
+  // (the live loop runs the warm-up: unpaused for it)
   if (cfg.warm) await page.evaluate(async (n) => {
+    window.rdui.settings.running = true;
     const steps = () => Number(document.body.innerText.match(/([\d,]+)\s*steps/)?.[1].replace(/,/g, '') ?? 0);
     const t0 = performance.now();
     while (steps() < n && performance.now() - t0 < 600000) await new Promise((r) => setTimeout(r, 200));
+    window.rdui.settings.running = false;
   }, cfg.warm);
+  // fit: a pattern that settles early in the clip is recorded again at fewer steps per frame, so its growth fills the clip.
+  // A light probe of the whole clip at the sim's own steps (or steps) finds when it settles: the frame-to-frame change
+  // (mean abs difference), averaged over each second, stays under `still` (default 0.15) of its busiest second from then
+  // on (an absolute level didn't work: a maze drifts on slowly, and the video's own noise is about as big). If that's
+  // before 60% of the clip, steps drop so it lands at about 75% (at least 1); printed as `fit: settles at Ts, steps A -> B`
+  const ownSteps = cfg.steps;
+  if (cfg.fit && cfg.restart !== false && !cfg.warm) {
+    const own = cfg.steps || await page.evaluate(() => window.rdui.settings.stepsPerFrame);
+    const probe = await recordClip({ ...cfg, steps: own, scale: 1, quality: 'light' }, true);
+    const diffs = execFileSync('ffmpeg', ['-v', 'error', '-i', probe, '-vf', 'tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' })
+      .split('\n').map((l) => /YAVG=([\d.]+)/.exec(l)?.[1]).filter(Boolean).map(Number);
+    const secs = [];
+    for (let i = 0; i < diffs.length; i += cfg.fps) { const d = diffs.slice(i, i + cfg.fps); secs.push(d.reduce((a, b) => a + b, 0) / d.length); }
+    const quiet = (cfg.still ?? 0.15) * Math.max(...secs);
+    let last = secs.length - 1;
+    while (last >= 0 && secs[last] < quiet) last--;
+    const settles = last + 1;
+    const steps = settles < 0.6 * cfg.seconds ? Math.max(1, Math.round(own * Math.max(settles, 0.5) / (0.75 * cfg.seconds))) : own;
+    console.log(`fit: settles at ${settles.toFixed(1)}s, steps ${own} -> ${steps}`);
+    cfg.steps = steps;
+    await restart();
+    await setUp();
+  }
   const file = await recordClip(cfg);
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
   fs.copyFileSync(file, out);
@@ -184,7 +222,8 @@ try {
   });
   const recipes = path.join(path.dirname(path.resolve(out)), '.recipes');
   fs.mkdirSync(recipes, { recursive: true });
-  const { avoid: _, look: __, ...keep } = cfg;
+  // (with fit, the steps it started from, so a re-roll fits afresh; fitted: what it chose)
+  const { avoid: _, look: __, ...keep } = { ...cfg, ...(cfg.fit && { steps: ownSteps, fitted: cfg.steps }) };
   fs.writeFileSync(path.join(recipes, path.basename(out, '.mp4') + '.json'), JSON.stringify({ id, cfg: keep, look }, null, 1));
   console.log(`${out}: ${(fs.statSync(out).size / 1e6).toFixed(1)} MB`);
 } finally {

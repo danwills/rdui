@@ -3,8 +3,9 @@
 // old/ (as <clip>-<time>.mp4).
 //   node lab/clip-reroll.mjs [folder, default ~/Videos/rdui-examples]
 // A colour re-roll rolls 🎲 again, kept apart from the take's colours (and from the takes it has replaced); a seed
-// re-roll keeps the take's colours (its saved look; a take without one gets new colours) and records on from the field
-// grown a random 10-60 s instead of from the start. The queue is rerolls.json in the folder: [{ name, kind, state }],
+// re-roll keeps the take's colours (its saved look; a take without one gets new colours) and starts the rule over (rules
+// that seed at random start differently). Either way the clip keeps the start, slowed to fill the clip if the pattern
+// settles early (record-app's fit). The queue is rerolls.json in the folder: [{ name, kind, state }],
 // state queued, recording, done or failed. Recordings take turns on the GPU with other users of .gpu.lock in the folder
 // (two headless browsers recording at once lost their devices).
 import fs from 'fs';
@@ -35,17 +36,14 @@ for (;;) {
   update(job.at, { state: 'recording' });
   console.log(job.kind, job.name);
   const { look, ...cfgRest } = { ...recipe.cfg, look: recipe.look };
-  const cfg = { ...cfgRest };
+  // (older takes recorded on from a grown field, cutting off the start: start over instead)
+  const { restart: _r, diceWarm: _d, warm: _w, ...cfgStart } = cfgRest;
+  const cfg = { ...cfgStart, fit: true };
   // the colours to stay apart from: this take's and those it replaced
   const avoid = [meanColour(clip), ...(recipe.replaced ?? [])];
   const custom = !cfg.palette;
   if (job.kind === 'colour' && custom) Object.assign(cfg, { dice: 1, avoid, tries: 25 });
-  if (job.kind === 'seed') {
-    const grow = Math.round(10 + Math.random() * 50);
-    if (cfg.palette) cfg.warm = grow * 300; // (a named palette, abyss: just further along)
-    else if (look?.custom) Object.assign(cfg, { dice: 0, look, restart: false, diceWarm: grow });
-    else Object.assign(cfg, { dice: 1, restart: false, diceWarm: grow });
-  }
+  if (job.kind === 'seed' && !cfg.palette) Object.assign(cfg, look?.custom ? { dice: 0, look } : { dice: 1 });
   const tmp = path.join(dir, '.reroll-' + job.name);
   const r = spawnSync('flock', [path.join(dir, '.gpu.lock'), 'node', 'lab/record-app.mjs', recipe.id, tmp, JSON.stringify(cfg)], { cwd: root, encoding: 'utf8', timeout: 1800000 });
   if (r.status !== 0 || !fs.existsSync(tmp)) { update(job.at, { state: 'failed', why: ((r.stderr || '') + (r.stdout || '')).split('\n').filter((l) => /Error|lost/.test(l)).pop()?.slice(0, 160) ?? 'no video' }); continue; }
