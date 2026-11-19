@@ -9,7 +9,8 @@
 // switched on (channels: 'shown' leaves them), after diceWarm seconds (default 6) so they fit a grown pattern, rolled again
 // till a probe's brightness reaches bright (default 32 of 255, at most tries times, default 20); blend: seconds to wait
 // for them, default 4; restart: false records on from the grown field instead of starting over; look: a palette saved in
-// a recipe, put back instead of rolling (the recipe, .recipes/<out>.json beside the clip, is written for every take).
+// a recipe, put back instead of rolling (the recipe, .recipes/<out>.json beside the clip, is written for every take);
+// liveSteps: the live loop's steps/frame before recording (heavy scenes lose the GPU device headless at their own).
 // Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
@@ -73,6 +74,10 @@ try {
   }, cfg.preset) : null;
   await setParams();
   await setPreset();
+  // liveSteps: the live loop's steps/frame while the field grows and the colours are rolled (headless, a heavy scene's
+  // own, e.g. 333, lost the GPU device); the recording itself keeps the scene's steps per video frame, or steps
+  const liveSteps = (n) => n && page.evaluate((n) => { window.rdui.settings.stepsPerFrame = n; window.rdui.sync(); }, n);
+  await liveSteps(cfg.liveSteps);
   // record with the Record panel's settings in c; returns the downloaded file's path
   async function recordClip(c, quiet = false) {
     for (const f of fs.readdirSync(dlDir)) fs.rmSync(path.join(dlDir, f));
@@ -151,6 +156,7 @@ try {
     // (the restart rebuilds the sim: recording straight away caught the old one, destroyed, and gave black frames)
     await new Promise((r) => setTimeout(r, 2000));
   }
+  await liveSteps(cfg.liveSteps); // (the restart puts the scene's own back)
   // (the restart reloads the rule, putting its own parameters back: set them again)
   await setParams();
   await setPreset();
