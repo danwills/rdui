@@ -3,7 +3,7 @@
 // old/ (as <clip>-<time>.mp4).
 //   node lab/clip-reroll.mjs [folder, default ~/Videos/rdui-examples]
 // A job asks for any of (kinds): colour, rolling 🎲 again, kept apart from the take's colours (and from the takes it
-// has replaced); dark (too dark), rolling till clearly brighter than the take; seed alone keeps the take's colours (its
+// has replaced); dark (too dark), rolling till clearly brighter than the take; bright (too bright), till clearly dimmer; seed alone keeps the take's colours (its
 // saved look; a take without one gets new colours). Every re-roll starts the rule over (rules that seed at random start
 // differently) and keeps the start, slowed to fill the clip if the pattern settles early (record-app's fit). The queue
 // is rerolls.json in the folder: [{ name, kinds, state }] (older jobs: kind, one of them), state queued, recording, done
@@ -44,11 +44,13 @@ for (;;) {
   // the colours to stay apart from: this take's and those it replaced
   const avoid = [meanColour(clip), ...(recipe.replaced ?? [])];
   const custom = !cfg.palette;
-  if (custom && (kinds.includes('colour') || kinds.includes('dark'))) {
+  if (custom && (kinds.includes('colour') || kinds.includes('dark') || kinds.includes('bright'))) {
     Object.assign(cfg, { dice: 1, tries: 25 });
     if (kinds.includes('colour')) cfg.avoid = avoid;
     // too dark: rolled till clearly brighter than this take
     if (kinds.includes('dark')) cfg.bright = Math.max(48, brightness(clip) + 15);
+    // too bright: till clearly dimmer (bright, the floor, kept under it)
+    if (kinds.includes('bright')) { cfg.dim = Math.max(36, brightness(clip) - 25); cfg.bright = Math.min(cfg.bright ?? 32, cfg.dim - 12); }
   } else if (custom) Object.assign(cfg, look?.custom ? { dice: 0, look } : { dice: 1 }); // (seed alone: same colours)
   const tmp = path.join(dir, '.reroll-' + job.name);
   const r = spawnSync('lab/gpu-slot.sh', [dir, 'node', 'lab/record-app.mjs', recipe.id, tmp, JSON.stringify(cfg)], { cwd: root, encoding: 'utf8', timeout: 1800000 });

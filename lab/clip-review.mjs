@@ -1,6 +1,6 @@
 // A little page for reviewing a folder of clips: each video with playback speed and crisp zoom, a description, yes /
 // no / maybe and a note, saved as you click to picks.json in the folder (so Claude can read them back), and 🎲 colours
-// / 🌱 seed / 🌑 too dark re-rolls (ticked, then request new), queued in rerolls.json for lab/clip-reroll.mjs.
+// / 🌱 seed / 🌑 too dark / ☀️ too bright re-rolls (ticked, then request new), queued in rerolls.json for lab/clip-reroll.mjs.
 //   node lab/clip-review.mjs [folder, default ~/Videos/rdui-examples] [port, default 5180]
 // Descriptions come from notes.json in the folder ({"file.mp4": "what it shows"}), if there is one.
 import http from 'http';
@@ -110,7 +110,7 @@ for (const s of picks3) {
     const mine = rerolls.filter((j) => j.name === f.name && j.state !== 'done');
     let waiting = mine.some((j) => j.state === 'queued' || j.state === 'recording');
     // what to change: toggled, then asked for together with request new
-    const icons = { colour: '🎲', seed: '🌱', dark: '🌑' };
+    const icons = { colour: '🎲', seed: '🌱', dark: '🌑', bright: '☀️' };
     const kindsOf = (j) => j.kinds ?? [j.kind];
     const state = $('span', { class: 'saved' }, mine.map((j) => kindsOf(j).map((k) => icons[k]).join('') + ' ' + j.state + (j.why ? ' (' + j.why + ')' : '')).join(' · '));
     const chosen = new Set();
@@ -127,6 +127,7 @@ for (const s of picks3) {
       $('button', { title: 'new 🎲 colours, different from these', onclick: toggle('colour') }, '🎲 colours'),
       $('button', { title: 'a different start (rules that seed at random), keeping the colours unless 🎲 is ticked too', onclick: toggle('seed') }, '🌱 seed'),
       $('button', { title: 'too dark: new colours, rolled till clearly brighter than these', onclick: toggle('dark') }, '🌑 too dark'),
+      $('button', { title: 'too bright: new colours, rolled till clearly dimmer than these', onclick: toggle('bright') }, '☀️ too bright'),
       go, state);
     card.append(frame, $('div', { class: 'meta' }, $('div', { class: 'name' }, f.name), $('div', { class: 'desc' }, notes[f.name] ?? (f.size / 1e6).toFixed(1) + ' MB')),
       $('div', { class: 'row' }, speed, zoom), pickRow, rerollRow);
@@ -158,14 +159,14 @@ http.createServer((req, res) => {
     const files = fs.readdirSync(dir).filter((f) => /^[^.].*\.(mp4|webm)$/i.test(f)).sort().map((name) => { const st = fs.statSync(path.join(dir, name)); return { name, size: st.size, mtime: Math.round(st.mtimeMs) }; });
     return res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }).end(JSON.stringify({ files, notes: readJson(path.join(dir, 'notes.json'), {}), rerolls: readJson(rerollsFile, []) }));
   }
-  // a re-roll asked for (kinds: colour, seed, dark), queued for lab/clip-reroll.mjs
+  // a re-roll asked for (kinds: colour, seed, dark, bright), queued for lab/clip-reroll.mjs
   if (url === '/reroll' && req.method === 'POST') {
     let body = '';
     req.on('data', (c) => (body += c));
     req.on('end', () => {
       try {
         const { name, kinds } = JSON.parse(body);
-        if (!kinds?.length || !kinds.every((k) => ['colour', 'seed', 'dark'].includes(k)) || !fs.existsSync(path.join(dir, path.basename(name)))) throw new Error('bad re-roll');
+        if (!kinds?.length || !kinds.every((k) => ['colour', 'seed', 'dark', 'bright'].includes(k)) || !fs.existsSync(path.join(dir, path.basename(name)))) throw new Error('bad re-roll');
         const q = readJson(rerollsFile, []);
         q.push({ name: path.basename(name), kinds, at: Date.now(), state: 'queued' });
         fs.writeFileSync(rerollsFile, JSON.stringify(q, null, 1));

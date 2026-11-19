@@ -7,7 +7,8 @@
 // palette by name (applied after dice); preset: an F/k preset by name (coral, maze...) as the field's background; set: parameters by name
 // ({"D_a":0.2}); dice: press 🎲 that many times for new custom colours (random, so each run differs), with every reagent
 // switched on (channels: 'shown' leaves them), after diceWarm seconds (default 6) so they fit a grown pattern, rolled again
-// till a probe's brightness reaches bright (default 32 of 255, at most tries times, default 20); blend: seconds to wait
+// till a probe's brightness reaches bright (default 32 of 255, at most tries times, default 20) and, with dim set, is no
+// more than dim (too bright otherwise); blend: seconds to wait
 // for them, default 4; restart: false records on from the grown field instead of starting over; look: a palette saved in
 // a recipe, put back instead of rolling (the recipe, .recipes/<out>.json beside the clip, is written for every take);
 // liveSteps: the live loop's steps/frame before recording (heavy scenes lose the GPU device headless at their own).
@@ -185,7 +186,7 @@ try {
       const near = Math.min(Infinity, ...(cfg.avoid ?? []).map((c) => Math.hypot(c[0] - colour[0], c[1] - colour[1], c[2] - colour[2])));
       const blue = plainBlue(probe);
       console.log(`🎲 ${i + 1}: brightness ${y.toFixed(0)}, plain blue ${(blue * 100).toFixed(0)}%, colour ${colour}${cfg.avoid?.length ? `, ${near.toFixed(0)} from the nearest earlier take` : ''}`);
-      if (y >= (cfg.bright ?? 32) && near >= (cfg.apart ?? 60) && blue <= (cfg.blue ?? 0.1)) break;
+      if (y >= (cfg.bright ?? 32) && y <= (cfg.dim ?? 255) && near >= (cfg.apart ?? 60) && blue <= (cfg.blue ?? 0.1)) break;
     }
     console.log(`colour: ${JSON.stringify(colour)}`);
   }
@@ -384,9 +385,10 @@ try {
   }, cfg.erase ?? false, cfg.drop ?? false, cfg.unwall ?? false, cfg.grow === true ? {} : cfg.grow ?? false, cfg.fps, cfg.seconds);
   console.log(`rule: ${await page.evaluate(() => window.rdui.rule.name)}, ${await page.evaluate(() => `${window.rdui.sim.width}²`)}`);
   let file = await recordClip(cfg);
-  // (the probe is early on, while the pattern grows: a clip can still end up plain blue, or dark (under 3/4 of bright).
+  // (the probe is early on, while the pattern grows: a clip can still end up plain blue, dark (under 3/4 of bright) or
+  // too bright (over dim + 15).
   // Rolled again on the grown field and recorded again, at most 3 times)
-  const off = (f) => plainBlue(f) > (cfg.blue ?? 0.1) || brightness(f) < 0.75 * (cfg.bright ?? 32);
+  const off = (f) => plainBlue(f) > (cfg.blue ?? 0.1) || brightness(f) < 0.75 * (cfg.bright ?? 32) || brightness(f) > (cfg.dim ?? 240) + 15;
   for (let redo = 0; cfg.dice && redo < 3 && off(file); redo++) {
     console.log(`the clip ends ${(plainBlue(file) * 100).toFixed(0)}% plain blue, brightness ${brightness(file).toFixed(0)}: 🎲 again`);
     await rollColours(false);
