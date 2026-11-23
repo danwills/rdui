@@ -4387,7 +4387,83 @@ delta_free = -carry_phi*advf + D_m*0.5*(laplacian_gfree + g*laplacian_free - fre
 delta_gfree = (g*free - gfree)/timestep;`,
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18];
+/**
+ * Mud cracking: a drying layer stuck to its bed, as phase-field fracture (Francfort–Marigo / Bourdin; the AT1
+ * threshold form of Pham et al.). Moisture m evaporates and the layer wants to shrink by shrink·(1 − m); its
+ * displacement (ux, uy) relaxes towards balance against a spring to the bed (grip), so stress builds as it dries.
+ * Damage d (0 intact, 1 cracked) grows where the stored stretch energy beats the toughness, never heals, and softens
+ * the layer by g = (1 − d)², relieving the stress beside a crack: later cracks run into earlier ones at right angles.
+ * The stress (sxx, syy, sxy) is kept as reagents so its divergence can be taken with the same gradients as the strain
+ * (so the force is the energy's own, and cracks don't creep open); stab adds smoothing against the chequered modes
+ * those gradients can't see, which would otherwise draw cracks along the diagonals (still seen with strong grip). q is a fixed disorder in toughness, so cracks start at weak spots. Cracks are smooth bands about crack_width cells wide.
+ */
+export const MUD_CRACKS: RuleDef = {
+  name: 'Mud cracks',
+  description:
+    'A drying layer on a bed, as phase-field fracture: moisture m dries (dry), the layer shrinks with it (shrink), its displacement ux, uy ' +
+    'relaxes against the stress and a spring to the bed (grip), and damage d grows where the stretch energy beats the toughness (AT1), ' +
+    'softening the layer by (1 − d)². Cracks form in sequence, later ones meeting earlier ones at right angles. Paint dry to dry it ' +
+    'where you like, grip to change the polygons\' size (stronger grip, smaller polygons) and toughness to make it harder to crack.',
+  reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy', 'q'],
+  params: [
+    { name: 'timestep', value: 0.08, min: 0, max: 0.15 },
+    { name: 'dx', value: 1, min: 0.5, max: 2 },
+    { name: 'dry', value: 0.0001, min: 0, max: 0.001 },
+    { name: 'D_m', value: 0.3, min: 0, max: 1 },
+    { name: 'shrink', value: 0.12, min: 0, max: 0.3 },
+    { name: 'grip', value: 0.001, min: 0, max: 0.02 },
+    { name: 'toughness', value: 0.04, min: 0.005, max: 0.2 },
+    { name: 'crack_width', value: 1, min: 0.6, max: 4 },
+    { name: 'crack_rate', value: 10, min: 0, max: 40 },
+    { name: 'lam', value: 1, min: 0, max: 3 },
+    { name: 'mu', value: 1, min: 0.2, max: 3 },
+    { name: 'stab', value: 1.5, min: 0, max: 3 },
+    { name: 'wet_cracks', value: 4, min: 0, max: 20 },
+  ],
+  paramHints: {
+    dry: 'How fast the moisture evaporates (paint it to dry some places first; slower drying, longer straighter cracks)',
+    D_m: 'How fast moisture spreads through the layer',
+    shrink: 'How much the layer shrinks when fully dry',
+    grip: 'The spring tying the layer to its bed: stronger grip, smaller polygons',
+    toughness: 'How much stretch energy a crack takes (times the fixed disorder q)',
+    crack_width: 'The width of a crack, in cells',
+    crack_rate: 'How fast damage grows once over the threshold',
+    lam: 'Lamé λ: resistance to change in area',
+    mu: 'Shear modulus: resistance to change in shape',
+    stab: 'Extra smoothing of the displacement: keeps the grid from going chequered and cracks from favouring the diagonals',
+    wet_cracks: 'How much faster a crack dries than intact layer',
+  },
+  paintable: ['dry', 'grip', 'toughness'],
+  explore: ['grip', 'toughness', 'shrink'],
+  formula: `float4 mm = clamp(m, 0.0, 1.0);
+float4 e0 = shrink*(1.0 - mm);
+float4 ax = x_gradient_ux + e0;
+float4 ay = y_gradient_uy + e0;
+float4 exy = 0.5*(x_gradient_uy + y_gradient_ux);
+float4 tr = ax + ay;
+float4 g = (1.0 - d)*(1.0 - d) + 0.001;
+delta_sxx = (g*(lam*tr + 2.0*mu*ax) - sxx)/timestep;
+delta_syy = (g*(lam*tr + 2.0*mu*ay) - syy)/timestep;
+delta_sxy = (g*2.0*mu*exy - sxy)/timestep;
+delta_ux = x_gradient_sxx + y_gradient_sxy + stab*mu*g*laplacian_ux - grip*ux;
+delta_uy = x_gradient_sxy + y_gradient_syy + stab*mu*g*laplacian_uy - grip*uy;
+float4 trp = max(tr, 0.0);
+float4 H = 0.5*lam*trp*trp + mu*(ax*ax + ay*ay + 2.0*exy*exy);
+float4 drive = 2.0*(1.0 - d)*H - toughness*q*(0.375/crack_width - 0.75*crack_width*laplacian_d);
+delta_d = min(crack_rate*max(drive, 0.0), (1.0 - d)/timestep);
+delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);
+delta_q = 0.0;`,
+  rest: [1, 0, 0, 0, 0, 0, 0, 1],
+  seed: [1, 0, null, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0, 0],
+  initial: [
+    { chem: 'm', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'q', op: 'overwrite', fill: { type: 'white_noise', low: 0.85, high: 1.15 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -4399,7 +4475,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18]],
-  ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
+  ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS, MUD_CRACKS]],
 ];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {

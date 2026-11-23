@@ -1,0 +1,63 @@
+{
+ "name": "Mud cracks: uneven drying",
+ "description": "A wet layer drying everywhere, a little unevenly (its drying rate and toughness vary from place to place), so cracks open here and there, run until they meet older ones, and settle into a network of polygons. Paint dry to dry some places first, or grip for smaller polygons.",
+ "rule": "builtin:58",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "q",
+   "op": "overwrite",
+   "fill": {
+    "type": "white_noise",
+    "low": 0.7,
+    "high": 1.3
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.0001
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "multiply",
+   "fill": {
+    "type": "white_noise",
+    "low": 0.3,
+    "high": 1.7
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  }
+ ],
+ "view": {
+  "reagent": "d",
+  "low": 0,
+  "high": 1,
+  "tint": "m"
+ }
+}
