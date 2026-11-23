@@ -1,0 +1,69 @@
+{
+ "name": "Mud cracks 2: uneven drying",
+ "description": "A wet layer drying everywhere, a little unevenly: its drying rate and toughness vary in smooth, rough-edged patches, so cracks open here and there, run until they meet older ones, and settle into a network of polygons. Paint dry to dry some places first, or grip for smaller polygons.",
+ "rule": "builtin:59",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "q",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.92,
+    "high": 1.08,
+    "size": 48,
+    "octaves": 5,
+    "roughness": 0.55
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.0001
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.6,
+    "high": 1.4,
+    "size": 64,
+    "octaves": 4,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  }
+ ],
+ "view": {
+  "reagent": "d",
+  "low": 0,
+  "high": 1,
+  "tint": "m"
+ }
+}
