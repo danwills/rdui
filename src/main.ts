@@ -159,9 +159,12 @@ async function init() {
    * a second for good; a randomise (🎲); and, after its channels are set up afresh, settling: every channel follows the
    * field until the ranges stop moving (under SETTLE_RATE of their span per second, over SETTLE_WINDOW), then holds.
    * Low or high changed by anything else (a slider, Fit) drops the target, and stops that channel settling.
+   * Followed ranges have a memory (customMemory, seconds): the target widens at once to take in the field's new extremes
+   * but shrinks back towards the field's own range only over that long, so a field that comes and goes in cycles (the
+   * mud cracks' weather) keeps steady colours instead of the fit chasing every swing.
    */
   const FIT_EVERY = 250, FIT_TAU = 1.2, SETTLE_WINDOW = 2, SETTLE_RATE = 0.05, SETTLE_MAX = 60;
-  let fits: { target?: [number, number]; wrote?: [number, number]; touched?: boolean }[] = [];
+  let fits: { target?: [number, number]; wrote?: [number, number]; touched?: boolean; held?: { lo: number; hi: number; t: number } }[] = [];
   let settle: { t0: number; hist: { t: number; v: ([number, number] | null)[] }[]; rate: number; worst?: string; end?: string } | null = { t0: performance.now(), hist: [], rate: Infinity };
   let fitBusy = false, fitT = 0, fitEaseT = performance.now(), rangeSyncT = 0;
   let compiled: CompiledRule = compileRule(rule);
@@ -383,8 +386,17 @@ async function init() {
       const now = performance.now(), ranges = samples.map(fitRange);
       const settling = !!settle && !settle.end;
       s.custom.forEach((c, r) => {
-        const f = (fits[r] ??= {}), range = ranges[r];
-        if (!range || !(c.auto || (settling && !f.touched))) return;
+        const f = (fits[r] ??= {});
+        let range = ranges[r];
+        if (!range || !(c.auto || (settling && !f.touched))) { f.held = undefined; return; }
+        // the remembered extremes: out at once, back in over customMemory
+        const h = f.held, back = h && s.customMemory > 0 ? 1 - Math.exp(-(now - h.t) / 1000 / s.customMemory) : 1;
+        f.held = !h ? { lo: range[0], hi: range[1], t: now } : {
+          lo: range[0] < h.lo ? range[0] : h.lo + (range[0] - h.lo) * back,
+          hi: range[1] > h.hi ? range[1] : h.hi + (range[1] - h.hi) * back,
+          t: now,
+        };
+        range = ranges[r] = [f.held.lo, f.held.hi]; // (settling watches these too)
         // a range never fitted (still 0 to 1) takes the field's at once
         if (!f.wrote && c.low === 0 && c.high === 1) { writeRange(r, ...range); f.target = undefined; }
         else f.target = range;

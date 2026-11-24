@@ -77,6 +77,8 @@ export interface Settings {
   customGamma: number;
   /** Custom palette: room left above each fitted channel's 99th percentile, as a share of its range (peaks show below full, so overlaps don't burn out). */
   customHeadroom: number;
+  /** Custom palette: seconds a fitted range takes to shrink back after the field's extremes have passed (it widens at once); 0 follows the field as it is. */
+  customMemory: number;
   /** Custom palette (7): per reagent, fitted, powered, coloured and summed. */
   custom: CustomChannel[];
   stampId: string | null;
@@ -199,6 +201,7 @@ export function defaultSettings(): Settings {
     customSaturation: 1,
     customGamma: 2.5,
     customHeadroom: 0.25,
+    customMemory: 20,
     custom: [],
     stampId: null,
     stampRot: 0,
@@ -368,6 +371,7 @@ const SETTING_HINTS: Partial<Record<keyof Settings, string>> = {
   fleckGain: 'fleck palettes: scales lightness and colourfulness (below 1: less washed out)',
   colourBlend: 'custom palette: seconds new colours take to blend in (0 = at once)',
   wanderEvery: 'custom palette: seconds between wander\'s randomises',
+  customMemory: 'custom palette: how long a range that follows the field (Auto, settling) remembers its extremes: it widens at once for anything brighter or darker, but shrinks back only over this many seconds, so fields that come and go in cycles (weather, seasons, pulses) keep steady colours instead of pulsing; 0 follows the field as it is now',
   customHeadroom: 'custom palette: room left above each reagent\'s brightest values when its range is fitted (Auto, settling, Fit, 🎲), as a share of its range: 0.25 shows the brightest 1% at 80%, so overlapping reagents don\'t burn out to white; takes effect at the next fit',
   customGamma: 'custom palette: the summed colour raised to this power first (above 1 darkens the mid-tones)',
   customContrast: 'custom palette: contrast about mid-grey (1 = as is)',
@@ -842,7 +846,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const gradeRows = el('div', {}, slider('blend (s)', 'colourBlend', 0, 10, 0.1, 1),
     el('div', { class: 'checks' }, checkbox('wander', 'customWander', 'randomise the colours by themselves every so often (each blending in over blend)'),
       checkbox('true colours', 'customTrueColours', '🎲 picks colours as they\'ll show: the exponent pushes colours towards primaries (light blue comes out plain blue), and this undoes that for the colours 🎲 picks, so they come out lighter and softer (at each 🎲, for the exponent then)')),
-    slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('headroom', 'customHeadroom', 0, 2, 0.01, 2), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2, undefined, () => rc.rule().view.customGamma ?? 2.5),
+    slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('headroom', 'customHeadroom', 0, 2, 0.01, 2), slider('memory (s)', 'customMemory', 0, 120, 0.5, 1), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2, undefined, () => rc.rule().view.customGamma ?? 2.5),
       slider('contrast', 'customContrast', 0.5, 3, 0.01, 2, undefined, () => rc.rule().view.customContrast ?? 1.2),
       slider('saturation', 'customSaturation', 0, 3, 0.01, 2, undefined, () => rc.rule().view.customSaturation ?? 1));
   let customKey = '';
