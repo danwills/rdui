@@ -4470,6 +4470,7 @@ export const MUD_CRACKS: RuleDef = {
     wet_cracks: 'How much faster a crack dries than intact layer',
   },
   paintable: ['dry', 'grip', 'toughness'],
+  fitFloor: { m: 0.3, d: 0.5, ux: 0.5, uy: 0.5, sxx: 0.05, syy: 0.05, sxy: 0.03 },
   explore: ['grip', 'toughness', 'shrink'],
   formula: `float4 mm = clamp(m, 0.0, 1.0);
 float4 e0 = shrink*(1.0 - mm);
@@ -4538,6 +4539,7 @@ export const MUD_CRACKS_2: RuleDef = {
     wet_cracks: 'How much faster a crack dries than intact layer',
   },
   paintable: ['dry', 'grip', 'toughness'],
+  fitFloor: { m: 0.3, d: 0.5, ux: 0.5, uy: 0.5, sxx: 0.05, syy: 0.05, sxy: 0.03 },
   explore: ['grip', 'toughness', 'shrink'],
   formula: `float4 mm = clamp(m, 0.0, 1.0);
 float4 e0 = shrink*(1.0 - mm);
@@ -4625,6 +4627,7 @@ export const MUD_CRACKS_3: RuleDef = {
     scar_weak: 'How much weaker a healed crack is than mud that never cracked',
   },
   paintable: ['dry', 'grip', 'toughness', 'grain'],
+  fitFloor: { m: 0.3, d: 0.5, ux: 0.5, uy: 0.5, sxx: 0.05, syy: 0.05, sxy: 0.03, scar: 0.5 },
   explore: ['grip', 'toughness', 'aniso'],
   formula: `float4 mm = clamp(m, 0.0, 1.0);
 float4 e0 = shrink*(1.0 - mm);
@@ -4732,6 +4735,7 @@ export const MUD_CRACKS_4: RuleDef = {
     drift: 'How fast the grain turns (radians per unit of time), so later cracks run in new directions',
   },
   paintable: ['dry', 'grip', 'toughness', 'grain', 'weather'],
+  fitFloor: { m: 0.3, d: 0.5, ux: 0.5, uy: 0.5, sxx: 0.05, syy: 0.05, sxy: 0.03, scar: 0.5 },
   explore: ['grip', 'toughness', 'aniso'],
   formula: `float4 mm = clamp(m, 0.0, 1.0);
 float4 e0 = shrink*(1.0 - mm);
@@ -4845,6 +4849,7 @@ export const MUD_CRACKS_5: RuleDef = {
     grit: 'The mud\'s fine, rough texture (0–1, painted as rough noise to start): where crumbly mud cracks and crumbles first',
   },
   paintable: ['dry', 'grip', 'toughness', 'grain', 'weather', 'crumble', 'grit'],
+  fitFloor: { m: 0.3, d: 0.5, ux: 0.5, uy: 0.5, sxx: 0.05, syy: 0.05, sxy: 0.03, scar: 0.5 },
   explore: ['grip', 'toughness', 'crumble'],
   formula: `float4 mm = clamp(m, 0.0, 1.0);
 float4 e0 = shrink*(1.0 - mm);

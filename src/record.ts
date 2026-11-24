@@ -5,6 +5,7 @@
 // frame, as its own sequence of float EXR images (the raw values, no palette).
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
 import { encodeEXR, ZipWriter } from './exr';
+import { keepRecording, openRecordings } from './recordings';
 import type { Simulation, ViewOptions } from './sim';
 import { el, section, button } from './ui';
 import { ladder } from './ladder';
@@ -228,15 +229,22 @@ export function recordSection(env: RecordEnv) {
           await sink.write(r, `${r}.${num}.exr`, await encodeEXR(sim.width, sim.height, img, o.exr === 'half'));
         }));
       } : undefined;
+      let frames = 0;
       const blob = await recordVideo(env.device, sim, env.view, o, (d, n) => {
+        frames = d;
         bar.value = d / n;
         const left = ((performance.now() - t0) / d) * (n - d) / 1000;
         status.textContent = `frame ${d} of ${n}${d < n ? ` · about ${left < 90 ? `${Math.ceil(left)} s` : `${Math.ceil(left / 60)} min`} left` : ''}`;
       }, () => stop, env.eachFrame, saveState);
       download(blob, `${stem}.mp4`);
       const zipped = sink ? await sink.finish() : 0;
-      status.textContent = `${stop ? 'Stopped early: saved' : 'Saved'} ${(blob.size / 1e6).toFixed(1)} MB in ${((performance.now() - t0) / 1000).toFixed(0)} s.`
-        + (sink ? ` The EXRs are in ${sink.where}${zipped ? ` (${(zipped / 1e6).toFixed(1)} MB)` : ''}.` : '');
+      const even = (v: number) => Math.max(2, Math.round(v / 2) * 2);
+      const kept = await keepRecording(blob, {
+        file: `${stem}.mp4`, rule: env.name(), date: new Date().toISOString(), seconds: +(frames / o.fps).toFixed(2), frames,
+        width: even(sim.width * o.scale), height: even(sim.height * o.scale), size: blob.size, exr: sink?.where,
+      });
+      status.textContent = `${stop ? 'Stopped early: saved' : 'Saved'} ${(blob.size / 1e6).toFixed(1)} MB in ${((performance.now() - t0) / 1000).toFixed(0)} s`
+        + `${kept ? ' (and kept: Old Recordings)' : ''}.` + (sink ? ` The EXRs are in ${sink.where}${zipped ? ` (${(zipped / 1e6).toFixed(1)} MB)` : ''}.` : '');
     } catch (e) {
       status.textContent = e instanceof DOMException && e.name === 'AbortError' ? 'Not recorded: no folder was picked for the EXRs.'
         : `Couldn't record: ${e instanceof Error ? e.message : String(e)}`;
@@ -250,6 +258,7 @@ export function recordSection(env: RecordEnv) {
   update();
   const node = section('Record',
     row('seconds', secs), row('frame rate', fps, 'fps'), stepsRow, row('size', scale), row('quality', quality),
-    exrRow, exrDepth, info, el('div', { class: 'buttons' }, go), bar, status);
+    exrRow, exrDepth, info, el('div', { class: 'buttons' }, go,
+      button('Old Recordings', () => void openRecordings(), 'watch, save again or delete the recordings kept in this browser, or play a video file from disk')), bar, status);
   return { node, update };
 }
