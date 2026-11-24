@@ -1,0 +1,88 @@
+{
+ "name": "Mud cracks 4: weather and erosion",
+ "description": "Mud under changing weather: showers swell and fade at different times in different places, so it cracks here while it heals there. Rain wears the crack walls away, widening them, then moist mud fills them back in; old cracks are remembered for a while, and the grain slowly turns, so the network keeps changing rather than repeating. Paint weather to change when places get rain, grain to steer the cracks, dry, grip or toughness.",
+ "rule": "builtin:61",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "toughness",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.92,
+    "high": 1.08,
+    "size": 48,
+    "octaves": 5,
+    "roughness": 0.55
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "grain",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 6.2832,
+    "size": 96,
+    "octaves": 3,
+    "roughness": 0.4
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.6,
+    "high": 1.4,
+    "size": 64,
+    "octaves": 4,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "weather",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 160,
+    "octaves": 3,
+    "roughness": 0.45
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  }
+ ],
+ "view": {
+  "reagent": "d",
+  "low": 0,
+  "high": 1,
+  "tint": "m"
+ }
+}
