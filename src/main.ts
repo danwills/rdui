@@ -161,7 +161,8 @@ async function init() {
    * Low or high changed by anything else (a slider, Fit) drops the target, and stops that channel settling.
    * Followed ranges have a memory (customMemory, seconds): the target widens at once to take in the field's new extremes
    * but shrinks back towards the field's own range only over that long, so a field that comes and goes in cycles (the
-   * mud cracks' weather) keeps steady colours instead of the fit chasing every swing.
+   * mud cracks' weather) keeps steady colours instead of the fit chasing every swing. This is fit v2 (customFit); v1
+   * follows the field as it is, and v3 adds the rule's fit floors (see floored).
    */
   const FIT_EVERY = 250, FIT_TAU = 1.2, SETTLE_WINDOW = 2, SETTLE_RATE = 0.05, SETTLE_MAX = 60;
   let fits: { target?: [number, number]; wrote?: [number, number]; touched?: boolean; held?: { lo: number; hi: number; t: number } }[] = [];
@@ -326,6 +327,18 @@ async function init() {
     // the high end leaves headroom above the field's peaks, so they (and reagents overlapping) don't burn out
     return hi - lo > 1e-4 * Math.max(Math.abs(lo), Math.abs(hi)) && hi - lo > 1e-30 ? [lo, hi + s.customHeadroom * (hi - lo)] : null;
   }
+  /**
+   * Fit v3: a range no narrower than the rule's fit floor for that reagent, widened about its middle, or upwards from
+   * its low end when that's at or just above 0 (a reagent that's never negative).
+   */
+  function floored(r: number, range: [number, number]): [number, number] {
+    const floor = s.customFit >= 3 ? rule.fitFloor?.[rule.reagents[r]] : undefined;
+    const [lo, hi] = range;
+    if (!floor || hi - lo >= floor) return range;
+    if (lo >= 0 && lo < floor) return [lo, lo + floor];
+    const mid = (lo + hi) / 2;
+    return [mid - floor / 2, mid + floor / 2];
+  }
   /** Fits a custom channel's low and high to its 1st-99th percentile at once; false if (nearly) uniform. */
   function fitChannel(c: CustomChannel, v: number[]) {
     const f = fitRange(v);
@@ -390,13 +403,13 @@ async function init() {
         let range = ranges[r];
         if (!range || !(c.auto || (settling && !f.touched))) { f.held = undefined; return; }
         // the remembered extremes: out at once, back in over customMemory
-        const h = f.held, back = h && s.customMemory > 0 ? 1 - Math.exp(-(now - h.t) / 1000 / s.customMemory) : 1;
+        const h = s.customFit >= 2 ? f.held : undefined, back = h && s.customMemory > 0 ? 1 - Math.exp(-(now - h.t) / 1000 / s.customMemory) : 1;
         f.held = !h ? { lo: range[0], hi: range[1], t: now } : {
           lo: range[0] < h.lo ? range[0] : h.lo + (range[0] - h.lo) * back,
           hi: range[1] > h.hi ? range[1] : h.hi + (range[1] - h.hi) * back,
           t: now,
         };
-        range = ranges[r] = [f.held.lo, f.held.hi]; // (settling watches these too)
+        range = ranges[r] = floored(r, [f.held.lo, f.held.hi]); // (settling watches these too)
         // a range never fitted (still 0 to 1) takes the field's at once
         if (!f.wrote && c.low === 0 && c.high === 1) { writeRange(r, ...range); f.target = undefined; }
         else f.target = range;
@@ -454,7 +467,7 @@ async function init() {
     on.forEach(([c, r], i) => {
       const v = samples[r];
       // the field's range as it is now (a flat one keeps the range it had): taken at once if never fitted, else eased to
-      const range = refit || (c.low === 0 && c.high === 1) ? fitRange(v) : null;
+      const fitted = refit || (c.low === 0 && c.high === 1) ? fitRange(v) : null, range = fitted && floored(r, fitted);
       if (range && c.low === 0 && c.high === 1) writeRange(r, ...range);
       else if (range) (fits[r] ??= {}).target = range;
       const [low, high] = fits[r]?.target ?? [c.low, c.high];

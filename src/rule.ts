@@ -109,6 +109,12 @@ export interface RuleDef {
   paramHints?: Record<string, string>;
   /** Parameter names stored per cell (paintable). Up to 7. */
   paintable: string[];
+  /**
+   * The custom palette's fit floors (fit v3), by reagent: the narrowest range a fit that follows the field will show,
+   * about the span the reagent's values have once things get going, so near-flat noise before then isn't stretched to
+   * full colour.
+   */
+  fitFloor?: Record<string, number>;
   /** Parameters the explorer varies by default (else the paintable ones). */
   explore?: string[];
   formula: string;
@@ -4962,6 +4968,7 @@ export const MUD_CRACKS_6: RuleDef = {
     canyon: 'How much the grit is also soft and hard rock: weak, soft places wear back much faster, carving canyons with alcoves',
   },
   paintable: ['dry', 'grip', 'toughness', 'grain', 'weather', 'crumble', 'grit'],
+  fitFloor: { m: 0.3, d: 0.5, ux: 0.5, uy: 0.5, sxx: 0.05, syy: 0.05, sxy: 0.03, scar: 0.5 },
   explore: ['grip', 'toughness', 'crumble'],
   formula: `float4 mm = clamp(m, 0.0, 1.0);
 float4 e0 = shrink*(1.0 - mm);
