@@ -315,7 +315,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
     ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2'].map((op) => `${op}_${r}`)),
-    ...rule.params.map((p) => p.name), 'timestep',
+    ...rule.params.map((p) => p.name), 'timestep', 'time',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
 
@@ -359,7 +359,8 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const add = (s: string) => L.push(s);
   // cell: grid spacing relative to full resolution (the app's resolution scale), multiplies dx
   // cell: grid spacing factor; dt: timestep factor (shorter steps on a finer grid)
-  add(`struct Info { width: u32, height: u32, cell: f32, dt: f32 };`);
+  // (time: simulated time so far, the steps times the timestep, set once per batch of steps; formulas see it as `time`)
+  add(`struct Info { width: u32, height: u32, cell: f32, dt: f32, time: f32, _t0: f32, _t1: f32, _t2: f32 };`);
   add(`@group(0) @binding(0) var<uniform> info: Info;`);
   add(`@group(0) @binding(1) var<uniform> g: array<vec4<f32>, ${globalVec4s}>;`);
   add(`@group(0) @binding(2) var<storage, read> params: array<vec4<f32>>;`);
@@ -491,6 +492,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     add(`  let v_${p.name} = ${v}${p.name === 'timestep' ? ' * info.dt' : ''};`);
   });
   if (!rule.params.some((p) => p.name === 'timestep')) add(`  let v_timestep = info.dt;`);
+  if (!rule.params.some((p) => p.name === 'time')) add(`  let v_time = info.time;`);
   add(`  // --- formula`);
   add(code.split('\n').map((l) => '  ' + l.trim()).filter((l) => l.trim()).join('\n'));
   add(`  // ---`);
@@ -4559,7 +4561,106 @@ delta_q = 0.0;`,
   view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2];
+/**
+ * Mud cracks 3: as Mud cracks 2, with wider cracks (crack_width 2, toughness doubled to keep the threshold), so their
+ * edges are smooth bands rather than steps; a grain (a paintable angle, smooth noise to start) making cracks cheaper
+ * across one direction than the other (aniso), so they wander as the grain turns; and seasons: every 1/season of
+ * time it dries, then rains for the last `wet_part` of the cycle. Moist mud fills the cracks back in (heal), but each
+ * cell remembers the worst damage it has had (scar) and is that much weaker (scar_weak), so the next drying can
+ * reopen old cracks or find new ones. The toughness disorder is now in the paintable toughness itself.
+ */
+export const MUD_CRACKS_3: RuleDef = {
+  name: 'Mud cracks 3',
+  description:
+    'Mud cracks with seasons: the layer dries and cracks, then rain wets it again and the cracks fill in, weaker than before, so the ' +
+    'next drying reopens some and makes new ones. Cracks are smooth bands, and a grain (paint grain, an angle) makes cracks cheaper across ' +
+    'one direction (aniso), so they wander as it turns. season 0 for one long drying. Paint dry, grip or toughness as in Mud cracks.',
+  reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy', 'scar'],
+  params: [
+    { name: 'timestep', value: 0.08, min: 0, max: 0.15 },
+    { name: 'dx', value: 1, min: 0.5, max: 2 },
+    { name: 'dry', value: 0.0001, min: 0, max: 0.001 },
+    { name: 'D_m', value: 0.3, min: 0, max: 1 },
+    { name: 'shrink', value: 0.12, min: 0, max: 0.3 },
+    { name: 'grip', value: 0.001, min: 0, max: 0.02 },
+    { name: 'toughness', value: 0.08, min: 0.01, max: 0.4 },
+    { name: 'crack_width', value: 2, min: 0.8, max: 5 },
+    { name: 'crack_rate', value: 10, min: 0, max: 40 },
+    { name: 'lam', value: 1, min: 0, max: 3 },
+    { name: 'mu', value: 1, min: 0.2, max: 3 },
+    { name: 'stab', value: 1.5, min: 0, max: 3 },
+    { name: 'wet_cracks', value: 4, min: 0, max: 20 },
+    { name: 'grain', value: 0, min: 0, max: 3.1416 },
+    { name: 'aniso', value: 0.5, min: 0, max: 0.95 },
+    { name: 'season', value: 0.0001, min: 0, max: 0.0005 },
+    { name: 'wet_part', value: 0.3, min: 0.05, max: 0.8 },
+    { name: 'rain', value: 0.003, min: 0, max: 0.02 },
+    { name: 'heal', value: 0.004, min: 0, max: 0.03 },
+    { name: 'scar_weak', value: 0.3, min: 0, max: 0.9 },
+  ],
+  paramHints: {
+    dry: 'How fast the moisture evaporates (paint it to dry some places first; slower drying, longer straighter cracks)',
+    D_m: 'How fast moisture spreads through the layer',
+    shrink: 'How much the layer shrinks when fully dry',
+    grip: 'The spring tying the layer to its bed: stronger grip, smaller polygons',
+    toughness: 'How much stretch energy a crack takes (painted with a little smooth noise to start)',
+    crack_width: 'The width of a crack, in cells',
+    crack_rate: 'How fast damage grows once over the threshold',
+    lam: 'Lamé λ: resistance to change in area',
+    mu: 'Shear modulus: resistance to change in shape',
+    stab: 'Extra smoothing of the displacement: keeps the grid from going chequered and cracks from favouring the diagonals',
+    wet_cracks: 'How much faster a crack dries than intact layer',
+    grain: 'The grain\'s angle (radians): cracks run more easily along it (painted as smooth noise to start)',
+    aniso: 'How strongly the grain steers cracks (0: not at all)',
+    season: 'Seasons per unit of time: each dries, then rains (0: no seasons, one long drying)',
+    wet_part: 'The part of each season that rains',
+    rain: 'How fast rain wets the layer',
+    heal: 'How fast moist mud fills cracks back in',
+    scar_weak: 'How much weaker a healed crack is than mud that never cracked',
+  },
+  paintable: ['dry', 'grip', 'toughness', 'grain'],
+  explore: ['grip', 'toughness', 'aniso'],
+  formula: `float4 mm = clamp(m, 0.0, 1.0);
+float4 e0 = shrink*(1.0 - mm);
+float4 ax = x_gradient_ux + e0;
+float4 ay = y_gradient_uy + e0;
+float4 exy = 0.5*(x_gradient_uy + y_gradient_ux);
+float4 tr = ax + ay;
+float4 g = (1.0 - d)*(1.0 - d) + 0.001;
+delta_sxx = (g*(lam*tr + 2.0*mu*ax) - sxx)/timestep;
+delta_syy = (g*(lam*tr + 2.0*mu*ay) - syy)/timestep;
+delta_sxy = (g*2.0*mu*exy - sxy)/timestep;
+delta_ux = x_gradient_sxx + y_gradient_sxy + stab*mu*g*laplacian_ux - grip*ux;
+delta_uy = x_gradient_sxy + y_gradient_syy + stab*mu*g*laplacian_uy - grip*uy;
+float4 trp = max(tr, 0.0);
+float4 H = 0.5*lam*trp*trp + mu*(ax*ax + ay*ay + 2.0*exy*exy);
+// the crack's gradient cost, anisotropic along the grain: div(A grad d), A = 1 + aniso*(cos 2θ, sin 2θ; sin 2θ, -cos 2θ)
+float4 h = 1.0/(dx*dx);
+float4 dxx = (east_d + west_d - 2.0*d)*h;
+float4 dyy = (north_d + south_d - 2.0*d)*h;
+float4 dxy = 0.25*(north_east_d - north_west_d - south_east_d + south_west_d)*h;
+float4 divA = laplacian_d + aniso*(cos(2.0*grain)*(dxx - dyy) + 2.0*sin(2.0*grain)*dxy);
+float4 tough = toughness*(1.0 - scar_weak*scar);
+float4 drive = 2.0*(1.0 - d)*H - tough*(0.375/crack_width - 0.75*crack_width*divA);
+// seasons: dry, then rain for the last wet_part of each; moist mud fills the cracks back in
+float4 phase = season*time - floor(season*time);
+float4 raining = step(1.0 - wet_part, phase)*step(1e-9, season);
+float4 filling = heal*smoothstep(0.6, 0.95, mm)*d;
+delta_d = max(min(crack_rate*max(drive, 0.0), (1.0 - d)/timestep) - filling, -d/timestep);
+delta_scar = max(d - scar, 0.0)/timestep;
+delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d)*(1.0 - raining) + rain*raining*(1.0 - mm);`,
+  rest: [1, 0, 0, 0, 0, 0, 0, 0],
+  seed: [1, 0, null, null, null, null, null, 0],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0, 0],
+  initial: [
+    { chem: 'm', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'toughness', op: 'multiply', fill: { type: 'smooth_noise', low: 0.92, high: 1.08, size: 48, octaves: 5, roughness: 0.55 }, shape: { type: 'everywhere' } },
+    { chem: 'grain', op: 'overwrite', fill: { type: 'smooth_noise', low: 0, high: 6.2832, size: 96, octaves: 3, roughness: 0.4 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -4571,7 +4672,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18]],
-  ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS, MUD_CRACKS, MUD_CRACKS_2]],
+  ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3]],
 ];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {

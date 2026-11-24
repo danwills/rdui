@@ -142,6 +142,8 @@ export class Simulation {
   private infoUniform: GPUBuffer;
   private globalsUniform: GPUBuffer;
   private cell = 1;
+  /** Simulated time so far (steps × timestep), which formulas see as `time`. */
+  private time = 0;
   /** Steps taken per requested step: > 1 when a finer grid needs shorter explicit steps (see setCellScale). */
   private substeps = 1;
   private brushUniform: GPUBuffer;
@@ -185,7 +187,7 @@ export class Simulation {
     this.params = device.createBuffer({ size: cells * P * 16, usage: storage, label: 'params' });
 
     const uniform = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
-    this.infoUniform = device.createBuffer({ size: 16, usage: uniform });
+    this.infoUniform = device.createBuffer({ size: 32, usage: uniform });
     this.globalsUniform = device.createBuffer({ size: compiled.globalVec4s * 16, usage: uniform });
     this.brushUniform = device.createBuffer({ size: BRUSH_BYTES, usage: uniform });
     this.viewUniform = device.createBuffer({ size: VIEW_BYTES, usage: uniform });
@@ -291,10 +293,11 @@ export class Simulation {
   }
 
   private writeInfo() {
-    const buf = new ArrayBuffer(16);
+    const buf = new ArrayBuffer(32);
     new Uint32Array(buf).set([this.width, this.height]);
     new Float32Array(buf)[2] = this.cell;
     new Float32Array(buf)[3] = 1 / this.substeps;
+    new Float32Array(buf)[4] = this.time;
     this.device.queue.writeBuffer(this.infoUniform, 0, buf);
   }
 
@@ -454,6 +457,10 @@ export class Simulation {
   step(enc: GPUCommandEncoder, steps: number) {
     const n = steps * this.substeps;
     if (n <= 0) return;
+    // (the time at the start of these steps, then moved on past them)
+    this.writeInfo();
+    const ts = this.compiled.globalIndex.get('timestep');
+    this.time += steps * (ts !== undefined ? this.globals[ts] : 1);
     const pass = enc.beginComputePass();
     pass.setPipeline(this.stepPipeline);
     const gx = Math.ceil(this.width / WG);

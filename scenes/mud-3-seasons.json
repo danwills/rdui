@@ -1,0 +1,73 @@
+{
+ "name": "Mud cracks 3: seasons",
+ "description": "Mud through the seasons: it dries and cracks along a wandering grain, then rain wets it and the cracks fill back in, weaker than the mud round them, so the next dry season reopens some and makes new ones, again and again. Paint dry to dry some places first, grain to steer the cracks, or grip for smaller polygons.",
+ "rule": "builtin:60",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "toughness",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.92,
+    "high": 1.08,
+    "size": 48,
+    "octaves": 5,
+    "roughness": 0.55
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "grain",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 6.2832,
+    "size": 96,
+    "octaves": 3,
+    "roughness": 0.4
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.6,
+    "high": 1.4,
+    "size": 64,
+    "octaves": 4,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  }
+ ],
+ "view": {
+  "reagent": "d",
+  "low": 0,
+  "high": 1,
+  "tint": "m"
+ }
+}
