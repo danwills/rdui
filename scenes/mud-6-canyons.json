@@ -1,0 +1,103 @@
+{
+ "name": "Mud cracks 6: canyons",
+ "description": "Crumbly mud on soft and hard rock: cracks take rough, jagged paths, and their walls wear back unevenly, fastest where the rock is soft, so lasting cracks widen into canyons with alcoves and side notches before the rain fills them in. Paint canyon or crumble to change how rough it gets, grit for where it's soft, weather, grain, dry, grip or toughness.",
+ "rule": "builtin:63",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "toughness",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.92,
+    "high": 1.08,
+    "size": 48,
+    "octaves": 5,
+    "roughness": 0.55
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "grain",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 6.2832,
+    "size": 96,
+    "octaves": 3,
+    "roughness": 0.4
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "grit",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 28,
+    "octaves": 4,
+    "roughness": 0.6
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.6,
+    "high": 1.4,
+    "size": 64,
+    "octaves": 4,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "weather",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 160,
+    "octaves": 3,
+    "roughness": 0.45
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  }
+ ],
+ "view": {
+  "reagent": "d",
+  "low": 0,
+  "high": 1,
+  "tint": "m"
+ }
+}
