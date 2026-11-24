@@ -1,0 +1,67 @@
+{
+ "name": "Mud cracks 7: leaf veins",
+ "description": "No weather: the leaf keeps growing, so its cells keep dividing, each new generation of veins thinner, meeting the old ones at T-junctions, while the oldest veins slowly thicken: thick veins with thin ones between, down to small cells. Paint grow to change how far it divides, grain to bend the veins, dry, grip or toughness.",
+ "rule": "builtin:64",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "toughness",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.92,
+    "high": 1.08,
+    "size": 48,
+    "octaves": 5,
+    "roughness": 0.55
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "grain",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 6.2832,
+    "size": 128,
+    "octaves": 3,
+    "roughness": 0.4
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.6,
+    "high": 1.4,
+    "size": 64,
+    "octaves": 4,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  }
+ ]
+}
