@@ -1,6 +1,6 @@
 {
  "name": "Mud cracks 6: canyons",
- "description": "Crumbly mud on soft and hard rock: cracks take rough, jagged paths, and their walls wear back unevenly, fastest where the rock is soft, so lasting cracks widen into canyons with alcoves and side notches before the rain fills them in. Paint canyon or crumble to change how rough it gets, grit for where it's soft, weather, grain, dry, grip or toughness.",
+ "description": "Crumbly mud on soft and hard rock: cracks take rough, jagged paths, and their walls wear back unevenly, fastest where the rock is soft, so lasting cracks widen into canyons with alcoves and side notches before the rain fills them in. Paint canyon or crumble to change how rough it gets, grit for where it's soft, weather, grain, dry, grip or toughness. Takes a while to start: the layer has to dry quite a lot before the first cracks.",
  "rule": "builtin:63",
  "size": 512,
  "start": "initial",

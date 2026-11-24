@@ -1,6 +1,6 @@
 {
  "name": "Mud cracks 5: crumbly",
- "description": "Mud cracks under changing weather, in crumbly mud: cracks take rough paths, and their walls keep crumbling away unevenly, wet or dry, so the cracks that last grow ragged and wide before the rain fills them in. Paint crumble to make some places crumblier (0 is Mud cracks 4's smooth walls), grit for where it crumbles first, weather, grain, dry, grip or toughness.",
+ "description": "Mud cracks under changing weather, in crumbly mud: cracks take rough paths, and their walls keep crumbling away unevenly, wet or dry, so the cracks that last grow ragged and wide before the rain fills them in. Paint crumble to make some places crumblier (0 is Mud cracks 4's smooth walls), grit for where it crumbles first, weather, grain, dry, grip or toughness. Takes a while to start: the layer has to dry quite a lot before the first cracks.",
  "rule": "builtin:62",
  "size": 512,
  "start": "initial",

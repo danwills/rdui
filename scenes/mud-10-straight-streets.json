@@ -1,0 +1,67 @@
+{
+ "name": "Mud cracks 10: straight streets",
+ "description": "City streets, straight: each district shrinks along its street direction first and across it later, and cracks are much tougher running askew of the grid, so long straight avenues come first and cross streets follow at right angles, ending in T-junctions; as the city grows, blocks keep dividing, and the oldest streets widen most. Starts part dried, just before the first streets. Paint district to turn a neighbourhood's grid, straight, cross_lag, grow, dry, grip or toughness.",
+ "rule": "builtin:67",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.45
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "toughness",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.92,
+    "high": 1.08,
+    "size": 48,
+    "octaves": 5,
+    "roughness": 0.55
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "district",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 320,
+    "octaves": 2,
+    "roughness": 0.3
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.6,
+    "high": 1.4,
+    "size": 64,
+    "octaves": 4,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  }
+ ]
+}

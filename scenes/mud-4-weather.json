@@ -1,6 +1,6 @@
 {
  "name": "Mud cracks 4: weather and erosion",
- "description": "Mud under changing weather: showers swell and fade at different times in different places, so it cracks here while it heals there. Rain wears the crack walls away, widening them, then moist mud fills them back in; old cracks are remembered for a while, and the grain slowly turns, so the network keeps changing rather than repeating. Paint weather to change when places get rain, grain to steer the cracks, dry, grip or toughness.",
+ "description": "Mud under changing weather: showers swell and fade at different times in different places, so it cracks here while it heals there. Rain wears the crack walls away, widening them, then moist mud fills them back in; old cracks are remembered for a while, and the grain slowly turns, so the network keeps changing rather than repeating. Paint weather to change when places get rain, grain to steer the cracks, dry, grip or toughness. Takes a while to start: the layer has to dry quite a lot before the first cracks.",
  "rule": "builtin:61",
  "size": 512,
  "start": "initial",

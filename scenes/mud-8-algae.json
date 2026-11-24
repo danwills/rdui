@@ -1,6 +1,6 @@
 {
- "name": "Mud cracks 8: city streets",
- "description": "The layer shrinks along each district's street direction first and across it later, so long parallel streets come first and cross streets follow at right angles, ending in T-junctions; as the city grows, blocks keep dividing into smaller blocks and lanes, and the oldest streets widen most. Paint district to turn a neighbourhood's grid, cross_lag for how long the first streets run alone, grow, dry, grip or toughness.",
+ "name": "Mud cracks 8: algae",
+ "description": "Plant cells: the layer shrinks along one direction first and across it later, so the first walls run side by side and the ones that follow split each cell across, ending in T-junctions; as it grows, cells keep dividing, each generation of walls thinner. Paint district to turn the cells' direction, cross_lag for how long the first walls run alone, grow, dry, grip or toughness. Takes a while to start: the layer has to dry quite a lot before the first cracks.",
  "rule": "builtin:65",
  "size": 512,
  "start": "initial",

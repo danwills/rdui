@@ -1,6 +1,6 @@
 {
  "name": "Mud cracks 7: leaf veins",
- "description": "No weather: the leaf keeps growing, so its cells keep dividing, each new generation of veins thinner, meeting the old ones at T-junctions, while the oldest veins slowly thicken: thick veins with thin ones between, down to small cells. Paint grow to change how far it divides, grain to bend the veins, dry, grip or toughness.",
+ "description": "No weather: the leaf keeps growing, so its cells keep dividing, each new generation of veins thinner, meeting the old ones at T-junctions, while the oldest veins slowly thicken: thick veins with thin ones between, down to small cells. Paint grow to change how far it divides, grain to bend the veins, dry, grip or toughness. Takes a while to start: the layer has to dry quite a lot before the first cracks.",
  "rule": "builtin:64",
  "size": 512,
  "start": "initial",

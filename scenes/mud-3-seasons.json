@@ -1,6 +1,6 @@
 {
  "name": "Mud cracks 3: seasons",
- "description": "Mud through the seasons: it dries and cracks along a wandering grain, then rain wets it and the cracks fill back in, weaker than the mud round them, so the next dry season reopens some and makes new ones, again and again. Paint dry to dry some places first, grain to steer the cracks, or grip for smaller polygons.",
+ "description": "Mud through the seasons: it dries and cracks along a wandering grain, then rain wets it and the cracks fill back in, weaker than the mud round them, so the next dry season reopens some and makes new ones, again and again. Paint dry to dry some places first, grain to steer the cracks, or grip for smaller polygons. Takes a while to start: the layer has to dry quite a lot before the first cracks.",
  "rule": "builtin:60",
  "size": 256,
  "start": "initial",

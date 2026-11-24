@@ -4439,7 +4439,8 @@ export const MUD_CRACKS: RuleDef = {
     'A drying layer on a bed, as phase-field fracture: moisture m dries (dry), the layer shrinks with it (shrink), its displacement ux, uy ' +
     'relaxes against the stress and a spring to the bed (grip), and damage d grows where the stretch energy beats the toughness (AT1), ' +
     'softening the layer by (1 − d)². Cracks form in sequence, later ones meeting earlier ones at right angles. Paint dry to dry it ' +
-    'where you like, grip to change the polygons\' size (stronger grip, smaller polygons) and toughness to make it harder to crack.',
+    'where you like, grip to change the polygons\' size (stronger grip, smaller polygons) and toughness to make it harder to crack. ' +
+    'Takes a while to start: the layer has to dry quite a lot before the first cracks.',
   reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy', 'q'],
   params: [
     { name: 'timestep', value: 0.08, min: 0, max: 0.15 },
@@ -4508,7 +4509,8 @@ export const MUD_CRACKS_2: RuleDef = {
     'relaxes against the stress and a spring to the bed (grip), and damage d grows where the stretch energy beats the toughness (AT1), ' +
     'softening the layer by (1 − d)². Cracks form in sequence, later ones meeting earlier ones at right angles. Paint dry to dry it ' +
     'where you like, grip to change the polygons\' size (stronger grip, smaller polygons) and toughness to make it harder to crack. ' +
-    'Version 2: the toughness disorder q is smooth, rough-edged noise (features ~48 cells) of ±8%, instead of ±15% from cell to cell.',
+    'Version 2: the toughness disorder q is smooth, rough-edged noise (features ~48 cells) of ±8%, instead of ±15% from cell to cell. ' +
+    'Takes a while to start: the layer has to dry quite a lot before the first cracks.',
   reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy', 'q'],
   params: [
     { name: 'timestep', value: 0.08, min: 0, max: 0.15 },
@@ -4582,7 +4584,8 @@ export const MUD_CRACKS_3: RuleDef = {
   description:
     'Mud cracks with seasons: the layer dries and cracks, then rain wets it again and the cracks fill in, weaker than before, so the ' +
     'next drying reopens some and makes new ones. Cracks are smooth bands, and a grain (paint grain, an angle) makes cracks cheaper across ' +
-    'one direction (aniso), so they wander as it turns. season 0 for one long drying. Paint dry, grip or toughness as in Mud cracks.',
+    'one direction (aniso), so they wander as it turns. season 0 for one long drying. Paint dry, grip or toughness as in Mud cracks. ' +
+    'Takes a while to start: the layer has to dry quite a lot before the first cracks.',
   reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy', 'scar'],
   params: [
     { name: 'timestep', value: 0.08, min: 0, max: 0.15 },
@@ -4682,7 +4685,8 @@ export const MUD_CRACKS_4: RuleDef = {
     'Mud cracks with weather that comes and goes: showers swell and fade, at different times in different places (weather, a paintable ' +
     'offset in the cycle), so mud dries and cracks here while it rains there. Rain wears the crack walls away (erode), widening them, and ' +
     'once it eases moist mud fills the cracks back in, weaker than before (scar), so they reopen or new ones form. A grain (paint grain, an ' +
-    'angle) steers the cracks. season 0 for no weather.',
+    'angle) steers the cracks. season 0 for no weather. ' +
+    'Takes a while to start: the layer has to dry quite a lot before the first cracks.',
   reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy', 'scar'],
   params: [
     { name: 'timestep', value: 0.08, min: 0, max: 0.15 },
@@ -4788,7 +4792,8 @@ export const MUD_CRACKS_5: RuleDef = {
     'offset in the cycle), so mud dries and cracks here while it rains there. Rain wears the crack walls away (erode), widening them, and ' +
     'once it eases moist mud fills the cracks back in, weaker than before (scar), so they reopen or new ones form. A grain (paint grain, an ' +
     'angle) steers the cracks. Crumbly mud (crumble, paintable) cracks along rougher paths and its crack walls keep crumbling away, ' +
-    'unevenly, in rain or dry, so cracks that last grow ragged and wide. season 0 for no weather.',
+    'unevenly, in rain or dry, so cracks that last grow ragged and wide. season 0 for no weather. ' +
+    'Takes a while to start: the layer has to dry quite a lot before the first cracks.',
   reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy', 'scar'],
   params: [
     { name: 'timestep', value: 0.08, min: 0, max: 0.15 },
@@ -4910,7 +4915,8 @@ export const MUD_CRACKS_6: RuleDef = {
     'angle) steers the cracks. Crumbly mud (crumble, paintable) cracks along rougher paths and its crack walls keep crumbling away, ' +
     'unevenly, in rain or dry, so cracks that last grow ragged and wide. Here the grit is coarser and stronger, and is rock too: soft ' +
     'where the mud is weak (canyon), so walls wear back fastest there and cracks widen into canyons with alcoves and side notches. ' +
-    'season 0 for no weather.',
+    'season 0 for no weather. ' +
+    'Takes a while to start: the layer has to dry quite a lot before the first cracks.',
   reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy', 'scar'],
   params: [
     { name: 'timestep', value: 0.08, min: 0, max: 0.15 },
@@ -5077,7 +5083,8 @@ export const MUD_CRACKS_7: RuleDef = {
     'Mud cracks as leaf veins: no weather, and the leaf keeps growing (grow), so the layer\'s grip tightens and each cell, ' +
     'under more and more stress, divides again, its new veins meeting the old ones at T-junctions: veins between veins, ' +
     'down to tiny cells (most_growth). Each generation of veins is thinner than the one before (crack_width down to ' +
-    'finest), and veins thicken slowly with age (thicken), so the first are the widest. A smooth grain bends them.',
+    'finest), and veins thicken slowly with age (thicken), so the first are the widest. A smooth grain bends them. ' +
+    'Takes a while to start: the layer has to dry quite a lot before the first cracks.',
   reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy'],
   params: LEAF_PARAMS,
   paramHints: LEAF_HINTS,
@@ -5135,11 +5142,11 @@ delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
 export const MUD_CRACKS_8: RuleDef = {
   name: 'Mud cracks 8',
   description:
-    'Mud cracks as city streets: the layer shrinks most along its district\'s street direction (district, a paintable angle in ' +
-    'a few softly bounded steps), and across it only later (cross, cross_lag), so the first streets run parallel and the cross ' +
-    'streets that follow split each block at right angles, ending in T-junctions. Like the leaf (Mud cracks 7) it keeps growing, ' +
-    'so blocks keep dividing, each split across the long side of the block, into smaller blocks and lanes, each generation ' +
-    'narrower. No weather; streets widen a little with age.',
+    'Mud cracks as algae (plant cells): the layer shrinks most along one direction (district, a paintable angle in a few ' +
+    'softly bounded steps), and across it only later (cross, cross_lag), so the first walls run side by side and the ones ' +
+    'that follow split each cell across, ending in T-junctions. Like the leaf (Mud cracks 7) it keeps growing, so cells keep ' +
+    'dividing, across their long side, each generation of walls thinner. No weather; walls thicken a little with age. ' +
+    'Takes a while to start: the layer has to dry quite a lot before the first walls.',
   reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy'],
   params: [
     ...LEAF_PARAMS.filter((p) => p.name !== 'grain' && p.name !== 'aniso').map((p) =>
@@ -5210,7 +5217,158 @@ delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
   view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200, customGamma: 1.4 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8];
+// Where Mud cracks 9 and 10 start: dried to just before the first cracks (moisture)
+const START_M_LEAF = 0.7;
+const START_M_CITY = 0.45;
+
+export const MUD_CRACKS_9: RuleDef = {
+  name: 'Mud cracks 9',
+  description:
+    'Mud cracks as leaf veins: no weather, and the leaf keeps growing (grow), so the layer\'s grip tightens and each cell, ' +
+    'under more and more stress, divides again, its new veins meeting the old ones at T-junctions: veins between veins, ' +
+    'down to tiny cells (most_growth). Each generation of veins is thinner than the one before (crack_width down to ' +
+    'finest), and veins keep thickening with age (thicken), so the oldest are much the widest: thick veins, thinner ones ' +
+    'between them, thinner again between those. A smooth grain bends them. Starts part dried, just before ' +
+    'the first veins.',
+  reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy'],
+  params: LEAF_PARAMS.map((p) => (p.name === 'thicken' ? { ...p, value: 0.0008 } : p)),
+  paramHints: { ...LEAF_HINTS, thicken: 'How fast veins thicken with age, all their lives, so the oldest are much the widest' },
+  paintable: ['dry', 'grip', 'toughness', 'grain', 'grow'],
+  fitFloor: { m: 0.3, d: 0.5, ux: 0.5, uy: 0.5, sxx: 0.05, syy: 0.05, sxy: 0.03 },
+  explore: ['grip', 'toughness', 'grow'],
+  formula: `float4 mm = clamp(m, 0.0, 1.0);
+// growth: how much the leaf has grown (1 to most_growth); its grip tightens with the square, so cells divide smaller
+float4 s = min(1.0 + grow*time, most_growth);
+float4 w = max(crack_width/s, finest);
+float4 e0 = shrink*(1.0 - mm);
+float4 ax = x_gradient_ux + e0;
+float4 ay = y_gradient_uy + e0;
+float4 exy = 0.5*(x_gradient_uy + y_gradient_ux);
+float4 tr = ax + ay;
+float4 g = (1.0 - d)*(1.0 - d) + 0.001;
+delta_sxx = (g*(lam*tr + 2.0*mu*ax) - sxx)/timestep;
+delta_syy = (g*(lam*tr + 2.0*mu*ay) - syy)/timestep;
+delta_sxy = (g*2.0*mu*exy - sxy)/timestep;
+delta_ux = x_gradient_sxx + y_gradient_sxy + stab*mu*g*laplacian_ux - grip*s*s*ux;
+delta_uy = x_gradient_sxy + y_gradient_syy + stab*mu*g*laplacian_uy - grip*s*s*uy;
+float4 trp = max(tr, 0.0);
+float4 H = 0.5*lam*trp*trp + mu*(ax*ax + ay*ay + 2.0*exy*exy);
+// the vein's gradient cost, anisotropic along the grain: div(A grad d), A = 1 + aniso*(cos 2θ, sin 2θ; sin 2θ, -cos 2θ)
+float4 h = 1.0/(dx*dx);
+float4 dxx = (east_d + west_d - 2.0*d)*h;
+float4 dyy = (north_d + south_d - 2.0*d)*h;
+float4 dxy = 0.25*(north_east_d - north_west_d - south_east_d + south_west_d)*h;
+float4 divA = laplacian_d + aniso*(cos(2.0*grain)*(dxx - dyy) + 2.0*sin(2.0*grain)*dxy);
+// at a crack's edge (where d changes) only the strain pulling it open (across it, n = grad d's direction) widens it, so
+// stress along it starts new cracks inside the cells rather than widening this one
+float4 gd = sqrt(x_gradient_d*x_gradient_d + y_gradient_d*y_gradient_d + 1e-12);
+float4 nx = x_gradient_d/gd;
+float4 ny = y_gradient_d/gd;
+float4 enn = nx*nx*ax + ny*ny*ay + 2.0*nx*ny*exy;
+float4 ent = nx*ny*(ay - ax) + (nx*nx - ny*ny)*exy;
+float4 Hn = 0.5*(lam + 2.0*mu)*max(enn, 0.0)*max(enn, 0.0) + 2.0*mu*ent*ent;
+float4 Hd = mix(H, Hn, edge*smoothstep(0.0, 0.15, gd*w));
+float4 drive = 2.0*(1.0 - d)*Hd - toughness*(0.375/w - 0.75*w*divA);
+// veins keep thickening with age, so the oldest are the widest
+float4 thickening = thicken*sqrt(gradient_mag_squared_d + 1e-12)*(1.0 - d)/crack_width;
+delta_d = max(min(crack_rate*max(drive, 0.0) + thickening, (1.0 - d)/timestep), 0.0);
+delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
+  rest: [1, 0, 0, 0, 0, 0, 0],
+  seed: [1, 0, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0],
+  initial: [
+    { chem: 'm', op: 'overwrite', fill: { type: 'constant', value: START_M_LEAF }, shape: { type: 'everywhere' } },
+    { chem: 'toughness', op: 'multiply', fill: { type: 'smooth_noise', low: 0.92, high: 1.08, size: 48, octaves: 5, roughness: 0.55 }, shape: { type: 'everywhere' } },
+    { chem: 'grain', op: 'overwrite', fill: { type: 'smooth_noise', low: 0, high: 6.2832, size: 128, octaves: 3, roughness: 0.4 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200, customGamma: 1.4 },
+};
+
+export const MUD_CRACKS_10: RuleDef = {
+  name: 'Mud cracks 10',
+  description:
+    'Mud cracks as city streets, straight: as in Mud cracks 8 the layer shrinks along each district\'s street direction ' +
+    '(district) first and across it later (cross, cross_lag), so parallel streets come first and cross streets follow at right ' +
+    'angles, ending in T-junctions, and blocks keep dividing as the city grows. Here a crack is also much tougher running ' +
+    'askew of the grid than along it (straight), so streets keep straight and turn square, and districts are broad, with ' +
+    'narrow bends between them. The oldest streets widen most. Starts part dried, just before the first streets.',
+  reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy'],
+  params: [
+    ...LEAF_PARAMS.filter((p) => p.name !== 'grain' && p.name !== 'aniso').map((p) =>
+      p.name === 'grow' ? { ...p, value: 0.0001 } : p.name === 'most_growth' ? { ...p, value: 3 } : p.name === 'thicken' ? { ...p, value: 0.0012 } : p.name === 'crack_width' ? { ...p, value: 2 } : p.name === 'finest' ? { ...p, value: 1.2 } : p),
+    { name: 'district', value: 0, min: 0, max: 1 },
+    { name: 'cross', value: 1, min: 0, max: 1.5 },
+    { name: 'cross_lag', value: 4, min: 1, max: 8 },
+    { name: 'straight', value: 3, min: 0, max: 10 },
+  ],
+  paramHints: {
+    ...LEAF_HINTS,
+    grip: 'The spring tying the layer to its bed at the start: stronger grip, smaller blocks (it grows with the city)',
+    crack_width: 'The width of the first streets, in cells',
+    finest: 'The width of the narrowest lanes, in cells: each generation of streets is narrower, down to this',
+    grow: 'How fast the city grows: as it does, blocks keep dividing into smaller ones (0: one drying)',
+    most_growth: 'How far the city grows (times its start): the smallest blocks are about this many times smaller than the first',
+    thicken: 'How fast streets widen with age, so the oldest are the widest',
+    district: 'Which way this district\'s streets run (0–1 over a quarter turn, in three softly bounded steps; painted as smooth noise to start)',
+    cross: 'How much the layer shrinks across the streets (1: as much as along them)',
+    cross_lag: 'How long shrinking across waits behind shrinking along (higher: the first streets have longer to run before the cross streets)',
+    straight: 'How much tougher a street is running askew of its district\'s grid than along it or across it (0: no tougher): straighter streets, square corners',
+  },
+  paintable: ['dry', 'grip', 'toughness', 'district', 'grow'],
+  fitFloor: { m: 0.3, d: 0.5, ux: 0.5, uy: 0.5, sxx: 0.05, syy: 0.05, sxy: 0.03 },
+  explore: ['grip', 'cross_lag', 'grow'],
+  formula: `float4 mm = clamp(m, 0.0, 1.0);
+float4 s = min(1.0 + grow*time, most_growth);
+float4 w = max(crack_width/s, finest);
+// the streets' direction: district in three steps over a quarter turn, with soft ramps between them
+float4 k = 3.0*clamp(district, 0.0, 0.9999);
+float4 th = 0.5235988*(floor(k) + smoothstep(0.42, 0.58, k - floor(k)));
+float4 c = cos(th);
+float4 sn = sin(th);
+// shrinking along the streets' direction (en) and across it, later (et): eigenstrain en·nn + et·tt
+float4 en = shrink*(1.0 - mm);
+float4 et = cross*shrink*pow(1.0 - mm, cross_lag);
+float4 ax = x_gradient_ux + en*c*c + et*sn*sn;
+float4 ay = y_gradient_uy + en*sn*sn + et*c*c;
+float4 exy = 0.5*(x_gradient_uy + y_gradient_ux) + (en - et)*c*sn;
+float4 tr = ax + ay;
+float4 g = (1.0 - d)*(1.0 - d) + 0.001;
+delta_sxx = (g*(lam*tr + 2.0*mu*ax) - sxx)/timestep;
+delta_syy = (g*(lam*tr + 2.0*mu*ay) - syy)/timestep;
+delta_sxy = (g*2.0*mu*exy - sxy)/timestep;
+delta_ux = x_gradient_sxx + y_gradient_sxy + stab*mu*g*laplacian_ux - grip*s*s*ux;
+delta_uy = x_gradient_sxy + y_gradient_syy + stab*mu*g*laplacian_uy - grip*s*s*uy;
+float4 trp = max(tr, 0.0);
+float4 H = 0.5*lam*trp*trp + mu*(ax*ax + ay*ay + 2.0*exy*exy);
+// at a crack's edge (where d changes) only the strain pulling it open (across it, n = grad d's direction) widens it, so
+// stress along it starts new cracks inside the cells rather than widening this one
+float4 gd = sqrt(x_gradient_d*x_gradient_d + y_gradient_d*y_gradient_d + 1e-12);
+float4 nx = x_gradient_d/gd;
+float4 ny = y_gradient_d/gd;
+float4 enn = nx*nx*ax + ny*ny*ay + 2.0*nx*ny*exy;
+float4 ent = nx*ny*(ay - ax) + (nx*nx - ny*ny)*exy;
+float4 Hn = 0.5*(lam + 2.0*mu)*max(enn, 0.0)*max(enn, 0.0) + 2.0*mu*ent*ent;
+float4 Hd = mix(H, Hn, edge*smoothstep(0.0, 0.15, gd*w));
+// a crack running askew of the grid is tougher (its direction from grad d, at its edges and tip): sin²(2ψ), ψ from the grid
+float4 pn = nx*c + ny*sn;
+float4 qn = ny*c - nx*sn;
+float4 askew = 4.0*pn*pn*qn*qn*smoothstep(0.0, 0.15, gd*w);
+float4 drive = 2.0*(1.0 - d)*Hd - toughness*(1.0 + straight*askew)*(0.375/w - 0.75*w*laplacian_d);
+float4 widening = thicken/s*sqrt(gradient_mag_squared_d + 1e-12)*(1.0 - d)/crack_width;
+delta_d = max(min(crack_rate*max(drive, 0.0) + widening, (1.0 - d)/timestep), 0.0);
+delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
+  rest: [1, 0, 0, 0, 0, 0, 0],
+  seed: [1, 0, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0],
+  initial: [
+    { chem: 'm', op: 'overwrite', fill: { type: 'constant', value: START_M_CITY }, shape: { type: 'everywhere' } },
+    { chem: 'toughness', op: 'multiply', fill: { type: 'smooth_noise', low: 0.92, high: 1.08, size: 48, octaves: 5, roughness: 0.55 }, shape: { type: 'everywhere' } },
+    { chem: 'district', op: 'overwrite', fill: { type: 'smooth_noise', low: 0, high: 1, size: 320, octaves: 2, roughness: 0.3 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200, customGamma: 1.4 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -5223,7 +5381,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
-  ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8]],
+  ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10]],
 ];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {
