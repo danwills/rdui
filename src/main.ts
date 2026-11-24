@@ -828,7 +828,7 @@ async function init() {
   // (dev: set through window.rdui.eachFrame, e.g. lab/record-app.mjs's erase strokes)
   let recordEachFrame: ((frame: number, total: number) => void | Promise<void>) | null = null;
   const recordPanel = recordSection({
-    device, sim: () => sim, view: viewOptions, stepsPerFrame: () => s.stepsPerFrame, name: () => rule.name,
+    device, sim: () => sim, view: viewOptions, stepsPerFrame: () => s.stepsPerFrame, name: () => rule.name, reagents: () => rule.reagents,
     eachFrame: (i, n) => recordEachFrame?.(i, n),
     hold: (on) => {
       if (on) {

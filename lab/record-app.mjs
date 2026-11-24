@@ -14,7 +14,7 @@
 // liveSteps: the live loop's steps/frame before recording (heavy scenes lose the GPU device headless at their own).
 // Clips start at the very start (the sim paused through the restart). fit: true slows a pattern that settles early, so
 // its growth fills the clip; erase paints soft erase strokes while recording; drop adds solitons to a ring track;
-// unwall takes the walls away partway (see below for each). 🎲 uses the app's true colours (trueColours: false for
+// exr: 'float' or 'half' also saves every reagent as EXRs, zipped, beside the clip (<out>.exr.zip); unwall takes the walls away partway (see below for each). 🎲 uses the app's true colours (trueColours: false for
 // the old, more saturated, ones).
 // Starts its own vite server, like run.mjs; prints the saved file's size and the panel's status line.
 import puppeteer from 'puppeteer-core';
@@ -125,6 +125,10 @@ try {
       const [scale, quality] = sec.querySelectorAll('select');
       set(scale, c.scale);
       set(quality, { light: 0.1, good: 0.25, high: 0.6 }[c.quality] ?? c.quality);
+      // every reagent as EXRs too (exr: 'float' or 'half'), zipped (headless can't be given a folder)
+      const box = [...sec.querySelectorAll('label.check')].find((l) => l.textContent.includes('EXR'))?.querySelector('input');
+      if (box && box.checked !== !!c.exr) box.click();
+      if (c.exr) { set(sec.querySelectorAll('select')[2], c.exr); window.showDirectoryPicker = undefined; }
       const go = [...sec.querySelectorAll('button')].find((b) => b.textContent.includes('Record'));
       go.click();
       const t0 = performance.now();
@@ -180,7 +184,7 @@ try {
     let colour = null;
     for (let i = 0; i < (cfg.tries ?? 20); i++) {
       await roll();
-      const probe = await recordClip({ ...cfg, seconds: 0.3, scale: 1, quality: 'light' }, true);
+      const probe = await recordClip({ ...cfg, seconds: 0.3, scale: 1, quality: 'light', exr: '' }, true);
       const y = brightness(probe);
       colour = meanColour(probe);
       const near = Math.min(Infinity, ...(cfg.avoid ?? []).map((c) => Math.hypot(c[0] - colour[0], c[1] - colour[1], c[2] - colour[2])));
@@ -284,7 +288,7 @@ try {
   const ownSteps = cfg.steps;
   if (cfg.fit && cfg.restart !== false && !cfg.warm) {
     const own = cfg.steps || await page.evaluate(() => window.rdui.settings.stepsPerFrame);
-    const probe = await recordClip({ ...cfg, steps: own, scale: 1, quality: 'light' }, true);
+    const probe = await recordClip({ ...cfg, steps: own, scale: 1, quality: 'light', exr: '' }, true);
     const diffs = execFileSync('ffmpeg', ['-v', 'error', '-i', probe, '-vf', 'tblend=all_mode=difference,signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-', '-f', 'null', '-'], { encoding: 'utf8' })
       .split('\n').map((l) => /YAVG=([\d.]+)/.exec(l)?.[1]).filter(Boolean).map(Number);
     const secs = [];
@@ -398,6 +402,13 @@ try {
   }
   fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
   fs.copyFileSync(file, out);
+  // (the EXRs' zip, beside the clip)
+  let zip = null;
+  for (let i = 0; cfg.exr && i < 300 && !zip; i++) {
+    zip = fs.readdirSync(dlDir).find((f) => f.endsWith('.zip'));
+    if (!zip) await new Promise((r) => setTimeout(r, 200));
+  }
+  if (zip) fs.copyFileSync(path.join(dlDir, zip), out.replace(/\.mp4$/, '') + '.exr.zip');
   // the recipe (rule, config and look), beside the clip in .recipes/, for re-rolls (lab/clip-reroll.mjs)
   const look = await page.evaluate(() => {
     const s = window.rdui?.settings;

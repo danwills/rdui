@@ -1,8 +1,10 @@
 // Recording the sim as a video file. The recorder steps the sim itself, frame by frame (the main
 // loop pauses meanwhile), so the video has exactly the asked-for frame rate and length however slow
 // the device is: each frame is the sim after `stepsPerFrame` more steps, rendered as the view shows
-// it, encoded with WebCodecs (H.264, else VP9) and muxed into an MP4.
+// it, encoded with WebCodecs (H.264, else VP9) and muxed into an MP4. Optionally every reagent is saved too, each
+// frame, as its own sequence of float EXR images (the raw values, no palette).
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
+import { encodeEXR, ZipWriter } from './exr';
 import type { Simulation, ViewOptions } from './sim';
 import { el, section, button } from './ui';
 import { ladder } from './ladder';
@@ -16,13 +18,19 @@ export interface RecordOptions {
   scale: number;
   /** Bits per pixel per frame (about 0.1 is light, 0.6 near lossless for these fields). */
   bpp: number;
+  /** Also save each reagent as a sequence of EXRs: 32-bit float or half. */
+  exr?: 'float' | 'half';
 }
 
 const CODECS: [string, 'avc' | 'vp9'][] = [['avc1.640034', 'avc'], ['avc1.4d0034', 'avc'], ['avc1.42003e', 'avc'], ['vp09.00.51.08', 'vp9']];
 
-/** Records `o.seconds` of video from `sim`; `progress(done, total)` after each frame; stops early (with what it has) when `cancelled()`. */
+/**
+ * Records `o.seconds` of video from `sim`; `progress(done, total)` after each frame; stops early (with what it has) when
+ * `cancelled()`. `state(values, frame)`, if given, gets the whole field after each frame (S·4 floats per cell, rows from the top).
+ */
 export async function recordVideo(device: GPUDevice, sim: Simulation, view: () => ViewOptions, o: RecordOptions,
-  progress: (done: number, total: number) => void, cancelled: () => boolean, each?: (frame: number, total: number) => void | Promise<void>): Promise<Blob> {
+  progress: (done: number, total: number) => void, cancelled: () => boolean, each?: (frame: number, total: number) => void | Promise<void>,
+  state?: (values: Float32Array, frame: number) => Promise<void>): Promise<Blob> {
   const even = (v: number) => Math.max(2, Math.round(v / 2) * 2);
   const width = even(sim.width * o.scale), height = even(sim.height * o.scale);
   const total = Math.max(1, Math.round(o.seconds * o.fps));
@@ -44,6 +52,7 @@ export async function recordVideo(device: GPUDevice, sim: Simulation, view: () =
   const target = device.createTexture({ size: [width, height], format, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
   const stride = Math.ceil((width * 4) / 256) * 256;
   const readback = device.createBuffer({ size: stride * height, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+  const fieldBack = state ? device.createBuffer({ size: sim.stateBuffer.size, usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ }) : null;
   const us = 1e6 / o.fps;
   try {
     for (let i = 0; i < total && !cancelled(); i++) {
@@ -52,7 +61,15 @@ export async function recordVideo(device: GPUDevice, sim: Simulation, view: () =
       if (i > 0) { await each?.(i, total); sim.step(enc, o.stepsPerFrame); }
       sim.render(enc, target.createView(), width, height, view());
       enc.copyTextureToBuffer({ texture: target }, { buffer: readback, bytesPerRow: stride }, [width, height]);
+      if (fieldBack) enc.copyBufferToBuffer(sim.stateBuffer, 0, fieldBack, 0, fieldBack.size);
       device.queue.submit([enc.finish()]);
+      let field: Promise<void> | undefined;
+      if (fieldBack && state) {
+        await fieldBack.mapAsync(GPUMapMode.READ);
+        const values = new Float32Array(fieldBack.getMappedRange().slice(0));
+        fieldBack.unmap();
+        field = state(values, i);
+      }
       await readback.mapAsync(GPUMapMode.READ);
       const frame = new VideoFrame(new Uint8Array(readback.getMappedRange()), {
         format: format === 'bgra8unorm' ? 'BGRX' : 'RGBX', codedWidth: width, codedHeight: height,
@@ -61,6 +78,7 @@ export async function recordVideo(device: GPUDevice, sim: Simulation, view: () =
       readback.unmap();
       encoder.encode(frame, { keyFrame: i % Math.max(1, Math.round(o.fps * 2)) === 0 });
       frame.close();
+      await field;
       while (encoder.encodeQueueSize > 4) await new Promise((r) => setTimeout(r, 4));
       progress(i + 1, total);
     }
@@ -70,6 +88,7 @@ export async function recordVideo(device: GPUDevice, sim: Simulation, view: () =
     if (encoder.state !== 'closed') encoder.close();
     target.destroy();
     readback.destroy();
+    fieldBack?.destroy();
   }
   muxer.finalize();
   return new Blob([muxer.target.buffer], { type: 'video/mp4' });
@@ -84,6 +103,8 @@ export interface RecordEnv {
   /** Pauses the main loop (true) or puts it back as it was (false). */
   hold(on: boolean): void;
   name(): string;
+  /** The rule's reagent names, in layout order. */
+  reagents(): string[];
   /** Called before each frame after the first is stepped (lab scripts paint while recording). */
   eachFrame?(frame: number, total: number): void | Promise<void>;
 }
@@ -102,6 +123,14 @@ export function recordSection(env: RecordEnv) {
   scale.value = '1';
   const quality = el('select', {}, ...[[0.1, 'light'], [0.25, 'good'], [0.6, 'high']].map(([v, t]) => el('option', { value: String(v) }, String(t))));
   quality.value = '0.25';
+  const exr = el('select', { title: 'also save every reagent, each frame, as its own image sequence of the raw values (OpenEXR, one channel Y, no palette): into a folder you pick, or as a zip where the browser can\'t write folders' },
+    ...[['float', 'float 32'], ['half', 'half 16']].map(([v, t]) => el('option', { value: v }, t)));
+  const exrBox = el('input', { type: 'checkbox' });
+  const exrRow = el('label', { class: 'check', title: exr.title }, exrBox, 'Reagents As EXR Sequences');
+  const exrDepth = el('label', { class: 'row' }, el('span', {}, 'EXR depth'), exr);
+  exr.value = 'float';
+  exrDepth.style.display = 'none';
+  exrBox.addEventListener('change', () => { exrDepth.style.display = exrBox.checked ? '' : 'none'; update(); });
   const row = (label: string, input: HTMLElement, hint = '') => el('label', { class: 'row' }, el('span', {}, label), input, el('output', {}, hint));
   const stepsOut = el('output');
   const stepsRow = el('label', { class: 'row' }, el('span', {}, 'Steps/Frame'), steps, stepsOut);
@@ -125,6 +154,7 @@ export function recordSection(env: RecordEnv) {
     stepsPerFrame: Math.max(1, Math.round(Number(steps.value) || env.stepsPerFrame())),
     scale: Number(scale.value),
     bpp: Number(quality.value),
+    exr: exrBox.checked ? (exr.value as 'float' | 'half') : undefined,
   });
   function update() {
     const o = opts(), sim = env.sim(), frames = Math.round(o.seconds * o.fps);
@@ -132,8 +162,47 @@ export function recordSection(env: RecordEnv) {
     stepsOut.textContent = steps.value ? '' : 'as sim';
     const w = Math.round((sim.width * o.scale) / 2) * 2, h = Math.round((sim.height * o.scale) / 2) * 2;
     info.textContent = `${frames} frames of ${w}×${h}: ${(frames * o.stepsPerFrame).toLocaleString()} sim steps, about ${((o.bpp * w * h * o.fps * o.seconds) / 8e6).toFixed(1)} MB`;
+    if (o.exr) {
+      const n = env.reagents().length;
+      info.textContent += `; and ${n} EXR sequences of ${sim.width}×${sim.height}, at most ${((frames * n * sim.width * sim.height * (o.exr === 'half' ? 2 : 4)) / 1e6).toFixed(0)} MB before compression`;
+    }
   }
-  for (const s of [scale, quality]) s.addEventListener('change', update);
+  for (const s of [scale, quality, exr]) s.addEventListener('change', update);
+
+  type Picker = { showDirectoryPicker?(o: { id?: string; mode?: string }): Promise<FileSystemDirectoryHandle> };
+  /** Where the EXRs go: a new folder inside one the person picks, else a zip (downloaded at the end). */
+  async function exrSink(stem: string) {
+    const pick = (window as unknown as Picker).showDirectoryPicker;
+    if (pick) {
+      const parent = await pick.call(window, { id: 'rdui-exr', mode: 'readwrite' });
+      const top = await parent.getDirectoryHandle(stem, { create: true });
+      const dirs = new Map<string, FileSystemDirectoryHandle>();
+      return {
+        where: `${parent.name}/${stem}`,
+        async write(dir: string, file: string, data: Uint8Array) {
+          let d = dirs.get(dir);
+          if (!d) dirs.set(dir, (d = await top.getDirectoryHandle(dir, { create: true })));
+          const w = await (await d.getFileHandle(file, { create: true })).createWritable();
+          await w.write(data as Uint8Array<ArrayBuffer>);
+          await w.close();
+        },
+        async finish() { return 0; },
+      };
+    }
+    const zip = new ZipWriter();
+    return {
+      where: `${stem}.zip`,
+      async write(dir: string, file: string, data: Uint8Array) { zip.add(`${stem}/${dir}/${file}`, data); },
+      async finish() { const b = zip.finish(); download(b, `${stem}.zip`); return b.size; },
+    };
+  }
+  function download(blob: Blob, name: string) {
+    const a = el('a', { href: URL.createObjectURL(blob), download: name });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+  }
 
   async function record() {
     running = true;
@@ -144,21 +213,33 @@ export function recordSection(env: RecordEnv) {
     status.textContent = '';
     env.hold(true);
     const t0 = performance.now();
+    const stem = `rdui-${env.name().replace(/[^\w.-]+/g, '_')}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
     try {
       const o = opts();
-      const blob = await recordVideo(env.device, env.sim(), env.view, o, (d, n) => {
+      // (the folder is asked for first, while the click still counts as one)
+      const sink = o.exr ? await exrSink(stem) : null;
+      const sim = env.sim(), names = env.reagents().map((r) => r.replace(/[^\w.-]+/g, '_'));
+      const S4 = sim.layout.S * 4, cells = sim.width * sim.height, digits = Math.max(4, String(Math.round(o.seconds * o.fps)).length);
+      const saveState = sink ? async (values: Float32Array, frame: number) => {
+        const num = String(frame + 1).padStart(digits, '0');
+        await Promise.all(names.map(async (r, k) => {
+          const img = new Float32Array(cells);
+          for (let c = 0; c < cells; c++) img[c] = values[c * S4 + k];
+          await sink.write(r, `${r}.${num}.exr`, await encodeEXR(sim.width, sim.height, img, o.exr === 'half'));
+        }));
+      } : undefined;
+      const blob = await recordVideo(env.device, sim, env.view, o, (d, n) => {
         bar.value = d / n;
         const left = ((performance.now() - t0) / d) * (n - d) / 1000;
         status.textContent = `frame ${d} of ${n}${d < n ? ` · about ${left < 90 ? `${Math.ceil(left)} s` : `${Math.ceil(left / 60)} min`} left` : ''}`;
-      }, () => stop, env.eachFrame);
-      const a = el('a', { href: URL.createObjectURL(blob), download: `rdui-${env.name().replace(/[^\w.-]+/g, '_')}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.mp4` });
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
-      status.textContent = `${stop ? 'Stopped early: saved' : 'Saved'} ${(blob.size / 1e6).toFixed(1)} MB in ${((performance.now() - t0) / 1000).toFixed(0)} s.`;
+      }, () => stop, env.eachFrame, saveState);
+      download(blob, `${stem}.mp4`);
+      const zipped = sink ? await sink.finish() : 0;
+      status.textContent = `${stop ? 'Stopped early: saved' : 'Saved'} ${(blob.size / 1e6).toFixed(1)} MB in ${((performance.now() - t0) / 1000).toFixed(0)} s.`
+        + (sink ? ` The EXRs are in ${sink.where}${zipped ? ` (${(zipped / 1e6).toFixed(1)} MB)` : ''}.` : '');
     } catch (e) {
-      status.textContent = `Couldn't record: ${e instanceof Error ? e.message : String(e)}`;
+      status.textContent = e instanceof DOMException && e.name === 'AbortError' ? 'Not recorded: no folder was picked for the EXRs.'
+        : `Couldn't record: ${e instanceof Error ? e.message : String(e)}`;
     } finally {
       env.hold(false);
       running = false;
@@ -169,6 +250,6 @@ export function recordSection(env: RecordEnv) {
   update();
   const node = section('Record',
     row('seconds', secs), row('frame rate', fps, 'fps'), stepsRow, row('size', scale), row('quality', quality),
-    info, el('div', { class: 'buttons' }, go), bar, status);
+    exrRow, exrDepth, info, el('div', { class: 'buttons' }, go), bar, status);
   return { node, update };
 }
