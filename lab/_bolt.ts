@@ -12,15 +12,17 @@ export default async function (cfg: { scene: string; at: number[]; set?: Record<
   for (const T of cfg.at) {
     await lab.run(T - t); t = T;
     const { state } = await lab.read();
-    let n = 0, deep = 0, struck = 0, lit = 0, emax = 0, lmax = 0;
+    let n = 0, deep = 0, struck = 0, lit = 0, emax = 0, lmax = 0, tips = 0, tdeep = 0;
+    const ti = ix('tip') >= 0 ? ix('tip') : ix('b');
     for (let y = 0; y < W; y++) for (let x = 0; x < W; x++) {
       const b = (y * W + x) * S4;
       if (state[b + ix('c')] > 0.5) { n++; deep = Math.max(deep, y); }
+      if (ti >= 0 && state[b + ti] > (ix('tip') >= 0 ? 0.5 : 0.2)) { tips++; tdeep = Math.max(tdeep, y); }
       if (state[b + ix('s')] > 0.5) struck++;
       const l = state[b + ix('light')]; lmax = Math.max(lmax, l); if (l > 0.6) lit++;
       if (state[b + ix('c')] < 0.5) emax = Math.max(emax, 1 - state[b + ix('V')]);
     }
-    log(`t=${T} channel ${n} reaches row ${deep}/${W} struck ${struck} lit ${lit} light max ${lmax.toFixed(2)}`);
+    log(`t=${T} channel ${n} reaches row ${deep}/${W} struck ${struck} lit ${lit} light max ${lmax.toFixed(2)}` + (ti >= 0 ? ` tip cells ${tips} deepest ${tdeep}` : ''));
     if (T % (cfg.every ?? 1e9) === 0) await saveFrame(`${cfg.scene}-${T}.png`, lab, { ri: ix(cfg.frame ?? 'light'), lo: 0, hi: cfg.hi ?? 1, ti: ix(cfg.frame ?? 'light'), tlo: 0, thi: cfg.hi ?? 1, scale: 2, caption: `${cfg.scene} t=${T}` });
   }
 }

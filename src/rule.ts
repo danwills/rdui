@@ -6081,7 +6081,121 @@ delta_light = D_light*laplacian_light + 0.1*(min(0.5*h + s*(flash + glow*cur), 2
 `.replace('HN', 'smoothstep(sheath - 0.1, sheath + 0.1, north_b)').replace('HS', 'smoothstep(sheath - 0.1, sheath + 0.1, south_b)').replace('HE', 'smoothstep(sheath - 0.1, sheath + 0.1, east_b)').replace('HW', 'smoothstep(sheath - 0.1, sheath + 0.1, west_b)'),
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2];
+/**
+ * Lightning 3: lightning whose tips are solitons: Gray-Scott spots, which keep their own size and divide when well fed.
+ * V, the air's potential, settles between the cloud (plate +1) and the ground (plate −1) and is held at 1 in the spots
+ * in the trail c they lay (their history, as in GS History+Wave, which also starves the feed and raises the kill there,
+ * pushing spots off their own trails, so they travel and split), so the field is strongest just ahead of the trail.
+ * The field sets the spots' feed: where it is near the strongest anywhere (emax; times the air's varied weakness q),
+ * F_hi, well fed, splitting readily; where it has been taken (by a branch that screens it), F_lo, too little to live
+ * on, so outrun branches die out. When
+ * the trail reaches the ground, struck s floods up it as the return stroke. Spots seeded bare were smothered by their own
+ * trail before moving, so the scene lays a short trail behind the seed to start it off. It fans out densely, like a river
+ * delta or a Lichtenberg figure, rather than a few lightning forks: every spot along the front sees about the same field.
+ * Two experiments for steering, off by default: conduct (spots conduct too, so a leading spot draws the field; they
+ * then wandered under the cloud) and drift (spots drift down the field lines; a swarm). (Tried first, a phase-field spot
+ * pushed by the field: held only by its push against its curvature, it had no size of its own, and died or swelled.)
+ */
+export const LIGHTNING_3: RuleDef = {
+  name: 'Lightning 3 (soliton tips)',
+  description:
+    'Lightning whose tips are solitons, Gray-Scott spots: fed by the field, they divide toward where it is strongest ' +
+    'and starve where it has been taken, so a few glowing spots race down from a charged cloud (plate +1, top) toward the ' +
+    'ground (plate −1, bottom), forking as they go and leaving a conducting trail. When the trail reaches the ground the ' +
+    'return stroke flashes up it. Paint plate to make clouds (+1), ground or towers (−1); F_hi and eta for how forked.',
+  reagents: ['V', 'a', 'b', 'c', 'q', 'gnd', 's', 'light', 'emax', 'cloud', 'Eb'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.5 },
+    { name: 'D_V', value: 0.24, min: 0, max: 0.25 },
+    { name: 'D_a', value: 0.164, min: 0, max: 0.37 },
+    { name: 'D_b', value: 0.082, min: 0, max: 0.37 },
+    { name: 'F_hi', value: 0.05, min: 0, max: 0.1 },
+    { name: 'F_lo', value: 0.03, min: 0, max: 0.1 },
+    { name: 'k', value: 0.063, min: 0.03, max: 0.075 },
+    { name: 'eta', value: 4, min: 0.5, max: 8 },
+    { name: 'b_to_c', value: 0.005, min: 0, max: 0.05 },
+    { name: 'c_damp', value: 0, min: 0, max: 0.01 },
+    { name: 'c_to_F', value: 0.03, min: 0, max: 0.1 },
+    { name: 'c_to_k', value: 0.001, min: 0, max: 0.02 },
+    { name: 'drift', value: 0, min: 0, max: 0.3 },
+    { name: 'conduct', value: 0, min: 0, max: 1 },
+    { name: 'disorder', value: 0.5, min: 0, max: 1 },
+    { name: 'flash', value: 1, min: 0, max: 2 },
+    { name: 'D_light', value: 0.2, min: 0, max: 0.25 },
+    { name: 'plate', value: 0, min: -1, max: 1 },
+  ],
+  paramHints: {
+    D_V: 'How fast the air\'s potential settles',
+    D_a: 'How fast the spots\' food spreads',
+    D_b: 'How fast the spots spread',
+    F_hi: 'The feed where the field is strongest (higher: more splitting, more forks)',
+    F_lo: 'The feed where the field has been taken: too little to live on, so spots die there',
+    k: 'How fast the spots decay (Gray-Scott\'s kill rate)',
+    eta: 'How much the strongest field wins: higher, fewer forks, each racing',
+    b_to_c: 'How fast spots lay their trail (history, as GS History+Wave\'s c)',
+    c_damp: 'How fast the trail fades',
+    c_to_F: 'How much the trail starves the feed (what pushes spots off their own trail, so they travel and split)',
+    c_to_k: 'How much the trail adds to the kill rate',
+    drift: 'How fast the spots drift down the field lines toward the ground (their steering)',
+    conduct: 'How much the spots themselves conduct (1: a leading spot draws the field to itself, so fewer branches win; 0: only the trail, a dense fan)',
+    disorder: 'How much the air\'s breakdown strength varies (fixed, q, lumpy): more, more crooked and forked',
+    flash: 'How bright the return stroke flashes up the trail',
+    D_light: 'How far the glow spreads',
+    plate: 'Charged plates: +1 a cloud (potential 1), −1 the ground (potential 0), 0 the air',
+  },
+  paintable: ['plate'],
+  formula: `// the plates: a cloud (+1) at potential 1, the ground (−1) at 0
+float isplate = step(0.5, abs(plate));
+float pv = step(0.0, plate);
+// what conducts: the trail and the spots (so a leading spot draws the field to itself, as a lightning tip does)
+float cond = max(smoothstep(0.3, 0.6, c), conduct*smoothstep(0.15, 0.3, b));
+// the air's potential: diffusing to Laplace's equation, held at the plates' and at 1 where it conducts
+delta_V = (1.0 - isplate)*(1.0 - cond)*D_V*laplacian_V + (isplate*(pv - V) + (1.0 - isplate)*cond*(1.0 - V))/timestep;
+// the field, times the air's varied weakness, and the strongest such near the spots and trail (emax, passed along them,
+// ebbing slowly)
+float E = (1.0 - isplate)*sqrt(x_gradient_V*x_gradient_V + y_gradient_V*y_gradient_V)*(1.0 - disorder + 2.0*disorder*q);
+// (blurred, Eb, so a conducting spot's middle, with no field of its own, reads the field round its edge)
+delta_Eb = D_V*laplacian_Eb + 0.05*(E - Eb);
+// (the field itself where spots don't conduct: the blur made them wander sideways under the cloud)
+float Ef = mix(E, Eb, conduct);
+float reg = smoothstep(0.02, 0.1, max(c, b));
+delta_emax = (reg*max(Ef, 0.999*max(max(north_emax, south_emax), max(east_emax, west_emax))) - emax)/timestep;
+// the spots' feed: well fed where the field is near the strongest, starving where it has been taken, and starved on
+// the trail, which pushes spots off their own trails (as in GS History+Wave), so they travel and split
+// (and none near the cloud: its edge, fresh food in a strong field, grew a stripe of spots all along it)
+delta_cloud = D_V*laplacian_cloud + 0.02*(step(0.5, plate) - cloud);
+float F = (1.0 - smoothstep(0.1, 0.3, cloud))*max(mix(F_lo, F_hi, pow(min(Ef/max(emax, 1e-5), 1.0), eta)) - c_to_F*c, 0.0);
+float kk = k + c_to_k*c;
+// steering: the spots drift down the field lines (toward the ground), at drift
+float gl = sqrt(x_gradient_V*x_gradient_V + y_gradient_V*y_gradient_V) + 1e-6;
+float ux = -drift*x_gradient_V/gl;
+float uy = -drift*y_gradient_V/gl;
+float adv_a = ux*x_gradient_a + uy*y_gradient_a;
+float adv_b = ux*x_gradient_b + uy*y_gradient_b;
+delta_a = (1.0 - isplate)*(D_a*laplacian_a - a*b*b + F*(1.0 - a) - adv_a) + isplate*(1.0 - a)/timestep;
+delta_b = (1.0 - isplate)*(D_b*laplacian_b + a*b*b - (F + kk)*b - adv_b) - isplate*b/timestep;
+// the trail: the spots' history (as GS History+Wave's c), fading slowly
+delta_c = b_to_c*b - c_damp*c;
+// the air's breakdown strength: fixed, as painted at the start
+delta_q = 0.0;
+// the ground, as a reagent (so its neighbours can see it)
+delta_gnd = (step(plate, -0.5) - gnd)/timestep;
+// struck: where the trail touches the ground, flooding up the trail
+float on = smoothstep(0.2, 0.5, max(c, 3.0*b));
+float touch = on*max(max(north_gnd, south_gnd), max(east_gnd, west_gnd));
+float ns = max(max(north_s, south_s), max(east_s, west_s));
+delta_s = (on*max(touch, max(ns, s)) - s)/timestep;
+// the picture: the trail dim, the spots bright, the return stroke flashing up the trail
+delta_light = D_light*laplacian_light + 0.2*(min(0.3*c + 3.0*b + s*flash, 2.0) - light);
+`,
+  rest: [0, 1, 0, 0, 0.5, 0, 0, 0, 0, 0, 0],
+  seed: [null, 0.5, 0.25, null, null, null, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  initial: [],
+  view: { reagent: 'light', low: 0, high: 1, stepsPerFrame: 200 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6094,7 +6208,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
-  ['Lightning', [LIGHTNING_1, LIGHTNING_2]],
+  ['Lightning', [LIGHTNING_1, LIGHTNING_2, LIGHTNING_3]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];
 

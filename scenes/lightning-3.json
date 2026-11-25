@@ -1,0 +1,625 @@
+{
+ "name": "Lightning 3: soliton tips from a cloud to the ground",
+ "description": "Lightning 3 between a charged cloud along the top (plate +1) and the ground along the bottom (plate \u22121): Gray-Scott spots set off from a short trail under the cloud, pushed off their own trails (as in GS History+Wave), splitting where the field is strong, and fan out toward the ground like a river delta, leaving glowing conducting trails; when they reach it the return stroke flashes up them. Restart for another; paint plate \u22121 for towers or hills that draw the strike; F_hi for how much they split, eta, conduct and drift to experiment with steering.",
+ "rule": "builtin:77",
+ "size": 256,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "q",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 16,
+    "octaves": 2,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "plate",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0,
+    "x1": 1,
+    "y1": 0.04
+   }
+  },
+  {
+   "chem": "plate",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": -1
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.96,
+    "x1": 1,
+    "y1": 1
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.9844
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.04,
+    "x1": 1,
+    "y1": 0.06875
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.9531
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.06875,
+    "x1": 1,
+    "y1": 0.0975
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.9219
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.0975,
+    "x1": 1,
+    "y1": 0.12625
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.8906
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.12625,
+    "x1": 1,
+    "y1": 0.155
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.8594
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.155,
+    "x1": 1,
+    "y1": 0.18375
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.8281
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.18375,
+    "x1": 1,
+    "y1": 0.2125
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7969
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.2125,
+    "x1": 1,
+    "y1": 0.24125
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7656
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.24125,
+    "x1": 1,
+    "y1": 0.26999999999999996
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7344
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.26999999999999996,
+    "x1": 1,
+    "y1": 0.29874999999999996
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.7031
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.29874999999999996,
+    "x1": 1,
+    "y1": 0.32749999999999996
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.6719
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.32749999999999996,
+    "x1": 1,
+    "y1": 0.35624999999999996
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.6406
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.35624999999999996,
+    "x1": 1,
+    "y1": 0.38499999999999995
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.6094
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.38499999999999995,
+    "x1": 1,
+    "y1": 0.41374999999999995
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5781
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.41374999999999995,
+    "x1": 1,
+    "y1": 0.44249999999999995
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5469
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.44249999999999995,
+    "x1": 1,
+    "y1": 0.47124999999999995
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5156
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.47124999999999995,
+    "x1": 1,
+    "y1": 0.49999999999999994
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.4844
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.49999999999999994,
+    "x1": 1,
+    "y1": 0.5287499999999999
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.4531
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.5287499999999999,
+    "x1": 1,
+    "y1": 0.5575
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.4219
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.5575,
+    "x1": 1,
+    "y1": 0.5862499999999999
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.3906
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.5862499999999999,
+    "x1": 1,
+    "y1": 0.615
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.3594
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.615,
+    "x1": 1,
+    "y1": 0.64375
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.3281
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.64375,
+    "x1": 1,
+    "y1": 0.6725
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.2969
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.6725,
+    "x1": 1,
+    "y1": 0.7012499999999999
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.2656
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.7012499999999999,
+    "x1": 1,
+    "y1": 0.73
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.2344
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.73,
+    "x1": 1,
+    "y1": 0.75875
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.2031
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.75875,
+    "x1": 1,
+    "y1": 0.7875
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.1719
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.7875,
+    "x1": 1,
+    "y1": 0.8162499999999999
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.1406
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.8162499999999999,
+    "x1": 1,
+    "y1": 0.845
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.1094
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.845,
+    "x1": 1,
+    "y1": 0.87375
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.0781
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.87375,
+    "x1": 1,
+    "y1": 0.9025
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.0469
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.9025,
+    "x1": 1,
+    "y1": 0.9312499999999999
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.0156
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0.9312499999999999,
+    "x1": 1,
+    "y1": 0.96
+   }
+  },
+  {
+   "chem": "V",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "rectangle",
+    "x0": 0,
+    "y0": 0,
+    "x1": 1,
+    "y1": 0.04
+   }
+  },
+  {
+   "chem": "b",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.25
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5,
+    "cy": 0.09,
+    "r": 0.015625
+   }
+  },
+  {
+   "chem": "a",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5,
+    "cy": 0.09,
+    "r": 0.015625
+   }
+  },
+  {
+   "chem": "c",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 0.6,
+    "edge": 2
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5,
+    "cy": 0.05,
+    "r": 0.015625
+   }
+  },
+  {
+   "chem": "c",
+   "op": "add",
+   "fill": {
+    "type": "bump",
+    "value": 0.6,
+    "edge": 2
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.5,
+    "cy": 0.062,
+    "r": 0.015625
+   }
+  }
+ ],
+ "view": {
+  "reagent": "light",
+  "low": 0,
+  "high": 1
+ }
+}
