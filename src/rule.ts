@@ -6279,7 +6279,48 @@ float F = (1.0 - smoothstep(0.1, 0.3, cloud))*(1.0 - s)*max(Fr - c_to_F*c, 0.0);
   view: { ...LIGHTNING_3.view, stepsPerFrame: 200 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4];
+/**
+ * Lightning 5: Lightning 4, less straight and less regular. Its spots drifted straight down the field lines and forked
+ * at a steady rate, so its channels ran straight with evenly spaced stubs. Here two still noise fields (w and z, smooth
+ * noise laid by the scene) vary both: w turns the drift off the field lines by up to wander (radians), so a tip runs
+ * one way for a while and then swings; z moves split_at by up to split_var, so forks bunch in some stretches and are
+ * rare in others.
+ */
+export const LIGHTNING_5: RuleDef = {
+  ...LIGHTNING_4,
+  name: 'Lightning 5 (soliton tips, wandering)',
+  description:
+    'Lightning whose tips are Gray-Scott spots, as Lightning 4, wandering: the tips are turned off the field lines by a ' +
+    'still noise (wander), so their channels zigzag, and how readily they fork varies from place to place (split_var), ' +
+    'so forks bunch up here and there. Paint plate to make clouds (+1), ground or towers (−1); restart for another bolt.',
+  reagents: [...LIGHTNING_4.reagents, 'w', 'z'],
+  rest: [...LIGHTNING_4.rest, 0.5, 0.5],
+  seed: [...LIGHTNING_4.seed, null, null],
+  seedNoise: [...LIGHTNING_4.seedNoise, 0, 0],
+  params: [
+    ...LIGHTNING_4.params,
+    { name: 'wander', value: 1.2, min: 0, max: 3 },
+    { name: 'split_var', value: 0.25, min: 0, max: 0.5 },
+  ],
+  paramHints: {
+    ...LIGHTNING_4.paramHints,
+    wander: 'How far (radians) the noise w turns the tips off the field lines: more, more zigzag',
+    split_var: 'How much the noise z moves split_at from place to place: more, forks bunch up more',
+  },
+  formula: LIGHTNING_4.formula
+    .replace('float ux = -drift*x_gradient_V/gl;\nfloat uy = -drift*y_gradient_V/gl;',
+      `// (turned off the field lines by w, up to wander, fading in away from the cloud as the disorder does: the start
+// hung on the noise again)
+float calm = 1.0 - smoothstep(0.85, 0.95, V);
+float wa = calm*wander*(2.0*w - 1.0);
+float ux = -drift*(cos(wa)*x_gradient_V - sin(wa)*y_gradient_V)/gl;
+float uy = -drift*(sin(wa)*x_gradient_V + cos(wa)*y_gradient_V)/gl;
+delta_w = 0.0;
+delta_z = 0.0;`)
+    .replace('smoothstep(split_at - 0.05, split_at + 0.05, r)', 'smoothstep(split_at + (1.0 - smoothstep(0.85, 0.95, V))*split_var*(2.0*z - 1.0) - 0.05, split_at + (1.0 - smoothstep(0.85, 0.95, V))*split_var*(2.0*z - 1.0) + 0.05, r)'),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6292,7 +6333,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
-  ['Lightning', [LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4]],
+  ['Lightning', [LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];
 
