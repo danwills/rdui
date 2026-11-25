@@ -5990,7 +5990,98 @@ delta_light = D_light*laplacian_light + 0.1*(min(0.5*chan + s*glow*cur, 2.0) - l
   view: { reagent: 'light', low: 0, high: 1, stepsPerFrame: 1000 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1];
+/**
+ * Lightning 2: Lightning 1 at a bigger scale, with smooth features several cells across. A thin skeleton c grows by
+ * Lightning 1's rules, but what conducts (and shows) is a smooth sheath round it: b, a screened blur of the skeleton (1
+ * on it, falling off as exp(−distance/sqrt(D_b/b_decay))), and the sheath h where b passes sheath, a soft edge, round,
+ * tapering at the tips. V is held at 1 in the sheath; the field is measured on its edge (|grad V|) and passed a few
+ * cells in (Es, ebbing 3% a cell), so the skeleton grows where the sheath's edge nearby meets the strongest field: the
+ * forking happens at the sheath's scale, fewer forks than Lightning 1. Struck, W and the current run through the sheath.
+ * (A smooth phase-field channel was tried first: its edge, pushed where the field passed a threshold, grew one blunt
+ * finger, a faint crescent creeping ahead of it.)
+ */
+export const LIGHTNING_2: RuleDef = {
+  ...LIGHTNING_1,
+  name: 'Lightning 2 (smooth)',
+  description:
+    'Lightning 1 at a bigger scale, its features smooth and several cells across, as RD features are: a hidden thin ' +
+    'skeleton grows where the field at the edge of the smooth glowing sheath round it is strongest, so the leader forks ' +
+    'less but in smooth broad strokes. When it reaches the ground the return stroke lights the path the current takes. ' +
+    'Paint plate to make clouds (+1), ground or towers (−1); sheath and b_decay for how thick.',
+  reagents: [...LIGHTNING_1.reagents, 'b', 'Es'],
+  params: [
+    ...LIGHTNING_1.params.map((p) => (p.name === 'eta' ? { ...p, value: 1.5 } : p.name === 'disorder' ? { ...p, value: 0.8 } : p)),
+    { name: 'D_b', value: 0.24, min: 0, max: 0.25 },
+    { name: 'b_decay', value: 0.025, min: 0.001, max: 0.1 },
+    { name: 'sheath', value: 0.4, min: 0.15, max: 0.85 },
+    { name: 'flash', value: 0.7, min: 0, max: 2 },
+    { name: 'dense', value: 0.94, min: 0.8, max: 1.05 },
+  ],
+  paramHints: {
+    ...LIGHTNING_1.paramHints,
+    D_b: 'How far the sheath\'s blur of the skeleton spreads (with b_decay)',
+    b_decay: 'How fast the blur falls off away from the skeleton: lower, a thicker sheath, broader strokes, fewer forks',
+    sheath: 'Where the blur becomes sheath: lower, thicker',
+    flash: 'How bright the struck bolt flashes as the return stroke climbs it from the ground',
+    dense: 'How dense the skeleton may get before it stops growing there (lower: thinner strokes; over 1, no limit)',
+    eta: 'How much the strongest field wins: low, bushier; high, a few forks racing ahead',
+  },
+  rest: [...LIGHTNING_1.rest, 0, 0],
+  seed: [...LIGHTNING_1.seed, null, null],
+  seedNoise: [...LIGHTNING_1.seedNoise, 0, 0],
+  formula: `// the plates: a cloud (+1) at potential 1, the ground (−1) at 0
+float isplate = step(0.5, abs(plate));
+float pv = step(0.0, plate);
+// the skeleton, and the sheath round it: b, a screened blur of it (1 on it), and h where b passes sheath, a soft edge
+float chan = smoothstep(0.5, 0.9, c);
+delta_b = (1.0 - chan)*(D_b*laplacian_b - b_decay*b) + chan*(1.0 - b)/timestep;
+float h = (1.0 - isplate)*smoothstep(sheath - 0.1, sheath + 0.1, b);
+// the air's potential: diffusing to Laplace's equation, held at the plates' and at the sheath's (1: it conducts)
+delta_V = (1.0 - isplate)*(1.0 - h)*D_V*laplacian_V + (isplate*(pv - V) + h*(1.0 - V))/timestep;
+// the field on the sheath's edge, passed a few cells in (Es, ebbing 3% a cell)
+float E = sqrt(x_gradient_V*x_gradient_V + y_gradient_V*y_gradient_V);
+float rim = 4.0*h*(1.0 - h);
+float near = smoothstep(0.02, 0.1, b);
+delta_Es = (near*max(rim*E, 0.97*max(max(north_Es, south_Es), max(east_Es, west_Es))) - Es)/timestep;
+// the skeleton's growth: into cells next to it (a corner at diag the rate), as (the field at the sheath's edge nearby,
+// times the air's varied weakness, over the strongest)^eta; healing unless driven; stopped once struck
+float nc = max(max(north_c, south_c), max(east_c, west_c));
+float nd = max(max(north_east_c, north_west_c), max(south_east_c, south_west_c));
+float ns = max(max(max(north_s, south_s), max(east_s, west_s)), max(max(north_east_s, north_west_s), max(south_east_s, south_west_s)));
+// (not where the skeleton is already dense, b near 1: filling in, it swelled the sheath into fat blobs)
+float edge = max(smoothstep(0.85, 0.95, nc), diag*smoothstep(0.85, 0.95, nd))*(1.0 - isplate)*(1.0 - chan)*(1.0 - smoothstep(dense - 0.03, dense + 0.03, b));
+float Eq = Es*(1.0 - disorder + 2.0*disorder*q);
+// (emax the strongest Es where the skeleton can grow: the skeleton sees Es a few cells in from the rim, ebbed, and
+// against the rim's own strongest it grew slower than it healed and stalled)
+delta_emax = (near*max(edge*Eq, 0.9995*max(max(north_emax, south_emax), max(east_emax, west_emax))) - emax)/timestep;
+float rate = grow*edge*(1.0 - smoothstep(0.1, 0.5, max(ns, s)))*pow(min(Eq/max(emax, 1e-5), 1.0), eta);
+float done = smoothstep(0.4, 0.6, c);
+delta_c = min(rate, 1.0)*(1.0 - c) + snap*done*(1.0 - c) - heal*(1.0 - done)*c;
+// the air's breakdown strength: fixed, as painted at the start
+delta_q = 0.0;
+// the ground, as a reagent (so its neighbours can see it)
+delta_gnd = (step(plate, -0.5) - gnd)/timestep;
+// struck: where the sheath touches the ground, flooding through the sheath
+float hh = smoothstep(0.4, 0.6, h);
+float touch = hh*max(max(max(north_gnd, south_gnd), max(east_gnd, west_gnd)), max(max(north_east_gnd, north_west_gnd), max(south_east_gnd, south_west_gnd)));
+delta_s = (hh*max(touch, max(ns, s)) - s)/timestep;
+// W: the potential through the sheath alone, 1 in the cloud, 0 where it touches the ground (relaxing within the sheath
+// only, so the dead-end branches settle at one potential and carry no current); 1 off it
+float cn = HN;
+float cs = HS;
+float ce = HE;
+float cw = HW;
+float lapW = cn*(north_W - W) + cs*(south_W - W) + ce*(east_W - W) + cw*(west_W - W);
+float incloud = step(0.5, plate)*smoothstep(sheath - 0.1, sheath + 0.1, b);
+delta_W = hh*(1.0 - incloud)*(1.0 - touch)*D_W*lapW + (incloud*(1.0 - W) - touch*W + (1.0 - hh)*(1.0 - incloud)*(1.0 - W))/timestep;
+// the current through the sheath, and the picture: a soft glow over the sheath, dim; the struck flash climbing it from the
+// ground (s floods a cell a step: the current along a thick sheath took millions of steps to climb), the current brighter
+float cur = hh*(abs(north_W - W)*cn + abs(south_W - W)*cs + abs(east_W - W)*ce + abs(west_W - W)*cw);
+delta_light = D_light*laplacian_light + 0.1*(min(0.5*h + s*(flash + glow*cur), 2.0) - light);
+`.replace('HN', 'smoothstep(sheath - 0.1, sheath + 0.1, north_b)').replace('HS', 'smoothstep(sheath - 0.1, sheath + 0.1, south_b)').replace('HE', 'smoothstep(sheath - 0.1, sheath + 0.1, east_b)').replace('HW', 'smoothstep(sheath - 0.1, sheath + 0.1, west_b)'),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6003,7 +6094,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
-  ['Lightning', [LIGHTNING_1]],
+  ['Lightning', [LIGHTNING_1, LIGHTNING_2]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];
 
