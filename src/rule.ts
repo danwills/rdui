@@ -4529,6 +4529,52 @@ delta_bud = 0.3*drop*smoothstep(0.1, 0.3, phi)*max(1.0 - bud, 0.0) + ripen*smoot
 };
 
 /**
+ * Road tips 2 (Momentum Bubbles 20): Momentum Bubbles 19, with tips that die where they cross any established road
+ * running another way (fresh too, not only old road: tips crossed fresh roads and ran into each other, merging into
+ * ragged clumps), and a minimum block size: near (the trap's unused sense reagent, renamed), a blur of old road
+ * reaching about sqrt(D_near/near_rate) cells, spends a ripe bud without hatching where it's over near_max.
+ */
+export const MOMENTUM_BUBBLES_20: RuleDef = {
+  ...MOMENTUM_BUBBLES_19,
+  name: 'Momentum Bubbles 20 (road tips 2)',
+  description:
+    'Road tips, tidier: as Momentum Bubbles 19, solitons grow a road network (road), each tip dropping buds that hatch new ' +
+    'tips at right angles, but a tip dies wherever it crosses a road running another way, fresh or old, so streets end in ' +
+    'T-junctions rather than crossing and running into each other; and a bud too near old road (near, over near_max) ' +
+    'is spent without hatching, so blocks stop dividing once they\'re small.',
+  reagents: MOMENTUM_BUBBLES_19.reagents.map((r) => (r === 'sense' ? 'near' : r)),
+  params: [
+    ...MOMENTUM_BUBBLES_19.params.map((q) => (q.name === 'kill' ? { ...q, value: 0.05 } : q)),
+    { name: 'D_near', value: 0.2, min: 0, max: 0.25 },
+    { name: 'near_rate', value: 0.0005, min: 0.00005, max: 0.01 },
+    { name: 'near_max', value: 0.06, min: 0, max: 0.3 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_19.paramHints,
+    kill: 'How fast a tip dies on a road running another way, or on old road (once it has gone a little way)',
+    D_near: 'How fast near spreads out from old road',
+    near_rate: 'How fast near follows the old road (with D_near, its reach: about sqrt(D_near/near_rate) cells)',
+    near_max: 'How near old road a bud can be and still hatch: lower, bigger blocks',
+  },
+  formula: MOMENTUM_BUBBLES_19.formula
+    // (sense, as a reagent, in every name it's used by: delta_sense, laplacian_sense..., not the sense_rate family of params)
+    .replace(/(?<![A-Za-z0-9])sense(?![A-Za-z0-9_])/g, 'near')
+    .replace(/delta_near = [^\n]*\n/, '// near: how near old road this is (a blur of it), so buds near it are spent without hatching: a minimum block size\ndelta_near = D_near*laplacian_near + near_rate*(smoothstep(0.3, 0.7, road - 1.0) - near);\n')
+    .replace('float hatch = smoothstep(1.8, 1.95, bud)*(1.0 - smoothstep(2.05, 2.2, bud));',
+      `float crowded = smoothstep(near_max, 1.5*near_max, near);
+float ripe = smoothstep(1.8, 1.95, bud)*(1.0 - smoothstep(2.05, 2.2, bud));
+float hatch = ripe*(1.0 - crowded);
+// crossing: on an established road (|rd| near 1) running another way from this tip's heading (its own trail runs its way)
+float rdn = sqrt(rdx*rdx + rdy*rdy);
+float hdl = sqrt(ax*ax + ay*ay) + 1e-6;
+float crossing = smoothstep(0.6, 0.8, rdn)*(1.0 - smoothstep(0.5, 0.8, abs(rdx*ax + rdy*ay)/(rdn*hdl + 1e-6)))*smoothstep(0.3, 0.6, hdl);`)
+    .replace('float dying = kill*smoothstep(0.5, 0.9, road - 1.0)*smoothstep(0.25, 0.35, clock);',
+      'float dying = kill*max(smoothstep(0.5, 0.9, road - 1.0), crossing)*smoothstep(0.25, 0.35, clock);')
+    .replace('+ 0.3*hatch*smoothstep(0.3, 0.5, phi)*(3.0 - bud)\n',
+      '+ 0.3*hatch*smoothstep(0.3, 0.5, phi)*(3.0 - bud) + 0.3*ripe*crowded*(3.0 - bud)\n'),
+};
+
+/**
  * Mud cracking: a drying layer stuck to its bed, as phase-field fracture (Francfort–Marigo / Bourdin; the AT1
  * threshold form of Pham et al.). Moisture m evaporates and the layer wants to shrink by shrink·(1 − m); its
  * displacement (ux, uy) relaxes towards balance against a spring to the bed (grip), so stress builds as it dries.
@@ -5657,7 +5703,7 @@ delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
   view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200, customGamma: 1.4 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19];
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -5668,7 +5714,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];
