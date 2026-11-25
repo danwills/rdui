@@ -1,6 +1,6 @@
 {
- "name": "Mud cracks 12: grid city",
- "description": "City streets on the simulation grid's own axes, the way it favours, with less smoothing, so it helps keep them straight: dead-straight avenues, cross streets at right angles ending in T-junctions, rectangular blocks that keep flat sides. Starts part dried, just before the first streets. Paint district above a half for neighbourhoods on the diagonals instead, straight, square, cross_lag, grow, dry, grip or toughness.",
+ "name": "Mud cracks 12: xylem",
+ "description": "Plant cells in long files, like xylem: long dead-straight walls on the simulation grid's own axes, then cross walls at right angles ending in T-junctions, dividing into rectangular cells that keep flat sides, the oldest walls thickest. Starts part dried, just before the first walls. Paint district above a half for patches on the diagonals instead, straight, square, cross_lag, grow, dry, grip or toughness.",
  "rule": "builtin:69",
  "size": 512,
  "start": "initial",

@@ -5462,13 +5462,13 @@ delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
 export const MUD_CRACKS_12: RuleDef = {
   name: 'Mud cracks 12',
   description:
-    'Mud cracks as city streets on the grid: districts\' streets run along the simulation grid\'s own axes or its diagonals ' +
+    'Mud cracks as xylem (plant cells in long files): the walls run along the simulation grid\'s own axes or its diagonals ' +
     '(district picks one, with soft bends between; the axes everywhere to start, which run straightest), the directions ' +
-    'it favours, with less smoothing (stab), so the grid helps keep streets straight rather than fighting them. As in Mud cracks 8 the layer shrinks along each district\'s street direction ' +
-    '(district) first and across it later (cross, cross_lag), so parallel streets come first and cross streets follow at right ' +
-    'angles, ending in T-junctions, and blocks keep dividing as the city grows. Here a crack is also much tougher running ' +
-    'askew of the grid than along it (straight), so streets keep straight and turn square, and districts are broad, with ' +
-    'narrow bends between them. Streets widen squarely too (square): their walls wear back along and across the grid, not equally every way, so blocks keep flat sides and sharp corners rather than rounding off. The oldest streets widen most. Starts part dried, just before the first streets.',
+    'it favours, with less smoothing (stab), so the grid helps keep them straight. The layer shrinks along that direction ' +
+    'first and across it later (cross, cross_lag), so long straight walls come first and cross walls follow at right ' +
+    'angles, ending in T-junctions; as it grows, cells keep dividing (grow). Cracks are tougher running askew of the grid ' +
+    '(straight) and widen squarely (square), so cells keep flat sides and sharp corners. The oldest walls thicken most. ' +
+    'Starts part dried, just before the first walls.',
   reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy'],
   params: [
     ...LEAF_PARAMS.filter((p) => p.name !== 'grain' && p.name !== 'aniso').map((p) =>
