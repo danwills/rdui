@@ -4467,7 +4467,7 @@ export const MOMENTUM_BUBBLES_19: RuleDef = {
     side: 'Which side of the road a bud hatches toward: under a half one side, over it the other (painted as smooth noise to start)',
   },
   paintable: ['side'],
-  view: { reagent: 'road', low: 0, high: 1 },
+  view: { reagent: 'road', low: 0, high: 1, customGamma: 1 },
   formula: MOMENTUM_BUBBLES_18.formula
     // (a ripe bud hatches a tip; a tip dies on old road)
     .replace('delta_phi = -carry_phi*adv + D_phi*laplacian_phi + well*phi*(1.0 - phi)*(phi - 0.5 + lambda);',
@@ -4610,7 +4610,7 @@ export const MOMENTUM_BUBBLES_21: RuleDef = {
     pace: 'How fast tips\' clocks run here (0: 0.4 times clock_rate, 1: 1.6 times), so roads are longer or shorter between branchings (painted as fine noise to start)',
   },
   paintable: ['side', 'pace'],
-  view: { reagent: 'street', low: 0, high: 1 },
+  view: { reagent: 'street', low: 0, high: 1, customGamma: 1 },
   formula: renameReagent(renameReagent(MOMENTUM_BUBBLES_20.formula, 'full', 'width'), 'tfull', 'street')
     .replace(/delta_width = [^\n]*\n/, `// width: the tip's (its road's half width, in cells), one value through it as its clock is; a hatching tip thin times the
 // width of the road it hatches from (street there, at the road's middle)
@@ -4624,6 +4624,37 @@ delta_street = (max(max(street, smoothstep(0.2, 0.4, phi)*width), sm - 1.0) - st
 `)
     .replace('delta_clock = (smoothstep(0.05, 0.15, phi)*(cm + clock_rate) - clock)/timestep;',
       'delta_clock = (smoothstep(0.05, 0.15, phi)*(cm + clock_rate*(0.4 + 1.2*pace)) - clock)/timestep;'),
+};
+
+/**
+ * Road tips 4 (Momentum Bubbles 22): Momentum Bubbles 21 with roads that aren't all square to each other: each tip
+ * hatches turned a little off the right angle, by wander × (2·bend − 1) radians, bend paintable (smooth noise), then runs
+ * straight. (Turning a tip's heading as it went, even by 3e-5 radians a step, drained its content until it died.)
+ */
+export const MOMENTUM_BUBBLES_22: RuleDef = {
+  ...MOMENTUM_BUBBLES_21,
+  name: 'Momentum Bubbles 22 (road tips 4)',
+  description:
+    'Road tips with roads not all square to each other: as Momentum Bubbles 21 (wide main roads, thinner side roads, ' +
+    'varied spacing), but each tip hatches turned a little off the right angle, one way or the other as the bend field ' +
+    'says (paintable), so roads run a little askew of each other.',
+  params: [
+    ...MOMENTUM_BUBBLES_21.params,
+    { name: 'wander', value: 0.1, min: 0, max: 0.5 },
+    { name: 'bend', value: 0.5, min: 0, max: 1 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_21.paramHints,
+    wander: 'How far off the right angle a tip can hatch (radians, at bend 0 or 1: 0.1 is about 6°)',
+    bend: 'Which way and how far off the right angle tips hatch here (0: one way, 1: the other, a half: square; painted as smooth noise to start)',
+  },
+  paintable: [...MOMENTUM_BUBBLES_21.paintable, 'bend'],
+  formula: MOMENTUM_BUBBLES_21.formula
+    .replace('delta_ax = (inside*mix(hax, bx, hatch) - ax)/timestep;\ndelta_ay = (inside*mix(hay, by, hatch) - ay)/timestep;',
+      `// (hatching turned a little off the right angle, as bend says)
+float turn = wander*(2.0*bend - 1.0);
+delta_ax = (inside*mix(hax, bx*cos(turn) - by*sin(turn), hatch) - ax)/timestep;
+delta_ay = (inside*mix(hay, bx*sin(turn) + by*cos(turn), hatch) - ay)/timestep;`),
 };
 
 /**
@@ -5755,7 +5786,7 @@ delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
   view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200, customGamma: 1.4 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21];
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -5766,7 +5797,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];

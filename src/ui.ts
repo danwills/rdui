@@ -28,6 +28,8 @@ export interface Settings {
   stepsPerFrame: number;
   /** Whether loading a rule or scene sets steps/frame (untick to keep your own). */
   ruleSpeed: boolean;
+  /** The Rule menu lists each family's rules (and each rule's scenes) newest first; unticked, oldest first, as it was. */
+  menuNewest: boolean;
   /** In rules with a paintable potential V, the Wall tool paints reflecting walls of high V instead. */
   wallsReflect: boolean;
   /** In rules with a paintable damping gamma, the Wall tool paints absorbing walls instead (reflect wins if both). */
@@ -171,6 +173,7 @@ export function defaultSettings(): Settings {
     running: true,
     stepsPerFrame: 10,
     ruleSpeed: true,
+    menuNewest: true,
     wallsReflect: true,
     wallsAbsorb: false,
     wallsTrap: false,
@@ -457,7 +460,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     return row;
   }
 
-  function checkbox(label: string, key: 'ruleSpeed' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'showStats' | 'customWander' | 'customTrueColours', title: string, then?: () => void) {
+  function checkbox(label: string, key: 'ruleSpeed' | 'menuNewest' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'showStats' | 'customWander' | 'customTrueColours', title: string, then?: () => void) {
     const input = el('input', { type: 'checkbox' });
     input.addEventListener('change', () => { s[key] = input.checked; then?.(); });
     syncers.push(() => (input.checked = s[key]));
@@ -654,8 +657,10 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     if (!families.includes(family)) families.push(family);
     familySel.replaceChildren(...families.map((f) => el('option', { value: f }, f)));
     familySel.value = family;
-    const rules = all.filter((c) => !c.rule && c.group === family);
-    const scenes = all.filter((c) => c.rule && c.group === family);
+    // (newest first, as menuNewest says: the rules and scenes come oldest first)
+    const order = <T,>(xs: T[]) => (s.menuNewest ? [...xs].reverse() : xs);
+    const rules = order(all.filter((c) => !c.rule && c.group === family));
+    const scenes = order(all.filter((c) => c.rule && c.group === family));
     const ruleId = here?.rule ?? cur;
     const opts: HTMLOptionElement[] = [];
     const sceneOpt = (c: RuleChoice) => el('option', { value: c.id }, `\u00a0\u00a0\u00a0\u00a0${c.label}`);
@@ -676,7 +681,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   }
   fillRules();
   familySel.addEventListener('change', () => {
-    const first = rc.choices().find((c) => !c.rule && c.group === familySel.value);
+    const inFamily = rc.choices().filter((c) => !c.rule && c.group === familySel.value);
+    const first = s.menuNewest ? inFamily[inFamily.length - 1] : inFamily[0];
     if (first) actions.selectRule(first.id);
   });
   ruleSel.addEventListener('change', () => actions.selectRule(ruleSel.value));
@@ -920,7 +926,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       slider('hardness', 'hardness', 0, 1, 0.01, 2),
       select('shape', 'brushShape', () => [['free', 'freehand'], ['line', 'line (press, drag to the end)'], ['circle', 'circle (press the centre, drag out)']]).row,
     ),
-    section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel), ruleBody),
+    section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel),
+      checkbox('newest first', 'menuNewest', 'list each family\'s rules, and each rule\'s scenes, newest first (untick for oldest first)', fillRules), ruleBody),
     section('Simulation',
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Restart', actions.restart, 'start the rule or scene over from scratch: its own parameters, opening, paint and stamps (Reset keeps your parameters)'), button('Clear chem', actions.clearChemistry, 'C')),
       logSlider('steps/frame', 'stepsPerFrame', 64, 5000, () => rc.rule().view.stepsPerFrame ?? defaultSettings().stepsPerFrame), // the rule's own speed, else the app's

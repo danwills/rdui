@@ -1,0 +1,159 @@
+{
+ "name": "Contraptions 26: road tips 4, bending a little (Momentum Bubbles 22)",
+ "description": "A road network grown by solitons whose roads bend a little (Momentum Bubbles 22): one wide tip (width 10) sets off east; every so often (pace) it drops a bud that hatches a thinner tip at right angles, to the side the side field says, and each tip's heading turns slowly as it goes, one way or the other as the bend field says (smooth noise), so roads curve gently. street is the drawn map. Tips die where they cross a road running another way (T-junctions), and buds too near old road are spent, so the map finishes. Paint side, pace, bend, thin; wander for how much roads bend; near_max for the block size.",
+ "rule": "builtin:73",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 40,
+ "globals": {
+  "brake": 0.01,
+  "accel": 0.003
+ },
+ "initial": [
+  {
+   "chem": "u",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "side",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 96,
+    "octaves": 2,
+    "roughness": 0.4
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "pace",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 10,
+    "octaves": 2,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "bend",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 128,
+    "octaves": 2,
+    "roughness": 0.4
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 10
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "px",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "s",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "width",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 10
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  }
+ ],
+ "view": {
+  "reagent": "street",
+  "low": 0,
+  "high": 1
+ }
+}
