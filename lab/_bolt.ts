@@ -22,7 +22,25 @@ export default async function (cfg: { scene: string; at: number[]; set?: Record<
       const l = state[b + ix('light')]; lmax = Math.max(lmax, l); if (l > 0.6) lit++;
       if (state[b + ix('c')] < 0.5) emax = Math.max(emax, 1 - state[b + ix('V')]);
     }
-    log(`t=${T} channel ${n} reaches row ${deep}/${W} struck ${struck} lit ${lit} light max ${lmax.toFixed(2)}` + (ti >= 0 ? ` tip cells ${tips} deepest ${tdeep}` : ''));
+    // spots: connected groups of tip cells
+    let spots = 0, rmax = 0;
+    const ri = ix('rho');
+    if (ri >= 0) for (let i = 0; i < W * W; i++) rmax = Math.max(rmax, state[i * S4 + ri]);
+    if (ti >= 0) {
+      const thr = ix('tip') >= 0 ? 0.5 : 0.2, seen = new Uint8Array(W * W);
+      for (let i0 = 0; i0 < W * W; i0++) {
+        if (seen[i0] || state[i0 * S4 + ti] <= thr) continue;
+        spots++; const st = [i0]; seen[i0] = 1;
+        while (st.length) {
+          const i = st.pop()!, x = i % W, y = (i - x) / W;
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const j = ((y + dy + W) % W) * W + ((x + dx + W) % W);
+            if (!seen[j] && state[j * S4 + ti] > thr) { seen[j] = 1; st.push(j); }
+          }
+        }
+      }
+    }
+    log(`t=${T} channel ${n} reaches row ${deep}/${W} struck ${struck} lit ${lit} light max ${lmax.toFixed(2)}` + (ti >= 0 ? ` tip cells ${tips} spots ${spots} deepest ${tdeep}` : '') + (ri >= 0 ? ` rho max ${rmax.toFixed(4)}` : ''));
     if (T % (cfg.every ?? 1e9) === 0) await saveFrame(`${cfg.scene}-${T}.png`, lab, { ri: ix(cfg.frame ?? 'light'), lo: 0, hi: cfg.hi ?? 1, ti: ix(cfg.frame ?? 'light'), tlo: 0, thi: cfg.hi ?? 1, scale: 2, caption: `${cfg.scene} t=${T}` });
   }
 }

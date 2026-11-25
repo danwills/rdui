@@ -6195,7 +6195,91 @@ delta_light = D_light*laplacian_light + 0.2*(min(0.3*c + 3.0*b + s*flash, 2.0) -
   view: { reagent: 'light', low: 0, high: 1, stepsPerFrame: 200 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3];
+/**
+ * Lightning 4: Lightning 3 with its splitting under control, on 512². The spots drift down the field lines (drift),
+ * and the field sets three levels of feed: where it is weak, F_lo, they starve; where it is fair, F_travel, a spot
+ * travels (pushed off its trail) without splitting; near the strongest (split_at) and uncrowded (rho, a wide blur of
+ * the spots, under crowd), F_split, it splits. What selects is lead: each spot's depth toward the ground (1 - V),
+ * flooded out sideways less lead_ebb a cell, against mine, the spot's own (flooded within it only): a spot more than
+ * lag behind a leader near it starves, so forks keep budding and the ones that fall behind die as side stubs, leaving
+ * a few channels. (Crowding alone couldn't select: the front's spots sat evenly spaced at whatever level culled them.)
+ * The disorder fades in away from the cloud, so the start doesn't hang on the noise (the seed lived ~2 runs in 5);
+ * the guard is along the ground too, the strike counted when a trail reaches it; struck spots stop.
+ */
+export const LIGHTNING_4: RuleDef = {
+  ...LIGHTNING_3,
+  name: 'Lightning 4 (soliton tips, few forks)',
+  description:
+    'Lightning whose tips are Gray-Scott spots, with the splitting under control: spots travel where the field is fair, ' +
+    'starve where it is weak or where they fall behind a leader near them, and split only where it is near the strongest ' +
+    'and they aren\'t crowded, so a few glowing tips race down from the cloud (plate +1, top) to the ground (plate −1, ' +
+    'bottom), their failed forks left as side stubs, and the return stroke flashes up their trails. Paint plate to make ' +
+    'clouds (+1), ground or towers (−1); lag and lead_ebb for how many channels survive, split_at and crowd for forking.',
+  reagents: [...LIGHTNING_3.reagents, 'rho', 'lead', 'mine'],
+  rest: [...LIGHTNING_3.rest, 0, 0, 0],
+  seed: [...LIGHTNING_3.seed, null, null, null],
+  seedNoise: [...LIGHTNING_3.seedNoise, 0, 0, 0],
+  params: [
+    ...LIGHTNING_3.params.filter((p) => !['F_hi'].includes(p.name)).map((p) => (p.name === 'eta' ? { ...p, value: 1 } : p.name === 'drift' ? { ...p, value: 0.03 } : p.name === 'F_lo' ? { ...p, value: 0.026 } : p)),
+    { name: 'F_travel', value: 0.038, min: 0, max: 0.1 },
+    { name: 'F_split', value: 0.046, min: 0, max: 0.1 },
+    { name: 'travel_at', value: 0.4, min: 0, max: 1 },
+    { name: 'split_at', value: 0.85, min: 0, max: 1 },
+    { name: 'D_rho', value: 0.24, min: 0, max: 0.25 },
+    { name: 'rho_rate', value: 0.0001, min: 0.00002, max: 0.002 },
+    { name: 'crowd', value: 0.005, min: 0, max: 0.03 },
+    { name: 'lead_ebb', value: 0.0001, min: 0, max: 0.005 },
+    { name: 'lag', value: 0.006, min: 0, max: 0.2 },
+    { name: 'lag_starve', value: 0.015, min: 0, max: 0.05 },
+  ],
+  paramHints: {
+    ...LIGHTNING_3.paramHints,
+    F_lo: 'The feed where the field is weak (below travel_at of the strongest): too little to live on',
+    F_travel: 'The feed where the field is fair: a spot travels without splitting',
+    F_split: 'The feed where the field is near the strongest and it isn\'t crowded: a spot splits',
+    travel_at: 'How near the strongest field a spot must be to live (field/strongest)^eta',
+    split_at: 'How near the strongest field a spot must be to split: higher, fewer forks',
+    D_rho: 'How far crowding is felt (with rho_rate)',
+    rho_rate: 'How fast the crowding blur follows the spots: lower, felt further',
+    crowd: 'How crowded (rho) it may be for a spot to split: lower, branches further apart (a lone spot makes ~0.002 at rho_rate 0.0001)',
+    lead_ebb: 'How fast the lead fades with distance from a spot, a cell: lower, spots compete over a wider range',
+    lag: 'How far behind the lead (in potential, ~0.002 a row on 512²) a spot may fall before it starves',
+    lag_starve: 'How much the feed drops for a spot lagging behind the lead',
+  },
+  formula: LIGHTNING_3.formula
+    .replace(/float F = \(1\.0 - smoothstep\(0\.1, 0\.3, cloud\)\)\*max\(mix\(F_lo, F_hi, pow\(min\(Ef\/max\(emax, 1e-5\), 1\.0\), eta\)\) - c_to_F\*c, 0\.0\);/,
+      `// rho: crowding, a wide blur of the spots
+delta_rho = D_rho*laplacian_rho + rho_rate*(b - rho);
+// three levels of feed: starving where the field is weak, travelling where fair, splitting only near the strongest
+// and uncrowded
+float r = pow(min(Ef/max(emax, 1e-5), 1.0), eta);
+float Fr = F_lo + (F_travel - F_lo)*smoothstep(travel_at - 0.1, travel_at + 0.1, r)
+  + (F_split - F_travel)*smoothstep(split_at - 0.05, split_at + 0.05, r)*(1.0 - smoothstep(0.7*crowd, crowd, rho));
+// lead: how far toward the ground (1 - V) the spots nearby have got, flooded out from each spot, less lead_ebb a cell;
+// a spot lagging behind the lead by more than lag starves, so outrun branches die (crowding alone couldn't tell the
+// spots apart: drifting down the spreading field lines, they split however fed, and the front stayed evenly crowded)
+float sp = smoothstep(0.15, 0.3, b);
+delta_lead = (max(sp*(1.0 - V), max(max(north_lead, south_lead), max(east_lead, west_lead)) - lead_ebb) - lead)/timestep;
+// mine: the spot's own lead, flooded within it only (so a spot's back doesn't lag behind its own front), held at its
+// full value out past the spot's rim (scaled down there, the rim lagged behind the spot's middle)
+delta_mine = (smoothstep(0.03, 0.08, b)*max(1.0 - V, max(max(north_mine, south_mine), max(east_mine, west_mine)) - 0.0001) - mine)/timestep;
+// (in the spots only: starving around them cut off the feed they live on)
+Fr -= lag_starve*sp*smoothstep(0.5*lag, lag, lead - mine);
+// (and none once struck: spots that had reached the ground went on spreading along it)
+float F = (1.0 - smoothstep(0.1, 0.3, cloud))*(1.0 - s)*max(Fr - c_to_F*c, 0.0);`)
+    // the guard (cloud) along the ground too, the spots grew a stripe along it as along the cloud; the strike when a
+    // trail reaches the ground's guard; and fainter trails conducting it (these tips run faster, so lay less trail)
+    .replace('delta_cloud = D_V*laplacian_cloud + 0.02*(step(0.5, plate) - cloud);', 'delta_cloud = D_V*laplacian_cloud + 0.02*(step(0.5, abs(plate)) - cloud);')
+    .replace('float on = smoothstep(0.2, 0.5, max(c, 3.0*b));\nfloat touch = on*max(max(north_gnd, south_gnd), max(east_gnd, west_gnd));',
+      'float on = smoothstep(0.08, 0.2, max(c, 3.0*b));\nfloat touch = on*max(max(max(north_gnd, south_gnd), max(east_gnd, west_gnd)), step(0.1, cloud)*step(V, 0.5));')
+    // the disorder fading in away from the cloud (V from 0.95 to 0.85), so the start doesn't hang on the noise there
+    // (the seed lived through its first squeezes about two runs in five)
+    .replace('float E = (1.0 - isplate)*sqrt(x_gradient_V*x_gradient_V + y_gradient_V*y_gradient_V)*(1.0 - disorder + 2.0*disorder*q);',
+      'float dis = disorder*(1.0 - smoothstep(0.85, 0.95, V));\nfloat E = (1.0 - isplate)*sqrt(x_gradient_V*x_gradient_V + y_gradient_V*y_gradient_V)*(1.0 - dis + 2.0*dis*q);'),
+  view: { ...LIGHTNING_3.view, stepsPerFrame: 200 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6208,7 +6292,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
-  ['Lightning', [LIGHTNING_1, LIGHTNING_2, LIGHTNING_3]],
+  ['Lightning', [LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];
 
