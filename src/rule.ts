@@ -5368,7 +5368,98 @@ delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
   view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200, customGamma: 1.4 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10];
+export const MUD_CRACKS_11: RuleDef = {
+  name: 'Mud cracks 11',
+  description:
+    'Mud cracks as city streets with straight-sided blocks: as in Mud cracks 8 the layer shrinks along each district\'s street direction ' +
+    '(district) first and across it later (cross, cross_lag), so parallel streets come first and cross streets follow at right ' +
+    'angles, ending in T-junctions, and blocks keep dividing as the city grows. Here a crack is also much tougher running ' +
+    'askew of the grid than along it (straight), so streets keep straight and turn square, and districts are broad, with ' +
+    'narrow bends between them. Streets widen squarely too (square): their walls wear back along and across the grid, not equally every way, so blocks keep flat sides and sharp corners rather than rounding off. The oldest streets widen most. Starts part dried, just before the first streets.',
+  reagents: ['m', 'd', 'ux', 'uy', 'sxx', 'syy', 'sxy'],
+  params: [
+    ...LEAF_PARAMS.filter((p) => p.name !== 'grain' && p.name !== 'aniso').map((p) =>
+      p.name === 'grow' ? { ...p, value: 0.0001 } : p.name === 'most_growth' ? { ...p, value: 3 } : p.name === 'thicken' ? { ...p, value: 0.0012 } : p.name === 'crack_width' ? { ...p, value: 2 } : p.name === 'finest' ? { ...p, value: 1.2 } : p),
+    { name: 'district', value: 0, min: 0, max: 1 },
+    { name: 'cross', value: 1, min: 0, max: 1.5 },
+    { name: 'cross_lag', value: 4, min: 1, max: 8 },
+    { name: 'straight', value: 3, min: 0, max: 20 },
+    { name: 'square', value: 1, min: 0, max: 1 },
+  ],
+  paramHints: {
+    ...LEAF_HINTS,
+    grip: 'The spring tying the layer to its bed at the start: stronger grip, smaller blocks (it grows with the city)',
+    crack_width: 'The width of the first streets, in cells',
+    finest: 'The width of the narrowest lanes, in cells: each generation of streets is narrower, down to this',
+    grow: 'How fast the city grows: as it does, blocks keep dividing into smaller ones (0: one drying)',
+    most_growth: 'How far the city grows (times its start): the smallest blocks are about this many times smaller than the first',
+    thicken: 'How fast streets widen with age, so the oldest are the widest',
+    district: 'Which way this district\'s streets run (0–1 over a quarter turn, in three softly bounded steps; painted as smooth noise to start)',
+    cross: 'How much the layer shrinks across the streets (1: as much as along them)',
+    cross_lag: 'How long shrinking across waits behind shrinking along (higher: the first streets have longer to run before the cross streets)',
+    square: 'How squarely streets widen (0: equally every way, rounding the blocks; 1: along and across the grid only, keeping blocks flat-sided with sharp corners)',
+    straight: 'How much tougher a street is running askew of its district\'s grid than along it or across it (0: no tougher): straighter streets, square corners',
+  },
+  paintable: ['dry', 'grip', 'toughness', 'district', 'grow'],
+  fitFloor: { m: 0.3, d: 0.5, ux: 0.5, uy: 0.5, sxx: 0.05, syy: 0.05, sxy: 0.03 },
+  explore: ['grip', 'straight', 'square'],
+  formula: `float4 mm = clamp(m, 0.0, 1.0);
+float4 s = min(1.0 + grow*time, most_growth);
+float4 w = max(crack_width/s, finest);
+// the streets' direction: district in three steps over a quarter turn, with soft ramps between them
+float4 k = 3.0*clamp(district, 0.0, 0.9999);
+float4 th = 0.5235988*(floor(k) + smoothstep(0.42, 0.58, k - floor(k)));
+float4 c = cos(th);
+float4 sn = sin(th);
+// shrinking along the streets' direction (en) and across it, later (et): eigenstrain en·nn + et·tt
+float4 en = shrink*(1.0 - mm);
+float4 et = cross*shrink*pow(1.0 - mm, cross_lag);
+float4 ax = x_gradient_ux + en*c*c + et*sn*sn;
+float4 ay = y_gradient_uy + en*sn*sn + et*c*c;
+float4 exy = 0.5*(x_gradient_uy + y_gradient_ux) + (en - et)*c*sn;
+float4 tr = ax + ay;
+float4 g = (1.0 - d)*(1.0 - d) + 0.001;
+delta_sxx = (g*(lam*tr + 2.0*mu*ax) - sxx)/timestep;
+delta_syy = (g*(lam*tr + 2.0*mu*ay) - syy)/timestep;
+delta_sxy = (g*2.0*mu*exy - sxy)/timestep;
+delta_ux = x_gradient_sxx + y_gradient_sxy + stab*mu*g*laplacian_ux - grip*s*s*ux;
+delta_uy = x_gradient_sxy + y_gradient_syy + stab*mu*g*laplacian_uy - grip*s*s*uy;
+float4 trp = max(tr, 0.0);
+float4 H = 0.5*lam*trp*trp + mu*(ax*ax + ay*ay + 2.0*exy*exy);
+// at a crack's edge (where d changes) only the strain pulling it open (across it, n = grad d's direction) widens it, so
+// stress along it starts new cracks inside the cells rather than widening this one
+float4 gd = sqrt(x_gradient_d*x_gradient_d + y_gradient_d*y_gradient_d + 1e-12);
+float4 nx = x_gradient_d/gd;
+float4 ny = y_gradient_d/gd;
+float4 enn = nx*nx*ax + ny*ny*ay + 2.0*nx*ny*exy;
+float4 ent = nx*ny*(ay - ax) + (nx*nx - ny*ny)*exy;
+float4 Hn = 0.5*(lam + 2.0*mu)*max(enn, 0.0)*max(enn, 0.0) + 2.0*mu*ent*ent;
+float4 Hd = mix(H, Hn, edge*smoothstep(0.0, 0.15, gd*w));
+// a crack running askew of the grid is tougher (its direction from grad d, at its edges and tip): |sin 2ψ|, ψ from the grid,
+// which rises at once for small angles, so streets that wander a little are pulled straight
+float4 pn = nx*c + ny*sn;
+float4 qn = ny*c - nx*sn;
+float4 askew = 2.0*abs(pn*qn)*smoothstep(0.0, 0.15, gd*w);
+float4 drive = 2.0*(1.0 - d)*Hd - toughness*(1.0 + straight*askew)*(0.375/w - 0.75*w*laplacian_d);
+// streets widen squarely: by the gradient's size along and across the grid (|p| + |q|, whose growth shape is a square)
+// rather than its length (a circle), so walls wear back flat and corners stay sharp
+float4 gl = sqrt(gradient_mag_squared_d + 1e-12);
+float4 gsq = abs(x_gradient_d*c + y_gradient_d*sn) + abs(y_gradient_d*c - x_gradient_d*sn);
+float4 widening = thicken/s*mix(gl, gsq, square)*(1.0 - d)/crack_width;
+delta_d = max(min(crack_rate*max(drive, 0.0) + widening, (1.0 - d)/timestep), 0.0);
+delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
+  rest: [1, 0, 0, 0, 0, 0, 0],
+  seed: [1, 0, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0],
+  initial: [
+    { chem: 'm', op: 'overwrite', fill: { type: 'constant', value: START_M_CITY }, shape: { type: 'everywhere' } },
+    { chem: 'toughness', op: 'multiply', fill: { type: 'smooth_noise', low: 0.97, high: 1.03, size: 48, octaves: 5, roughness: 0.55 }, shape: { type: 'everywhere' } },
+    { chem: 'district', op: 'overwrite', fill: { type: 'smooth_noise', low: 0, high: 1, size: 320, octaves: 2, roughness: 0.3 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200, customGamma: 1.4 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -5381,7 +5472,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
-  ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10]],
+  ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11]],
 ];
 
 export function defaultGlobals(rule: RuleDef): Record<string, number> {

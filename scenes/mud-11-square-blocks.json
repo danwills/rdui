@@ -1,0 +1,67 @@
+{
+ "name": "Mud cracks 11: square blocks",
+ "description": "City streets with straight-sided blocks: long straight avenues first, cross streets at right angles ending in T-junctions, and streets that widen squarely, along and across the grid, so blocks keep flat sides and sharp corners rather than bulging. Starts part dried, just before the first streets. Paint district to turn a neighbourhood's grid, straight, square, cross_lag, grow, dry, grip or toughness.",
+ "rule": "builtin:68",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 200,
+ "globals": {},
+ "initial": [
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.45
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "toughness",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.97,
+    "high": 1.03,
+    "size": 48,
+    "octaves": 5,
+    "roughness": 0.55
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "district",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 320,
+    "octaves": 2,
+    "roughness": 0.3
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "dry",
+   "op": "multiply",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0.6,
+    "high": 1.4,
+    "size": 64,
+    "octaves": 4,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  }
+ ]
+}
