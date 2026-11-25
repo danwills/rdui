@@ -6351,7 +6351,86 @@ delta_z = 0.0;`)
     .replace('smoothstep(split_at - 0.05, split_at + 0.05, r)', 'smoothstep(split_at + (1.0 - smoothstep(0.85, 0.95, V))*split_var*(2.0*z - 1.0) - 0.05, split_at + (1.0 - smoothstep(0.85, 0.95, V))*split_var*(2.0*z - 1.0) + 0.05, r)'),
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5];
+/**
+ * Lightning 6: Lightning 5 in a cycle, under a slowly turning noise. Its noise w has two twins (w2, w3) and z one (z2),
+ * mixed at noise_rate (w cos a + sin a (w2 cos b + w3 sin b), b at 0.618 a; z round a circle), so they keep their
+ * character while their pattern drifts. The cycle:
+ * busy floods out from any spot over the whole field; once it has gone (idle, the bolt struck and its spots stopped),
+ * the trails fade (c_fade), so the bolt dims away, and the cloud's charge builds (charge_rate a step), glowing. Full,
+ * a new tip forms where the turning noise is highest along the cloud's edge (wm, flooded along it): a starter trail
+ * laid just under the cloud and a spot just below, as the scene's seed (a bare spot was smothered by its own trail).
+ * Busy again, the charge drains (charge_drop), so the cloud dims as the leader goes, and nucleation stops.
+ */
+export const LIGHTNING_6: RuleDef = {
+  ...LIGHTNING_5,
+  name: 'Lightning 6 (soliton tips, recharging)',
+  description:
+    'Lightning whose tips are Gray-Scott spots, as Lightning 5, over and over: once a bolt has struck it fades away, the ' +
+    'cloud (plate +1, top) glows as its charge builds back up, and when it is full a new tip sets off from where a slowly ' +
+    'turning noise is highest along the cloud, so each bolt takes a different path. Paint plate to make clouds (+1), ' +
+    'ground or towers (−1); charge_rate for how often it strikes, noise_rate for how fast the noise turns.',
+  reagents: [...LIGHTNING_5.reagents, 'w2', 'w3', 'z2', 'busy', 'charge', 'wm'],
+  rest: [...LIGHTNING_5.rest, 0.5, 0.5, 0.5, 0, 0, 0],
+  seed: [...LIGHTNING_5.seed, null, null, null, null, null, null],
+  seedNoise: [...LIGHTNING_5.seedNoise, 0, 0, 0, 0, 0, 0],
+  params: [
+    ...LIGHTNING_5.params,
+    { name: 'noise_rate', value: 0.0005, min: 0, max: 0.002 },
+    { name: 'charge_rate', value: 0.0002, min: 0.00002, max: 0.002 },
+    { name: 'charge_drop', value: 0.0002, min: 0, max: 0.005 },
+    { name: 'c_fade', value: 0.002, min: 0, max: 0.02 },
+    { name: 'nuc_rate', value: 0.2, min: 0, max: 1 },
+    { name: 'cloud_glow', value: 0.6, min: 0, max: 2 },
+  ],
+  paramHints: {
+    ...LIGHTNING_5.paramHints,
+    noise_rate: 'How fast the noises turn (radians a step): 0 still, as Lightning 5',
+    charge_rate: 'How fast the cloud charges back up after a strike, a step (full at 1): lower, longer between bolts',
+    charge_drop: 'How fast the charge drains while a bolt is on its way (faster, a new tip has too little time to form)',
+    c_fade: 'How fast the trails fade once the bolt has struck and its tips have gone',
+    nuc_rate: 'How fast a new tip and its starter trail are laid once the cloud is charged',
+    cloud_glow: 'How brightly the cloud glows with its charge',
+  },
+  formula:
+    `// the noises, turning slowly, mixed so their character stays while their pattern drifts: w over a sphere of three
+// (two rates, the second the golden ratio of the first, so it never repeats: mixed round a circle, it came back to the
+// same pattern every 2pi/noise_rate steps)
+float ph = noise_rate*time;
+float ph2 = 0.618034*ph;
+float wt = 0.5 + (w - 0.5)*cos(ph) + sin(ph)*((w2 - 0.5)*cos(ph2) + (w3 - 0.5)*sin(ph2));
+float zt = 0.5 + (z - 0.5)*cos(0.7*ph) + (z2 - 0.5)*sin(0.7*ph);
+// idle: no spot about (busy, below, flooded from them, has gone)
+float idle = 1.0 - smoothstep(0.02, 0.1, busy);
+` +
+    LIGHTNING_5.formula
+      .replaceAll('(2.0*w - 1.0)', '(2.0*wt - 1.0)')
+      .replaceAll('(2.0*z - 1.0)', '(2.0*zt - 1.0)')
+      // (the lead cleared while idle: it lingered from the last bolt and starved the next one's tip)
+      .replace('delta_lead = (max(sp*(1.0 - V), max(max(north_lead, south_lead), max(east_lead, west_lead)) - lead_ebb) - lead)/timestep;',
+        'delta_lead = ((1.0 - idle)*max(sp*(1.0 - V), max(max(north_lead, south_lead), max(east_lead, west_lead)) - lead_ebb) - lead)/timestep;')
+      .replace('delta_c = b_to_c*b - c_damp*c;',
+        `// the cycle: busy, whether any spot is about, flooded out from them over the whole field (still ~0.5 across 512
+// cells, and gone ~900 steps after the last spot, so a failed start is soon tried again). Idle, the charge builds
+// and the trails fade; busy, the charge drains
+delta_busy = (max(sp, max(max(north_busy, south_busy), max(east_busy, west_busy)) - 0.001) - busy)/timestep;
+delta_charge = charge_rate*idle*step(charge, 1.0) - charge_drop*(1.0 - idle)*charge;
+// nucleation, once charged: where the turning noise is highest along the cloud's edge (wm, its highest within some
+// 1/0.0003 cells), a starter trail just under the cloud (siteA) and a spot just below it (siteB)
+float band = smoothstep(0.03, 0.05, cloud)*(1.0 - smoothstep(0.4, 0.6, cloud))*step(0.5, V);
+delta_wm = (max(band*wt, max(max(north_wm, south_wm), max(east_wm, west_wm)) - 0.0003) - wm)/timestep;
+float site = band*smoothstep(wm - 0.008, wm - 0.002, wt)*smoothstep(0.95, 1.0, charge);
+float siteA = site*smoothstep(0.12, 0.18, cloud);
+float siteB = site*(1.0 - smoothstep(0.07, 0.1, cloud));
+delta_c = b_to_c*b - c_damp*c - c_fade*idle*c + nuc_rate*siteA*(0.5 - c);
+delta_b = delta_b + nuc_rate*siteB*(0.25 - b);
+delta_a = delta_a + nuc_rate*siteB*(0.5 - a);
+delta_w2 = 0.0;
+delta_w3 = 0.0;
+delta_z2 = 0.0;`)
+      .replace('min(0.3*c + 3.0*b + s*flash, 2.0)', 'min(0.3*c + 3.0*b + s*flash + cloud_glow*charge*smoothstep(0.3, 0.6, cloud)*step(0.5, V), 2.0)'),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6364,7 +6443,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
-  ['Lightning', [LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5]],
+  ['Lightning', [LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];
 

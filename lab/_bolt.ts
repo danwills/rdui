@@ -40,7 +40,7 @@ export default async function (cfg: { scene: string; at: number[]; set?: Record<
         }
       }
     }
-    log(`t=${T} channel ${n} reaches row ${deep}/${W} struck ${struck} lit ${lit} light max ${lmax.toFixed(2)}` + (ti >= 0 ? ` tip cells ${tips} spots ${spots} deepest ${tdeep}` : '') + (ri >= 0 ? ` rho max ${rmax.toFixed(4)}` : ''));
+    log(`t=${T} channel ${n} reaches row ${deep}/${W} struck ${struck} lit ${lit} light max ${lmax.toFixed(2)}` + (ti >= 0 ? ` tip cells ${tips} spots ${spots} deepest ${tdeep}` : '') + (ri >= 0 ? ` rho max ${rmax.toFixed(4)}` : '') + (ix('charge') >= 0 ? ` charge ${state[ix('charge')].toFixed(3)} busy ${state[ix('busy')].toFixed(3)}` : ''));
     if (T % (cfg.every ?? 1e9) === 0) await saveFrame(`${cfg.scene}-${T}.png`, lab, { ri: ix(cfg.frame ?? 'light'), lo: 0, hi: cfg.hi ?? 1, ti: ix(cfg.frame ?? 'light'), tlo: 0, thi: cfg.hi ?? 1, scale: 2, caption: `${cfg.scene} t=${T}` });
   }
 }
