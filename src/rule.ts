@@ -6517,7 +6517,157 @@ export const RIPPLES_VISCOUS: RuleDef = {
   ],
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS];
+/**
+ * Kuramoto–Sivashinsky, stabilised as Ready's is: u_t = −∇⁴u − ∇²u + ½|∇u|² − stabilize·u. −∇²u makes wrinkles grow,
+ * −∇⁴u smooths the finest, so cells some 2π√2 across win; ½|∇u|² (the front pushed out along its slopes) keeps them
+ * moving, splitting and merging chaotically. Without stabilize the mean climbs for ever (Steffen Richters' fix: a little
+ * of u taken back). Explicit, so the step is small (∇⁴ is stiff); dx sets the cells' size in pixels.
+ */
+export const KSE: RuleDef = {
+  name: 'Kuramoto–Sivashinsky (stabilised)',
+  description:
+    'u_t = −∇⁴u − ∇²u + ½|∇u|² − stabilize·u: the Kuramoto–Sivashinsky equation, a model of wrinkled flame fronts, ' +
+    'with Ready\'s stabilising term: restless cells that split, merge and drift, never settling. dx for their size.',
+  reagents: ['u'],
+  params: [
+    { name: 'timestep', value: 0.001, min: 0, max: 0.002 },
+    { name: 'dx', value: 0.5, min: 0.25, max: 1 },
+    { name: 'stabilize', value: 0.05, min: 0, max: 0.5 },
+  ],
+  paramHints: {
+    dx: 'The size of a pixel in the equation\'s units: smaller, bigger cells (they are ~8.9 units across)',
+    stabilize: 'How much of u is taken back each unit time, holding its mean steady: higher, calmer and flatter',
+  },
+  paintable: ['stabilize'],
+  formula: 'delta_u = -bilaplacian_u - laplacian_u + 0.5*gradient_mag_squared_u - stabilize*u;',
+  size: { width: 512, height: 512 },
+  rest: [38],
+  seed: [45],
+  seedNoise: [0.5],
+  initial: [
+    // (started near where its mean settles, ~38 at stabilize 0.05, rather than climbing there for ~100 time units)
+    { chem: 'u', op: 'overwrite', fill: { type: 'gradient_noise', low: 37.5, high: 38.5, size: 16, octaves: 2, roughness: 0.5 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'u', low: 26, high: 52, stepsPerFrame: 200, palette: 1 },
+};
+
+/**
+ * Kuramoto–Sivashinsky triad: three KSE fields, a, b and c, each with its own cell size (L_a, L_b, L_c: in its own units
+ * x/L, so u_t = −L⁴∇⁴u − L²∇²u + ½L²|∇u|²), coupled in a ring through their sources. ½L²|∇u|², the front pushed out
+ * along its slopes, is what lifts each field: each keeps 1 − share of its own and passes share on, saturating at cap,
+ * so b is lifted where a is wrinkled, c where b is and a where c is. (Passed on whole, the next field's slopes were
+ * forced, not just its mean lifted, and round the ring they grew without end.)
+ */
+export const KSE_TRIAD: RuleDef = {
+  name: 'Kuramoto–Sivashinsky triad (a → b → c → a)',
+  description:
+    'Three Kuramoto–Sivashinsky fields with cells of three sizes (L_a, L_b, L_c), each passing a share of its source ' +
+    '(½|∇u|², where it is wrinkled) to the next: a lifts b, b lifts c and c lifts a, so each grows its cells on the ' +
+    'last one\'s network. share 0: three separate fields (above ~0.8 each keeps too little of its own to hold itself in).',
+  reagents: ['a', 'b', 'c'],
+  params: [
+    { name: 'timestep', value: 0.001, min: 0, max: 0.002 },
+    { name: 'dx', value: 0.5, min: 0.25, max: 1 },
+    { name: 'stabilize', value: 0.05, min: 0, max: 0.5 },
+    { name: 'share', value: 0.5, min: 0, max: 0.8 },
+    { name: 'cap', value: 4, min: 0.5, max: 20 },
+    { name: 'L_a', value: 1, min: 0.3, max: 1 },
+    { name: 'L_b', value: 0.75, min: 0.3, max: 1 },
+    { name: 'L_c', value: 0.55, min: 0.3, max: 1 },
+  ],
+  paramHints: {
+    dx: 'The size of a pixel in the equation\'s units: smaller, bigger cells',
+    stabilize: 'How much of each field is taken back each unit time, holding its mean steady',
+    cap: 'The most a field can pass on (its source saturates there; a plain field\'s is ~2 on average): higher, stronger coupling, until it runs away',
+    share: 'How much of each field\'s source (where it is wrinkled) goes to the next one in the ring a → b → c → a',
+    L_a: 'The size of a\'s cells (1: as the plain equation; at most 1, or the step is unstable)',
+    L_b: 'The size of b\'s cells',
+    L_c: 'The size of c\'s cells',
+  },
+  paintable: ['share'],
+  formula: `// each field's source: the front pushed out along its slopes, in its own units
+float sa = 0.5*L_a*L_a*gradient_mag_squared_a;
+float sb = 0.5*L_b*L_b*gradient_mag_squared_b;
+float sc = 0.5*L_c*L_c*gradient_mag_squared_c;
+// each keeping 1 - share of its own and given share of the last one's: a -> b -> c -> a. What's given saturates at
+// cap: passed on whole, it forced the next one's slopes, and round the ring they grew without end (from share ~0.25)
+float pa = sa/(1.0 + sa/cap);
+float pb = sb/(1.0 + sb/cap);
+float pc = sc/(1.0 + sc/cap);
+delta_a = -L_a*L_a*L_a*L_a*bilaplacian_a - L_a*L_a*laplacian_a + (1.0 - share)*sa + share*pc - stabilize*a;
+delta_b = -L_b*L_b*L_b*L_b*bilaplacian_b - L_b*L_b*laplacian_b + (1.0 - share)*sb + share*pa - stabilize*b;
+delta_c = -L_c*L_c*L_c*L_c*bilaplacian_c - L_c*L_c*laplacian_c + (1.0 - share)*sc + share*pb - stabilize*c;`,
+  size: { width: 512, height: 512 },
+  rest: [95, 95, 95],
+  seed: [105, 105, 105],
+  seedNoise: [0.5, 0.5, 0.5],
+  // (started near where their means settle, ~95 at share 0.5, rather than climbing there)
+  initial: ['a', 'b', 'c'].map((chem) => ({ chem, op: 'overwrite', fill: { type: 'gradient_noise', low: 94.5, high: 95.5, size: 16, octaves: 2, roughness: 0.5 }, shape: { type: 'everywhere' } }) as Overlay),
+  // custom colours: a, b and c as red, green and blue, each fitted to its own range as it climbs
+  view: {
+    reagent: 'a', low: 0, high: 40, palette: 7, stepsPerFrame: 200, customContrast: 1.1, customSaturation: 1, customGamma: 1,
+    custom: [[1, 0.35, 0.25], [0.35, 0.9, 0.35], [0.3, 0.5, 1]].map((color) => ({ on: true, low: 0, high: 40, power: 1, color, auto: true })) as RuleDef['view']['custom'],
+  },
+};
+
+/**
+ * Flame front: the flame Kuramoto–Sivashinsky was derived from (Sivashinsky, 1977), a premixed flame made unstable by
+ * diffusion. Temperature T and fuel Y (both 0-1), burning at an Arrhenius rate ω = β²/(2 Le)·Y·exp(β(T − 1)/(1 + α(T − 1))):
+ * T_t = ∇²T + ω, Y_t = ∇²Y/Le − ω. With the Lewis number Le below 1 the fuel diffuses faster than the heat, so a bulge
+ * pushing into fresh gas is fed more fuel and pulls ahead, and a dip falls back: the front breaks into cells with cusps
+ * between them, splitting and merging, as KSE describes for its shape. So the fronts keep coming, the burnt gas cools
+ * (cool, where its fuel has gone) and, once cool, takes fresh fuel back in (refuel); refuel 0 for a single pass.
+ */
+export const FLAME_FRONT: RuleDef = {
+  name: 'Flame front (cellular, Le < 1)',
+  description:
+    'A premixed flame front burning up through fresh fuel: with the Lewis number Le below 1, fuel diffuses faster than ' +
+    'heat, so the front wrinkles into cells and cusps that split and merge (the instability Kuramoto–Sivashinsky models). ' +
+    'The burnt gas cools and refuels, so fronts keep coming; Le for how wrinkled, refuel 0 for a single pass. Paint fuel ' +
+    'in or out with the seed brush (it sets T, the spark).',
+  reagents: ['T', 'Y'],
+  params: [
+    { name: 'timestep', value: 0.002, min: 0, max: 0.004 },
+    { name: 'dx', value: 0.2, min: 0.08, max: 0.3 },
+    { name: 'beta', value: 8, min: 4, max: 12 },
+    { name: 'alpha', value: 0.85, min: 0.5, max: 0.9 },
+    { name: 'Le', value: 0.5, min: 0.2, max: 1.5 },
+    { name: 'cool', value: 0.05, min: 0, max: 0.5 },
+    { name: 'refuel', value: 0.1, min: 0, max: 0.3 },
+  ],
+  paramHints: {
+    dx: 'The size of a pixel in flame thicknesses: smaller, a thicker flame and bigger cells',
+    beta: 'How sharply the burning rate rises with temperature (Zeldovich number): higher, thinner flames and stronger wrinkling',
+    alpha: 'How much heat the burning gives out (heat release)',
+    Le: 'Lewis number, heat over fuel diffusion: below 1 the front breaks into cells (~0.7 gently, ~0.4 into separate flame balls); above 1 it stays smooth',
+    cool: 'How fast the burnt gas cools once its fuel has gone',
+    refuel: 'How fast cool burnt gas takes fresh fuel back in, so the next front can pass (0: a single pass)',
+  },
+  paintable: ['Le', 'refuel'],
+  formula: `// the burning rate: Arrhenius, normalised so a flat front runs at about 1 flame thickness a unit time
+float Tc = max(T, 0.0);
+float w = beta*beta/(2.0*Le)*max(Y, 0.0)*exp(beta*(Tc - 1.0)/(1.0 + alpha*(Tc - 1.0)));
+// the burnt gas cooling where its fuel has gone, and taking fuel back in once cool
+delta_T = laplacian_T + w - cool*T*(1.0 - smoothstep(0.2, 0.4, Y));
+delta_Y = laplacian_Y/Le - w + refuel*(1.0 - Y)*(1.0 - smoothstep(0.1, 0.3, T));`,
+  size: { width: 512, height: 512 },
+  rest: [0, 1],
+  seed: [1.2, null],
+  seedNoise: [0, 0],
+  initial: [
+    // fresh fuel (a little uneven, to seed the wrinkles) above a band of burnt gas near the bottom, the front between
+    // smooth, and below that cold gas with no fuel (so only one front leaves the band: the field wraps)
+    { chem: 'Y', op: 'overwrite', fill: { type: 'gradient_noise', low: 0.95, high: 1.05, size: 24, octaves: 2, roughness: 0.5 }, shape: { type: 'everywhere' } },
+    { chem: 'T', op: 'overwrite', fill: { type: 'ramp', from: 0, to: 1, axis: 'y' }, shape: { type: 'rectangle', x0: 0, y0: 0.86, x1: 1, y1: 0.9 } },
+    { chem: 'T', op: 'overwrite', fill: { type: 'ramp', from: 1, to: 0, axis: 'y' }, shape: { type: 'rectangle', x0: 0, y0: 0.9, x1: 1, y1: 0.96 } },
+    { chem: 'T', op: 'overwrite', fill: { type: 'constant', value: 0 }, shape: { type: 'rectangle', x0: 0, y0: 0.96, x1: 1, y1: 1 } },
+    { chem: 'Y', op: 'overwrite', fill: { type: 'ramp', from: 1, to: 0, axis: 'y' }, shape: { type: 'rectangle', x0: 0, y0: 0.86, x1: 1, y1: 0.9 } },
+    { chem: 'Y', op: 'overwrite', fill: { type: 'constant', value: 0 }, shape: { type: 'rectangle', x0: 0, y0: 0.9, x1: 1, y1: 1 } },
+  ],
+  view: { reagent: 'T', low: 0, high: 1.2, stepsPerFrame: 200, palette: 1 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6527,6 +6677,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
+  ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
