@@ -4658,6 +4658,102 @@ delta_ay = (inside*mix(hay, bx*sin(turn) + by*cos(turn), hatch) - ay)/timestep;`
 };
 
 /**
+ * Road tips 5 (Momentum Bubbles 23): roads as wide as the tips that lay them, big tips for main roads, which meander.
+ * A soliton of 3 cells holds together moving only near the grid's axes (at 22° it falls apart within ~2500 steps, in
+ * Momentum Bubbles 18 too), but a big bubble travels any way (radius 10 at 22°: ~16% of its content over 6000 steps),
+ * so here a road's width is its tip's size: the first tip is big (radius ~16), and each bud drops only in the middle of
+ * its tip, a patch thin times its radius, so each branching's tips are smaller, down to the 3-cell soliton. depth (the
+ * trap's unused tsense, renamed) is each cell's distance in from its tip's edge, and width the tip's radius (its deepest
+ * cell, one value through it). A tip's heading turns as it goes, by meander × width × (2·bend − 1) radians a step, so
+ * big tips wind and the small ones (under radius 3) run straight on the axes. Tips are fed (tip_feed: content eases up
+ * toward child_m), as moving bubbles lose content to their wake. A big bud ripens only once its tip has left all of it
+ * (cover, the display-only aim renamed: the most phi over the bud, flooded through it), so it hatches all at once: ripening
+ * from the back as the tip left, its back hatched first, was marked spent, and only a scrap of it formed a tip. And once
+ * ripe, cover is the least phi over it, and the bud is spent only when all of it is well formed: spent per cell, the
+ * first edges to fill marked it all spent and broke off as two little tips, the rest fading. A tip's clock runs slower
+ * the wider it is (by spacing/radius from radius spacing up), so wide roads branch less often, and a wide tip has time
+ * to leave its parent's road before it can die crossing one (the first hatched mid-size tip, still on it, died);
+ * and a tip's clock is held at 0 while it hatches (a big bud takes a few hundred steps to fill, and its clock ran on).
+ * A big tip hatches with more content a cell (bud_m, from radius 2 to 5; child_m for the smallest): at 3 a cell a
+ * radius-10 tip stalled, shed two little tips off its front and wore away; at 5 it grew bigger than its parent;
+ * and it's filled only as its phi rises (refilled to the end, the content flowed out as it spread, and some grew as big as
+ * their parents). Tips don't die over spent buds, where they hatched (a wide one, slow to leave its parent's road, was
+ * killed at its back for crossing it). street is simply where tips have been: the drawn map.
+ */
+export const MOMENTUM_BUBBLES_23: RuleDef = {
+  ...MOMENTUM_BUBBLES_21,
+  name: 'Momentum Bubbles 23 (road tips 5)',
+  description:
+    'Road tips with roads as wide as their tips: the first tip is a big bubble, laying a wide main road that meanders ' +
+    '(meander, bend), and every so often (pace) drops a bud in its middle that hatches a smaller tip at right angles, to ' +
+    'the side the side field says; theirs are smaller again (thin), down to the smallest soliton, whose roads run dead ' +
+    'straight. Tips die where they cross a road running another way (T-junctions), and buds near old road are spent ' +
+    '(near), so the map finishes. street is the drawn map.',
+  reagents: MOMENTUM_BUBBLES_21.reagents.map((r) => (r === 'tsense' ? 'depth' : r === 'aim' ? 'cover' : r)),
+  params: [
+    ...MOMENTUM_BUBBLES_21.params,
+    { name: 'meander', value: 0.000006, min: 0, max: 0.00005 },
+    { name: 'bud_m', value: 4.3, min: 1, max: 8 },
+    { name: 'spacing', value: 3, min: 1, max: 20 },
+    { name: 'tip_feed', value: 0.002, min: 0, max: 0.02 },
+    { name: 'bend', value: 0.5, min: 0, max: 1 },
+  ],
+  paramHints: {
+    ...MOMENTUM_BUBBLES_21.paramHints,
+    thin: 'How much smaller each branching\'s tips are than the tip that drops them (times its radius), and so their roads narrower',
+    meander: 'How fast a tip\'s heading turns, per cell of its radius (radians a step at bend 0 or 1; tips under radius 3 don\'t turn)',
+    bud_m: 'Content a cell a big tip hatches with (from radius 5; the smallest hatch with child_m)',
+    spacing: 'Tips wider than this (radius) branch less often, by spacing/radius: wide roads have side roads further apart',
+    tip_feed: 'How fast a tip\'s content is topped up toward child_m (moving bubbles lose content to their wake)',
+    bend: 'Which way and how much roads turn here (0: one way, 1: the other, a half: straight; painted as smooth noise to start)',
+  },
+  paintable: [...MOMENTUM_BUBBLES_21.paintable, 'bend'],
+  formula: renameReagent(renameReagent(MOMENTUM_BUBBLES_21.formula, 'tsense', 'depth'), 'aim', 'cover')
+    // (the clock slower for wide tips)
+    .replace('smoothstep(0.05, 0.15, phi)*(cm + clock_rate*(0.4 + 1.2*pace))', '(1.0 - smoothstep(0.0, 0.1, hatch))*smoothstep(0.05, 0.15, phi)*(cm + clock_rate*(0.4 + 1.2*pace)*min(spacing/max(width, 0.1), 1.0))')
+    // (no dying over spent buds)
+    .replace('*smoothstep(0.25, 0.35, clock);', '*smoothstep(0.25, 0.35, clock)*(1.0 - smoothstep(2.5, 2.9, bud));')
+    // (big tips hatched with more content a cell)
+    .replace('+ birth*hatch*(child_m - m)', '+ birth*hatch*(1.0 - phi)*(mix(child_m, bud_m, smoothstep(2.0, 5.0, width)) - m)')
+    // (tips fed in their middles)
+    .replace('+ birth*hatch*(child_m - m) - dying*m;', '+ birth*hatch*(child_m - m) - dying*m + tip_feed*smoothstep(0.3, 0.5, phi)*max(child_m - m, 0.0);')
+    // (the heading turning as it goes, the more the bigger the tip; not under radius 3)
+    .replace('delta_ax = (inside*mix(hax, bx, hatch) - ax)/timestep;\ndelta_ay = (inside*mix(hay, by, hatch) - ay)/timestep;',
+      `float turn = meander*width*smoothstep(3.0, 5.0, width)*(2.0*bend - 1.0);
+delta_ax = (inside*mix(hax - turn*hay, bx, hatch) - ax)/timestep;
+delta_ay = (inside*mix(hay + turn*hax, by, hatch) - ay)/timestep;`)
+    // (near from older road only: a wide road's own, aged ~0.4 by the time its buds ripen, counted as too near)
+    .replace('near_rate*(smoothstep(0.3, 0.7, road - 1.0) - near)', 'near_rate*(smoothstep(0.6, 0.9, road - 1.0) - near)')
+    .replace(/delta_depth = [^\n]*\n/, `// depth: each cell's distance in from its tip's edge (the least of its neighbours', plus one), 0 outside tips
+float dmin = min(min(north_depth, south_depth), min(east_depth, west_depth));
+delta_depth = (smoothstep(0.4, 0.6, phi)*min(dmin + 1.0, 60.0) - depth)/timestep;
+`)
+    .replace(/\/\/ width: the tip's[\s\S]*?delta_width = [^\n]*\n/, `// width: the tip's radius, its deepest cell, one value through it (each cell the most of its own depth and its
+// neighbours' widths, less a little, so it follows the tip as it shrinks)
+float wm = max(max(north_width, south_width), max(east_width, west_width));
+delta_width = (smoothstep(0.05, 0.15, phi)*max(depth, wm - 0.02) - width)/timestep;
+`)
+    .replace(/\/\/ street: the streets as drawn[\s\S]*?delta_street = [^\n]*\n/, `// street: where tips have been, the drawn map (each road as wide as its tip)
+delta_street = (max(street, smoothstep(0.2, 0.5, phi)) - street)/timestep;
+`)
+    // (cover: the most phi over each bud, so it ripens all at once; and spent once its new tip is well formed)
+    .replace(/delta_cover = [^\n]*\n/, `// cover: over each bud, ripening, the most phi (flooded through it, ebbing 0.01 a step), so it ripens all at once when its tip
+// has gone; ripe, the least (out of the bud counting as 1), so it's spent only once all of it has formed
+float inb = smoothstep(0.5, 0.9, bud);
+float ripeb = smoothstep(1.7, 1.8, bud);
+float cmax = max(max(north_cover, south_cover), max(east_cover, west_cover));
+float cmin = min(min(mix(1.0, north_cover, smoothstep(0.5, 0.9, north_bud)), mix(1.0, south_cover, smoothstep(0.5, 0.9, south_bud))),
+  min(mix(1.0, east_cover, smoothstep(0.5, 0.9, east_bud)), mix(1.0, west_cover, smoothstep(0.5, 0.9, west_bud))));
+delta_cover = (inb*mix(max(phi, cmax - 0.01), min(phi, cmin + 0.01), ripeb) - cover)/timestep;
+`)
+    .replace('ripen*smoothstep(0.5, 0.9, bud)*(1.0 - smoothstep(0.02, 0.08, phi))', 'ripen*smoothstep(0.5, 0.9, bud)*(1.0 - (1.0 - smoothstep(1.7, 1.8, bud))*smoothstep(0.02, 0.08, cover))')
+    .replace('0.3*hatch*smoothstep(0.3, 0.5, phi)*(3.0 - bud)', '0.3*hatch*smoothstep(0.6, 0.8, cover)*(3.0 - bud)')
+    // (buds dropped only in the tip's middle, a patch thin times its radius, so the new tip is smaller)
+    .replace('delta_bud = 0.3*drop*smoothstep(0.1, 0.3, phi)*max(1.0 - bud, 0.0)',
+      'float rchild = max(thin*width, 1.0);\ndelta_bud = 0.3*drop*smoothstep(0.1, 0.3, phi)*smoothstep(width - rchild - 0.5, width - rchild + 0.5, depth)*max(1.0 - bud, 0.0)'),
+};
+
+/**
  * Mud cracking: a drying layer stuck to its bed, as phase-field fracture (Francfort–Marigo / Bourdin; the AT1
  * threshold form of Pham et al.). Moisture m evaporates and the layer wants to shrink by shrink·(1 − m); its
  * displacement (ux, uy) relaxes towards balance against a spring to the bed (grip), so stress builds as it dries.
@@ -5786,7 +5882,7 @@ delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
   view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200, customGamma: 1.4 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22];
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -5797,7 +5893,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];
