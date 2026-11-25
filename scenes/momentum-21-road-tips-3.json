@@ -1,0 +1,144 @@
+{
+ "name": "Contraptions 24: road tips 3 (Momentum Bubbles 21)",
+ "description": "A road network grown by solitons, with a wide main road and thinner side roads (Momentum Bubbles 21): one tip (width 5) sets off east; every so often (pace, fine noise, varies how often) it drops a bud that hatches a new tip at right angles, thinner (thin times its width), to the side the side field says. street is the drawn map: each road as wide as its tip. Tips die where they cross a road running another way (T-junctions), and buds too near old road are spent, so blocks stop dividing once they're small and the map finishes. Paint side, pace, thin; near_max for the block size.",
+ "rule": "builtin:72",
+ "size": 512,
+ "start": "initial",
+ "stepsPerFrame": 40,
+ "globals": {
+  "brake": 0.01,
+  "accel": 0.003
+ },
+ "initial": [
+  {
+   "chem": "u",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "side",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 96,
+    "octaves": 2,
+    "roughness": 0.4
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "pace",
+   "op": "overwrite",
+   "fill": {
+    "type": "smooth_noise",
+    "low": 0,
+    "high": 1,
+    "size": 10,
+    "octaves": 2,
+    "roughness": 0.5
+   },
+   "shape": {
+    "type": "everywhere"
+   }
+  },
+  {
+   "chem": "phi",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "m",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 10
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "px",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "s",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 0.3
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "ax",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 1
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  },
+  {
+   "chem": "width",
+   "op": "overwrite",
+   "fill": {
+    "type": "constant",
+    "value": 5
+   },
+   "shape": {
+    "type": "circle",
+    "cx": 0.1,
+    "cy": 0.5,
+    "r": 0.005859375
+   }
+  }
+ ],
+ "view": {
+  "reagent": "street",
+  "low": 0,
+  "high": 1
+ }
+}
