@@ -1,9 +1,10 @@
 # Writes a Momentum Bubbles Hilbert-curve track scene:
-#   [DOT=cells] python3 lab/gen/hilbert-track.py ORDER SIZE OUT [dots] [aim_speed] [brake] [N, its Contraptions number: one more than the newest] [end: bowl | trap | corner | loop] [full_at]
+#   [DOT=cells] python3 lab/gen/hilbert-track.py ORDER SIZE OUT [dots] [aim_speed] [brake] [N, its Contraptions number: one more than the newest] [end: bowl | trap | corner | loop | open] [full_at]
 # Contraptions 13: 2 512 OUT 1 0.03 0.002 13; 14: 2 512 OUT 3 0.03 0.002 14 trap 0.6; 15: DOT=14 3 512 OUT 3 0.025 0.002 15 corner 0.45;
 # 16: DOT=14 STRIDE=4 3 512 OUT 16 0.025 0.002 16 loop 0.45; 17: DOT=14 STRIDE=1 3 512 OUT 63 0.025 0.002 17 loop 0.45 ; 18: DOT=10 STRIDE=1 3 512 OUT 63 0.025 0.002 18 loop 0.45 (16-18 with a sentence added to the description, and 17 and 18 a word to the name, by hand)
 # 19: DOT=3 STRIDE=1 RULE=56 RELEASE=2 FULLG=1000 EMPTY=0.01 DRAIN=0 SENSER=0.001 3 512 OUT 63 0.025 0.002 19 loop 0.05
 # 20: DOT=3 STRIDE=1 RULE=57 RELEASE=5 FULLG=1000 EMPTY=0.15 DRAIN=0 SENSER=0.005 3 512 OUT 63 0.025 0.002 20 loop 0.4 (19 and 20 renamed and described by hand)
+# 21: DOT=3 STRIDE=1 RULE=57 3 512 OUT 63 0.025 0.002 21 open (no trap: the last point is a gate too, aiming east, round the frame into the first; renamed and described by hand)
 import json, os, sys
 def d2xy(n, d):
     x = y = 0; s = 1; t = d
@@ -35,8 +36,9 @@ init = [{'chem': 'u', 'op': 'overwrite', 'fill': {'type': 'constant', 'value': 1
 # each gate aims at the next point; the last point is the bowl or trap instead (for 'corner', the last 2x2 block is: it
 # sits in the frame's bottom-right corner, and the trap goes in its middle, its soft tail fading out before the frame's
 # edges, so nothing is cut off there)
-gates = pts[:-4] if END == 'corner' else pts[:-1]
-ends = pts[-4:] if END == 'corner' else pts[-1:]
+# ('open': no end, the last point is a gate too, aiming east at the first point round the frame)
+gates = pts if END == 'open' else pts[:-4] if END == 'corner' else pts[:-1]
+ends = [(pts[-1][0] + gap, pts[-1][1])] if END == 'open' else pts[-4:] if END == 'corner' else pts[-1:]
 tx, ty = sum(p[0] for p in ends) / len(ends), sum(p[1] for p in ends) / len(ends)
 for i, (px, py) in enumerate(gates):
     nx, ny = pts[i + 1] if i + 1 < len(gates) else (tx, ty)
@@ -46,7 +48,9 @@ for i, (px, py) in enumerate(gates):
     ge = float(os.environ.get('GATEE', 3))  # the gates' soft edge (cells)
     init += [Bump(ch, v, px, py, gr, ge) for ch, v in (('ax', ax), ('ay', ay)) if abs(v) > 1e-6]
 lx, ly = tx, ty
-if END == 'corner':
+if END == 'open':
+    pass
+elif END == 'corner':
     # the trap fills the corner square (2 gaps wide), its tail (4 edges past its radius) ending at the frame's edges
     # (a flat top, so the release aim inside it is held off everywhere it reaches)
     e = 0.1 * gap
