@@ -5882,7 +5882,115 @@ delta_m = D_m*laplacian_m - dry*mm*(1.0 + wet_cracks*d);`,
   view: { reagent: 'd', low: 0, high: 1, stepsPerFrame: 200, customGamma: 1.4 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23];
+/**
+ * Lightning 1: the dielectric breakdown model (Niemeyer, Pietronero & Wiesmann 1984) as a field. The air's potential V
+ * relaxes to Laplace's equation (diffusing, fast) between charged plates (plate +1: V 1, a cloud; −1: V 0, the ground;
+ * paintable, so clouds, towers and ground can be painted) and the channel c, which conducts: V 1 all along it. The
+ * channel grows into the cells next to it (across a side, or a corner at diag the rate: at the full rate it ran at 45°,
+ * across sides only down the grid's axes) at grow × (the drop to them over the strongest such drop, emax)^eta, each
+ * cell's breakdown strength varied by the fixed disorder q: the tips, where the field crowds, outrun the sides, the more
+ * the higher eta, and they compete, so the channel forks. Part-broken cells heal (heal) unless the field keeps at them,
+ * so the screened sides don't slowly fill in (without it the leader grew into a dense coral). emax, the strongest
+ * field, is passed along the channel, so the leader's pace stays steady as it nears the ground (growing as field^eta
+ * unnormalized, it ran away and filled the field). When it touches the ground, struck s floods through it and growth
+ * stops; then W, the potential along the channel alone (1 in the cloud, 0 where it touches the ground), carries
+ * current only on the path between them (dead-end branches sit at one potential), so the return stroke lights the main
+ * bolt brightest. light, the picture, is a soft glow spreading a couple of cells round the channel (the channel itself
+ * is cell by cell: a smooth phase-field channel was tried, but a smooth tip is too curved to outrun its sides, and grew
+ * as one fat wedge).
+ */
+export const LIGHTNING_1: RuleDef = {
+  name: 'Lightning 1',
+  description:
+    'A lightning leader forking down from a charged cloud to the ground (the dielectric breakdown model): the air\'s ' +
+    'potential V settles between the cloud (plate +1, top) and the ground (plate −1, bottom), and the channel grows where ' +
+    'the field at its edge is strongest, the more so the higher eta, against the air\'s varied breakdown strength ' +
+    '(disorder), so its tips race ahead and fork. When it reaches the ground the growth stops and the return stroke lights ' +
+    'the path the current takes brightest, the dead-end branches dimmer. Paint plate to make clouds (+1), ground or ' +
+    'towers (−1). light is the picture, a soft glow.',
+  reagents: ['V', 'c', 'q', 'gnd', 's', 'W', 'light', 'emax'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1 },
+    { name: 'D_V', value: 0.24, min: 0, max: 0.25 },
+    { name: 'grow', value: 0.004, min: 0, max: 0.05 },
+    { name: 'eta', value: 4, min: 0.5, max: 10 },
+    { name: 'diag', value: 0.4, min: 0, max: 1 },
+    { name: 'disorder', value: 0.5, min: 0, max: 1 },
+    { name: 'heal', value: 0.002, min: 0, max: 0.02 },
+    { name: 'snap', value: 0.2, min: 0, max: 1 },
+    { name: 'D_W', value: 0.16, min: 0, max: 0.16 },
+    { name: 'glow', value: 200, min: 0, max: 2000 },
+    { name: 'D_light', value: 0.2, min: 0, max: 0.25 },
+    { name: 'plate', value: 0, min: -1, max: 1 },
+  ],
+  paramHints: {
+    D_V: 'How fast the air\'s potential settles (fast, so the field is nearly settled as the channel grows)',
+    grow: 'How fast the channel grows where the field at its edge is strongest',
+    eta: 'How much the strongest field wins: low, a bushy coral; high, a few thin forks racing ahead',
+    diag: 'How readily the channel grows across a corner: 1, it runs at 45°; 0, down the grid\'s axes',
+    disorder: 'How much the air\'s breakdown strength varies from cell to cell (fixed, q): more, more crooked and forked',
+    heal: 'How fast a part-broken cell heals if the field stops driving it: higher, thinner, fewer branches',
+    snap: 'How fast a cell more than half broken down finishes',
+    D_W: 'How fast the return stroke climbs the struck bolt (the potential along the channel settling; over 1/6 it wobbles)',
+    glow: 'How bright the current along the struck bolt shows',
+    D_light: 'How far the glow spreads round the channel',
+    plate: 'Charged plates: +1 a cloud (potential 1), −1 the ground (potential 0), 0 the air',
+  },
+  paintable: ['plate'],
+  formula: `// the plates: a cloud (+1) at potential 1, the ground (−1) at 0
+float isplate = step(0.5, abs(plate));
+float pv = step(0.0, plate);
+float chan = smoothstep(0.5, 0.9, c);
+// the air's potential: diffusing to Laplace's equation, held at the plates' and at the channel's (1: it conducts)
+delta_V = (1.0 - isplate)*(1.0 - chan)*D_V*laplacian_V + (isplate*(pv - V) + (1.0 - isplate)*chan*(1.0 - V))/timestep;
+// growth: into cells next to the channel (across a side, or a corner at diag the rate), as (the drop to them, times the
+// air's varied weakness, over the strongest such)^eta; healing unless driven; stopped once struck
+float nc = max(max(north_c, south_c), max(east_c, west_c));
+float nd = max(max(north_east_c, north_west_c), max(south_east_c, south_west_c));
+float ns = max(max(max(north_s, south_s), max(east_s, west_s)), max(max(north_east_s, north_west_s), max(south_east_s, south_west_s)));
+float E = max(1.0 - V, 0.0)*(1.0 - chan)*(1.0 - disorder + 2.0*disorder*q);
+float edge = max(smoothstep(0.85, 0.95, nc), diag*smoothstep(0.85, 0.95, nd))*(1.0 - isplate);
+// emax: the strongest field at the channel's edge, passed along the channel and its edge (each cell the most of its own
+// and its neighbours', ebbing slowly)
+float em = max(max(north_emax, south_emax), max(east_emax, west_emax));
+delta_emax = (max(chan, edge)*max(edge*E, 0.9995*em) - emax)/timestep;
+float rate = grow*edge*(1.0 - smoothstep(0.1, 0.5, max(ns, s)))*pow(min(E/max(emax, 1e-4), 1.0), eta);
+float done = smoothstep(0.4, 0.6, c);
+delta_c = min(rate, 1.0)*(1.0 - c) + snap*done*(1.0 - c) - heal*(1.0 - done)*c;
+// the air's breakdown strength: fixed, as painted at the start
+delta_q = 0.0;
+// the ground, as a reagent (so its neighbours can see it)
+delta_gnd = (step(plate, -0.5) - gnd)/timestep;
+// struck: where the channel touches the ground, flooding through the channel
+float touch = chan*max(max(max(north_gnd, south_gnd), max(east_gnd, west_gnd)), max(max(north_east_gnd, north_west_gnd), max(south_east_gnd, south_west_gnd)));
+delta_s = (chan*max(touch, max(ns, s)) - s)/timestep;
+// W: the potential along the channel alone, 1 in the cloud, 0 where it touches the ground (relaxing along the channel
+// only, corner links at half weight, so the dead-end branches settle at one potential and carry no current); 1 off it
+float cn = smoothstep(0.5, 0.9, north_c);
+float cs = smoothstep(0.5, 0.9, south_c);
+float ce = smoothstep(0.5, 0.9, east_c);
+float cw = smoothstep(0.5, 0.9, west_c);
+float cne = smoothstep(0.5, 0.9, north_east_c);
+float cnw = smoothstep(0.5, 0.9, north_west_c);
+float cse = smoothstep(0.5, 0.9, south_east_c);
+float csw = smoothstep(0.5, 0.9, south_west_c);
+float lapW = cn*(north_W - W) + cs*(south_W - W) + ce*(east_W - W) + cw*(west_W - W)
+  + 0.5*(cne*(north_east_W - W) + cnw*(north_west_W - W) + cse*(south_east_W - W) + csw*(south_west_W - W));
+float incloud = step(0.5, plate)*chan;
+delta_W = chan*(1.0 - incloud)*(1.0 - touch)*D_W*lapW + (incloud*(1.0 - W) - touch*W + (1.0 - chan)*(1.0 - W))/timestep;
+// the current along the channel, and the picture: a soft glow round the leader, dim, and round the struck bolt by its current
+float cur = chan*(abs(north_W - W)*cn + abs(south_W - W)*cs + abs(east_W - W)*ce + abs(west_W - W)*cw
+  + 0.5*(abs(north_east_W - W)*cne + abs(north_west_W - W)*cnw + abs(south_east_W - W)*cse + abs(south_west_W - W)*csw));
+delta_light = D_light*laplacian_light + 0.1*(min(0.5*chan + s*glow*cur, 2.0) - light);
+`,
+  rest: [0, 0, 0.5, 0, 0, 1, 0, 0],
+  seed: [null, 1, null, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0, 0],
+  initial: [],
+  view: { reagent: 'light', low: 0, high: 1, stepsPerFrame: 1000 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -5895,6 +6003,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
+  ['Lightning', [LIGHTNING_1]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];
 
