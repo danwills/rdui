@@ -61,6 +61,8 @@ export type Fill =
    * 0.5) as strong as the one before: low-frequency but still rough.
    */
   | { type: 'smooth_noise'; low: number; high: number; size?: number; octaves?: number; roughness?: number }
+  /** gradient (Perlin) noise: as smooth_noise, but without value noise's grid-aligned look */
+  | { type: 'gradient_noise'; low: number; high: number; size?: number; octaves?: number; roughness?: number }
   /**
    * On a circle: value · ½(1 − tanh((d − r)/edge)), a flat top with a smooth rim `edge` cells wide (default 2). Elsewhere: value.
    * With wrap, distances wrap round the field's edges as the simulation does, so a bump near an edge carries on
@@ -572,7 +574,7 @@ function shapeCells(shape: Shape, w: number, h: number, salt: number): number[] 
 function scaleOverlay(o: Overlay, cell: number): Overlay {
   const f = o.fill, sh = o.shape;
   const fill: Fill = f.type === 'packet' ? { ...f, sigma: f.sigma / cell, kx: (f.kx ?? 0) * cell, ky: (f.ky ?? 0) * cell }
-    : f.type === 'bump' ? { ...f, edge: (f.edge ?? 2) / cell } : f.type === 'smooth_noise' ? { ...f, size: (f.size ?? 32) / cell } : f.type === 'vortices' ? { ...f, core: f.core / cell } : f;
+    : f.type === 'bump' ? { ...f, edge: (f.edge ?? 2) / cell } : f.type === 'smooth_noise' || f.type === 'gradient_noise' ? { ...f, size: (f.size ?? 32) / cell } : f.type === 'vortices' ? { ...f, core: f.core / cell } : f;
   const shape: Shape = sh.type === 'spots' ? { ...sh, minSize: Math.max(1, Math.round(sh.minSize / cell)), maxSize: Math.max(1, Math.round(sh.maxSize / cell)) } : sh;
   return { ...o, fill, shape };
 }
@@ -602,7 +604,7 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
     const sh = o.shape, fill = o.fill;
     const bump = fill.type === 'bump' && sh.type === 'circle' ? { cx: sh.cx * w, cy: sh.cy * h, r: sh.r * Math.max(w, h), e: fill.edge ?? 2 } : null;
     const pk = fill.type === 'packet' && sh.type === 'circle' ? { cx: sh.cx * w, cy: sh.cy * h } : null;
-    const sn = fill.type === 'smooth_noise' ? smoothNoise(fill, w, h) : null;
+    const sn = fill.type === 'smooth_noise' ? smoothNoise(fill, w, h) : fill.type === 'gradient_noise' ? gradientNoise(fill, w, h) : null;
     const wrap = bump && fill.type === 'bump' && fill.wrap;
     // (distances from the bump's middle, wrapping round the field's edges for a wrapping bump)
     const dist = (x: number, y: number) => {
@@ -632,6 +634,35 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
     }
   }
   return { state, params };
+}
+
+/**
+ * The gradient_noise fill over the whole w×h field: Perlin noise (random unit gradients on wrapping lattices, quintic
+ * easing), octaves summed, stretched from its own lowest to highest to low–high (its spread is less than value noise's).
+ */
+function gradientNoise(fill: { low: number; high: number; size?: number; octaves?: number; roughness?: number }, w: number, h: number) {
+  const out = new Float32Array(w * h);
+  const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+  let amp = 1, size = Math.max(1, fill.size ?? 32);
+  for (let o = 0; o < (fill.octaves ?? 4); o++, amp *= fill.roughness ?? 0.5, size /= 2) {
+    const nx = Math.max(1, Math.round(w / size)), ny = Math.max(1, Math.round(h / size));
+    const ang = Float32Array.from({ length: nx * ny }, () => Math.random() * 2 * Math.PI);
+    const dot = (i: number, j: number, dx: number, dy: number) => {
+      const a = ang[(((j % ny) + ny) % ny) * nx + (((i % nx) + nx) % nx)];
+      return Math.cos(a) * dx + Math.sin(a) * dy;
+    };
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const u = (x + 0.5) / w * nx, v = (y + 0.5) / h * ny, i = Math.floor(u), j = Math.floor(v), du = u - i, dv = v - j;
+      const fu = fade(du), fv = fade(dv);
+      const a = dot(i, j, du, dv) + (dot(i + 1, j, du - 1, dv) - dot(i, j, du, dv)) * fu;
+      const b = dot(i, j + 1, du, dv - 1) + (dot(i + 1, j + 1, du - 1, dv - 1) - dot(i, j + 1, du, dv - 1)) * fu;
+      out[y * w + x] += amp * (a + (b - a) * fv);
+    }
+  }
+  let lo = Infinity, hi = -Infinity;
+  for (let k = 0; k < w * h; k++) { lo = Math.min(lo, out[k]); hi = Math.max(hi, out[k]); }
+  for (let k = 0; k < w * h; k++) out[k] = fill.low + (fill.high - fill.low) * (out[k] - lo) / Math.max(hi - lo, 1e-9);
+  return out;
 }
 
 /** The smooth_noise fill over the whole w×h field: value noise on wrapping lattices, octaves summed, mapped to low–high. */

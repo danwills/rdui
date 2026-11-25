@@ -22,12 +22,12 @@
    "chem": "q",
    "op": "overwrite",
    "fill": {
-    "type": "smooth_noise",
+    "type": "gradient_noise",
     "low": 0,
     "high": 1,
-    "size": 24,
+    "size": 64,
     "octaves": 2,
-    "roughness": 0.5
+    "roughness": 0.4
    },
    "shape": {
     "type": "everywhere"
@@ -37,12 +37,12 @@
    "chem": "w",
    "op": "overwrite",
    "fill": {
-    "type": "smooth_noise",
+    "type": "gradient_noise",
     "low": 0,
     "high": 1,
-    "size": 48,
-    "octaves": 3,
-    "roughness": 0.6
+    "size": 128,
+    "octaves": 2,
+    "roughness": 0.3
    },
    "shape": {
     "type": "everywhere"
@@ -52,11 +52,11 @@
    "chem": "z",
    "op": "overwrite",
    "fill": {
-    "type": "smooth_noise",
+    "type": "gradient_noise",
     "low": 0,
     "high": 1,
-    "size": 96,
-    "octaves": 2,
+    "size": 192,
+    "octaves": 1,
     "roughness": 0.5
    },
    "shape": {
