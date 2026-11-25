@@ -1,12 +1,14 @@
 // Mud cracks: dries a layer and logs, every `every` steps, the mean moisture, the largest stress, the share cracked
 // (d > 0.5) and the largest damage, saving a frame of d (tinted by m) each time.
 //   node lab/run.mjs mud '{"N":256,"steps":40000,"every":4000,"set":{},"rule":"MUD_CRACKS_2"}'
+// unfill: paintable params whose starting fill to skip, so set gives them one value everywhere
 import * as R from '../src/rule';
 import { makeLab, log, saveFrame } from './lab';
 
-export default async function (cfg: { N?: number; steps?: number; every?: number; set?: Record<string, number>; tag?: string; rule?: string }) {
+export default async function (cfg: { N?: number; steps?: number; every?: number; set?: Record<string, number>; tag?: string; rule?: string; unfill?: string[] }) {
   const N = cfg.N ?? 256;
-  const rule = (R as unknown as Record<string, R.RuleDef>)[cfg.rule ?? 'MUD_CRACKS'];
+  const base = (R as unknown as Record<string, R.RuleDef>)[cfg.rule ?? 'MUD_CRACKS'];
+  const rule = { ...base, initial: base.initial?.filter((o) => !cfg.unfill?.includes(o.chem)) };
   const lab = await makeLab(rule, N, cfg.set ?? {}, 'initial');
   const S4 = lab.layout.S * 4, ri = (n: string) => rule.reagents.indexOf(n);
   for (let t = 0; t < (cfg.steps ?? 40000); ) {
