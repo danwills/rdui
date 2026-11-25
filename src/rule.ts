@@ -6430,7 +6430,94 @@ delta_z2 = 0.0;`)
       .replace('min(0.3*c + 3.0*b + s*flash, 2.0)', 'min(0.3*c + 3.0*b + s*flash + cloud_glow*charge*smoothstep(0.3, 0.6, cloud)*step(0.5, V), 2.0)'),
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6];
+/**
+ * Ripples: the plain wave equation, u_tt = wave_speed² ∇²u − damping u_t + wave_diffusion ∇²u_t, with v = u_t, stepped
+ * symplectically as Klein–Gordon is (v first, then u with the new v), so undamped ripples keep their energy. damping is
+ * friction on all motion alike; wave_diffusion (viscosity on v) damps short ripples (~k²) much more than long ones;
+ * wave_speed and damping are paintable (slow regions bend waves, as lenses; heavy damping soaks them up).
+ */
+export const RIPPLES: RuleDef = {
+  name: 'Ripples (wave equation)',
+  description:
+    'u_tt = wave_speed² ∇²u − damping u_t + wave_diffusion ∇²u_t, with v = u_t: ripples on a pond. Drop more with the ' +
+    'seed brush; paint wave_speed (slower bends waves, like glass) or damping (soaks them up).',
+  reagents: ['u', 'v'],
+  params: [
+    { name: 'timestep', value: 0.5, min: 0, max: 0.6 },
+    { name: 'wave_speed', value: 1, min: 0, max: 1.4 },
+    { name: 'damping', value: 0.001, min: 0, max: 0.1 },
+    { name: 'wave_diffusion', value: 0.02, min: 0, max: 0.5 },
+  ],
+  paramHints: {
+    wave_speed: 'How fast ripples travel (cells a unit time): slower regions bend waves toward them, as glass bends light',
+    damping: 'Friction on all motion alike: higher, ripples die sooner',
+    wave_diffusion: 'Viscosity: damps short ripples much more than long ones, so fine ripples smooth out first',
+  },
+  paintable: ['wave_speed', 'damping'],
+  formula: `delta_v = wave_speed*wave_speed*laplacian_u - damping*v + wave_diffusion*laplacian_v;
+delta_u = v + timestep*(wave_speed*wave_speed*laplacian_u - damping*v + wave_diffusion*laplacian_v);`,
+  size: { width: 512, height: 512 },
+  rest: [0, 0],
+  seed: [1, null],
+  seedNoise: [0, 0],
+  initial: [
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 1, edge: 2 }, shape: { type: 'circle', cx: 0.3, cy: 0.35, r: 4 / 512 } },
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 0.7, edge: 2 }, shape: { type: 'circle', cx: 0.65, cy: 0.6, r: 3 / 512 } },
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 1.2, edge: 2 }, shape: { type: 'circle', cx: 0.45, cy: 0.75, r: 5 / 512 } },
+  ],
+  view: { reagent: 'u', low: -0.15, high: 0.15, tint: 'v', stepsPerFrame: 4 },
+};
+
+/** Ripples, damped: friction on all motion, so a rain of drops leaves rings that die away as they spread. */
+export const RIPPLES_DAMPED: RuleDef = {
+  ...RIPPLES,
+  name: 'Ripples: damped',
+  description: 'Ripples with friction (damping): each drop\'s rings fade as they spread. Drop more with the seed brush; damping for how fast they fade.',
+  params: RIPPLES.params.map((p) => (p.name === 'damping' ? { ...p, value: 0.01 } : p.name === 'wave_diffusion' ? { ...p, value: 0 } : p)),
+  initial: [
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 1, edge: 2 }, shape: { type: 'circle', cx: 0.2, cy: 0.3, r: 3 / 512 } },
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 0.8, edge: 2 }, shape: { type: 'circle', cx: 0.7, cy: 0.2, r: 3 / 512 } },
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 1.2, edge: 2 }, shape: { type: 'circle', cx: 0.5, cy: 0.55, r: 4 / 512 } },
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 0.9, edge: 2 }, shape: { type: 'circle', cx: 0.3, cy: 0.8, r: 3 / 512 } },
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 1, edge: 2 }, shape: { type: 'circle', cx: 0.8, cy: 0.7, r: 3 / 512 } },
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 0.7, edge: 2 }, shape: { type: 'circle', cx: 0.6, cy: 0.9, r: 2 / 512 } },
+  ],
+};
+
+/**
+ * Ripples, wave speed: a beam of waves (a Gaussian packet, moving right: u its cos, v ω its sin) crosses a round region
+ * of slower waves, a smooth lens, which focuses it beyond; damping ramps up to the right and down from the left edge, so
+ * the waves soak away rather than wrap round.
+ */
+export const RIPPLES_LENS: RuleDef = {
+  ...RIPPLES,
+  name: 'Ripples: wave speed (lens)',
+  description: 'A beam of ripples crossing a round region where waves are slower (wave_speed, painted): it bends them, like a glass lens, and they focus beyond it. Paint wave_speed to make your own lenses and prisms.',
+  params: RIPPLES.params.map((p) => (p.name === 'damping' ? { ...p, value: 0 } : p.name === 'wave_diffusion' ? { ...p, value: 0.005 } : p)),
+  initial: [
+    { chem: 'u', op: 'overwrite', fill: { type: 'packet', amp: 0.5, sigma: 40, kx: 0.35 }, shape: { type: 'circle', cx: 0.2, cy: 0.5, r: 0.25 } },
+    { chem: 'v', op: 'overwrite', fill: { type: 'packet', amp: 0.175, sigma: 40, kx: 0.35, part: 'sin' }, shape: { type: 'circle', cx: 0.2, cy: 0.5, r: 0.25 } },
+    { chem: 'wave_speed', op: 'subtract', fill: { type: 'bump', value: 0.45, edge: 8 }, shape: { type: 'circle', cx: 0.55, cy: 0.5, r: 50 / 512 } },
+    { chem: 'damping', op: 'overwrite', fill: { type: 'ramp', from: 0, to: 0.15 }, shape: { type: 'rectangle', x0: 0.8, y0: 0, x1: 1, y1: 1 } },
+    { chem: 'damping', op: 'overwrite', fill: { type: 'ramp', from: 0.15, to: 0 }, shape: { type: 'rectangle', x0: 0, y0: 0, x1: 0.04, y1: 1 } },
+  ],
+  view: { ...RIPPLES.view, low: -0.5, high: 0.5 },
+};
+
+/** Ripples, wave diffusion: viscosity on the motion, so fine ripples die first and long swells carry on. */
+export const RIPPLES_VISCOUS: RuleDef = {
+  ...RIPPLES,
+  name: 'Ripples: wave diffusion',
+  description: 'Ripples in a thick, syrupy liquid (wave_diffusion): short ripples die fast while long swells carry on, so each drop\'s rings smooth out as they spread. Drop more with the seed brush.',
+  params: RIPPLES.params.map((p) => (p.name === 'damping' ? { ...p, value: 0 } : p.name === 'wave_diffusion' ? { ...p, value: 0.3 } : p)),
+  initial: [
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 1.5, edge: 2 }, shape: { type: 'circle', cx: 0.35, cy: 0.4, r: 3 / 512 } },
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 1, edge: 2 }, shape: { type: 'circle', cx: 0.65, cy: 0.55, r: 2 / 512 } },
+    { chem: 'u', op: 'add', fill: { type: 'bump', value: 2, edge: 2 }, shape: { type: 'circle', cx: 0.5, cy: 0.75, r: 8 / 512 } },
+  ],
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6439,7 +6526,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['History + Wave', [GS_HISTORY_WAVE, GS_HW_MEMORY]],
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
-  ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON]],
+  ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
