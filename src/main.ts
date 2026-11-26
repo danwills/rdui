@@ -576,8 +576,8 @@ async function init() {
     await selectRule(`user:${u.id}`);
   }
 
-  // (wall distance fields get -1e38: the Params brush and Fill all leave them alone)
-  const paintValues = () => rule.paintable.map((n) => (rule.params.find((p) => p.name === n)?.distance ? -1e38 : s.paint[n] ?? globals[n]));
+  // (wall distance fields, and params ticked off in Paint Values, get -1e38: the Params brush and Fill all leave them alone)
+  const paintValues = () => rule.paintable.map((n) => (rule.params.find((p) => p.name === n)?.distance || s.paintSkip?.[n] ? -1e38 : s.paint[n] ?? globals[n]));
   const restOf = (name: string) => rule.rest[rule.reagents.indexOf(name)] ?? 0;
   const paramFallback = (name: string) => (name === 'wall' ? 0 : s.paint[name] ?? globals[name] ?? 0);
 
@@ -649,6 +649,9 @@ async function init() {
 
     if (!o.keepView) s.paint = {};
     for (const n of rule.paintable) s.paint[n] ??= globals[n];
+    // the Seed tool starts out painting the rule's seed
+    if (!o.keepView) s.seedPaint = {};
+    rule.reagents.forEach((r, i) => (s.seedPaint[r] ??= { on: rule.seed[i] !== null && rule.seed[i] !== undefined, value: rule.seed[i] ?? rule.rest[i] ?? 0 }));
 
     trapsDrawn = false;
     if (carried) {
@@ -1353,6 +1356,7 @@ async function init() {
       ax, ay, bx, by, mode,
       radius: s.radius / cellScale, strength: s.strength, hardness: s.hardness,
       paint: paintValues(),
+      seed: rule.reagents.map((r, i) => { const sp = s.seedPaint[r]; return sp ? (sp.on ? sp.value : null) : rule.seed[i] ?? null; }),
       ...(mode === BrushMode.Wall ? { base: s.wallsFeed || fft ? 2 : 1 } : {}),
       ...(mode === BrushMode.Smooth || mode === BrushMode.Push ? { clear: alt } : {}),
     }];

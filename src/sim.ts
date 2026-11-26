@@ -49,6 +49,8 @@ export interface BrushStroke {
   hardness: number;
   /** Values for the paintable params, in layout order (excluding wall). */
   paint: number[];
+  /** Seed: what each reagent is pulled to (null: left alone), in reagent order; the rule's seed if not given. */
+  seed?: (number | null)[];
   /** SetParam: the flat param slot to set (1..), and whether to reset the chemistry there to rest.
    *  Smooth: clear blurs the chemistry as well. */
   slot?: number;
@@ -387,7 +389,7 @@ export class Simulation {
     f[10] = b.clear ? 1 : 0;
     f[11] = b.base ?? 0;
     rule.reagents.forEach((_, r) => {
-      const seed = rule.seed[r];
+      const seed = b.seed ? b.seed[r] : rule.seed[r];
       f[B_SEED + r] = seed ?? 0;
       f[B_MASK + r] = seed === null || seed === undefined ? 0 : 1;
       f[B_NOISE + r] = rule.seedNoise[r] ?? 0;

@@ -22,6 +22,10 @@ export interface Settings {
   hardness: number;
   /** Brush values for the rule's paintable params. */
   paint: Record<string, number>;
+  /** Paintable params the Params tool (and Fill all) leave alone, so one can be painted on its own. */
+  paintSkip: Record<string, boolean>;
+  /** What the Seed tool paints, by reagent: on, it pulls the reagent to value; off, leaves it alone (from the rule's seed). */
+  seedPaint: Record<string, { on: boolean; value: number }>;
   /** What the F/k map and presets set: the brush values, or the background (unpainted cells). */
   fkTarget: 'brush' | 'background';
   running: boolean;
@@ -170,6 +174,8 @@ export function defaultSettings(): Settings {
     hardness: 0.6,
     paint: {},
     fkTarget: 'background',
+    paintSkip: {},
+    seedPaint: {},
     running: true,
     stepsPerFrame: 10,
     ruleSpeed: true,
@@ -750,12 +756,25 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       if (spec.distance) continue; // drawn with the Wall tool
       const unpaint = button('✕', () => actions.togglePaintable(name), 'stop painting this parameter (make it global)');
       unpaint.classList.add('mini');
+      // whether the Params tool paints this one: off, it (and Fill all) leave it as it is, so others can be painted alone
+      const on = button('●', () => {
+        s.paintSkip[name] = !s.paintSkip[name];
+        sync();
+      }, 'whether the Params tool (and Fill all) paints this parameter: ● paints it, ○ leaves it as it is');
+      on.classList.add('mini');
+      ruleSyncers.push(() => {
+        on.textContent = s.paintSkip[name] ? '○' : '●';
+        on.classList.toggle('on', !s.paintSkip[name]);
+      });
       const r = valueRow(name, () => s.paint[name], (v) => {
         s.paint[name] = v;
         sync();
-      }, [spec.min, spec.max], unpaint, `${paramHint(rule, spec)} · painted with the Params tool`, () => spec.value);
+      }, [spec.min, spec.max], el('span', {}, on, unpaint), `${paramHint(rule, spec)} · painted with the Params tool`, () => spec.value);
       ruleSyncers.push(r.refresh);
       paintBox.append(r.row);
+    }
+    if (rule.paintable.some((n) => !rule.params.find((p) => p.name === n)?.distance)) {
+      paintBox.append(el('p', { class: 'hint' }, 'The Params tool paints the ● ones at these values; ○ to leave one as it is.'));
     }
     if (!rule.paintable.length) paintBox.append(el('p', { class: 'hint' }, 'No paintable parameters — use 🖌 on a global one below.'));
 
@@ -784,7 +803,32 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       globalBox.append(r.row);
     }
 
+    // Seed values: which reagents the Seed tool paints, and to what
+    const seedBox = el('div', { class: 'globals' });
+    for (const name of rule.reagents) {
+      const i = rule.reagents.indexOf(name);
+      const sp = () => (s.seedPaint[name] ??= { on: rule.seed[i] !== null && rule.seed[i] !== undefined, value: rule.seed[i] ?? rule.rest[i] ?? 0 });
+      const on = button('●', () => {
+        sp().on = !sp().on;
+        sync();
+      }, 'whether the Seed tool paints this reagent: ● pulls it to this value, ○ leaves it as it is');
+      on.classList.add('mini');
+      ruleSyncers.push(() => {
+        on.textContent = sp().on ? '●' : '○';
+        on.classList.toggle('on', sp().on);
+      });
+      const r = valueRow(name, () => sp().value, (v) => {
+        sp().value = v;
+        sp().on = true;
+        sync();
+      }, [Math.min(0, sp().value), Math.max(1, 2 * sp().value)], on, `what the Seed tool paints ${name} to (setting it ticks it on)`);
+      ruleSyncers.push(r.refresh);
+      seedBox.append(r.row);
+    }
+    seedBox.append(el('p', { class: 'hint' }, 'The Seed tool paints the ● reagents at these values (with the rule\'s noise); ○ to leave one as it is.'));
+
     nodes.push(
+      el('details', { class: 'globals-wrap' }, el('summary', {}, 'Seed Values'), seedBox),
       el('h3', {}, 'Paint Values'), paintBox,
       el('div', { class: 'buttons' },
         button('Fill all', actions.fillParams, 'apply the paint values to the whole field (keeps walls) · F'),
