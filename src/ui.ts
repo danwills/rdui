@@ -674,10 +674,21 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   }
 
   // --- rule section (rebuilt when the rule changes)
-  // Two menus: the family, then its rules, each followed by its own scenes (indented under it).
+  // Three menus: the family; its rules, a numbered series (Momentum Bubbles 1, 2, …) under one heading, each by its
+  // number and subtitle; and, when the rule has scenes, its scenes (or none: the rule's own start).
   const familySel = el('select', { class: 'rule-select', title: 'rule family' });
-  const ruleSel = el('select', { class: 'rule-select', title: 'rule, or one of its scenes (indented under it)' });
+  const ruleSel = el('select', { class: 'rule-select', title: 'rule (a numbered series under its name)' });
+  const sceneSel = el('select', { class: 'rule-select', title: 'one of this rule\'s scenes, or none: the rule\'s own start' });
   let shownFamily = '';
+  // "Momentum Bubbles 12 (soft gates)" → series "Momentum Bubbles", "12 · soft gates"; "Sand dunes (ever deeper)" →
+  // "Sand dunes", "ever deeper"; "Fluid swirls: upwind" → "Fluid swirls", "upwind". An unnumbered name is its
+  // series' first: "1" in a numbered one ("Mud cracks"; "Flame waves (self-lighting)" → "1 · self-lighting"), else "plain"
+  const seriesOf = (name: string) => {
+    const m = name.match(/^(.+?) (\d+)(?: \((.*)\))?$/);
+    if (m) return { series: m[1], short: m[3] ? `${m[2]} · ${m[3]}` : m[2], numbered: true };
+    const b = name.match(/^(.+?) \((.*)\)$/) ?? name.match(/^(.+?): (.*)$/);
+    return b ? { series: b[1], short: b[2], numbered: false } : { series: name, short: '', numbered: false };
+  };
   function fillRules() {
     const all = rc.choices(), cur = rc.currentId();
     const here = all.find((c) => c.id === cur);
@@ -690,25 +701,30 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     // (newest first, as menuNewest says: the rules and scenes come oldest first)
     const order = <T,>(xs: T[]) => (s.menuNewest ? [...xs].reverse() : xs);
     const rules = order(all.filter((c) => !c.rule && c.group === family));
-    const scenes = order(all.filter((c) => c.rule && c.group === family));
     const ruleId = here?.rule ?? cur;
-    const opts: HTMLOptionElement[] = [];
-    const ruleLabel = new Map(all.map((c) => [c.id, c.label]));
-    const sceneOpt = (c: RuleChoice) => el('option', { value: c.id, title: c.label }, `\u00a0\u00a0\u00a0\u00a0${shortScene(c.label, ruleLabel.get(c.rule!) ?? '', family)}`);
-    for (const r of rules) {
-      opts.push(el('option', { value: r.id }, r.label));
-      opts.push(...scenes.filter((c) => c.rule === r.id).map(sceneOpt));
+    // the rules, a series of two or more under its heading (in the order its first member comes)
+    const info = rules.map((r) => ({ r, ...seriesOf(r.label) }));
+    const count = new Map<string, number>(), numbered = new Set<string>();
+    for (const i of info) { count.set(i.series, (count.get(i.series) ?? 0) + 1); if (i.numbered) numbered.add(i.series); }
+    const nodes: HTMLElement[] = [], groups = new Map<string, HTMLElement>();
+    for (const i of info) {
+      if ((count.get(i.series) ?? 0) < 2) { nodes.push(el('option', { value: i.r.id, title: i.r.label }, i.r.label)); continue; }
+      let g = groups.get(i.series);
+      if (!g) { g = el('optgroup', { label: i.series }); groups.set(i.series, g); nodes.push(g); }
+      const first = numbered.has(i.series) && !i.numbered;
+      g.append(el('option', { value: i.r.id, title: i.r.label }, first ? (i.short ? `1 · ${i.short}` : '1') : i.short || 'plain'));
     }
-    // the current rule if it isn't one of the family's (an imported or edited one), with its scenes
-    if (!rules.some((c) => c.id === ruleId)) {
-      opts.push(el('option', { value: ruleId }, rc.rule().source ?? rc.rule().name));
-      opts.push(...scenes.filter((c) => c.rule === ruleId).map(sceneOpt));
-    }
-    // scenes whose rule isn't listed here
-    const placed = new Set(opts.map((o) => o.value));
-    opts.push(...scenes.filter((c) => !placed.has(c.id)).map(sceneOpt));
-    ruleSel.replaceChildren(...opts);
-    ruleSel.value = cur;
+    // the current rule if it isn't one of the family's (an imported or edited one)
+    if (!rules.some((c) => c.id === ruleId)) nodes.push(el('option', { value: ruleId }, rc.rule().source ?? rc.rule().name));
+    ruleSel.replaceChildren(...nodes);
+    ruleSel.value = ruleId;
+    // its scenes
+    const rl = all.find((c) => c.id === ruleId)?.label ?? rc.rule().name;
+    const scenes = order(all.filter((c) => c.rule === ruleId));
+    sceneSel.replaceChildren(el('option', { value: ruleId }, scenes.length ? `no scene (${scenes.length} here)` : 'no scenes'),
+      ...scenes.map((c) => el('option', { value: c.id, title: c.label }, shortScene(c.label, rl, family))));
+    sceneSel.value = cur;
+    sceneSel.disabled = !scenes.length;
   }
   fillRules();
   familySel.addEventListener('change', () => {
@@ -717,6 +733,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     if (first) actions.selectRule(first.id);
   });
   ruleSel.addEventListener('change', () => actions.selectRule(ruleSel.value));
+  sceneSel.addEventListener('change', () => actions.selectRule(sceneSel.value));
   const ruleBody = el('div');
   // what the Seed and Params tools paint, on the Tool tab (rebuilt with the rule, as ruleBody is)
   const paintBody = el('div');
@@ -1021,7 +1038,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       select('shape', 'brushShape', () => [['free', 'freehand'], ['line', 'line (press, drag to the end)'], ['circle', 'circle (press the centre, drag out)']]).row,
       paintBody,
     ),
-    section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel),
+    section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel), el('div', { class: 'rule-row' }, sceneSel),
       checkbox('newest first', 'menuNewest', 'list each family\'s rules, and each rule\'s scenes, newest first (untick for oldest first)', fillRules), ruleBody),
     section('Simulation',
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Restart', actions.restart, 'start the rule or scene over from scratch: its own parameters, opening, paint and stamps (Reset keeps your parameters)'), button('Clear chem', actions.clearChemistry, 'C')),
