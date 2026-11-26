@@ -6799,7 +6799,71 @@ delta_f = (ring*ring*ring - f)/timestep;`,
   view: { reagent: 'f', low: 0, high: 1, stepsPerFrame: 50, palette: 1 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS];
+/**
+ * Flame waves: Flame rings' cellular flame, lighting itself. As in Enki's wavefront KSEs, the gas is excitable: at rest
+ * once refuelled, it slowly warms (warm, as a slow reaction would) until it runs away, so a front starts wherever it
+ * gets there first and sweeps through the rest before they can, and they start again once the gas has cooled and
+ * refuelled. Where they start is set by a noise, and how rich the fresh gas is by another (richness): rich pockets
+ * burn hotter and faster, bulging the front at their scale while the Le < 1 cells wrinkle it finer. The noises are
+ * mixed over a sphere of three, turning slowly (noise_rate), so the starts and pockets drift and never repeat.
+ */
+export const FLAME_WAVES: RuleDef = {
+  name: 'Flame waves (self-lighting)',
+  description:
+    'Cellular flame fronts that light themselves: the refuelled gas slowly warms until it catches, so a front starts ' +
+    'wherever it gets there first and sweeps the rest, and the next starts once the gas has cooled and refuelled. Rich ' +
+    'and lean pockets (richness) bulge the front, its cells wrinkle it finer; warm for how often, noise_rate for how ' +
+    'fast the starts and pockets drift. Light one with the seed brush.',
+  reagents: ['T', 'Y', 'n1', 'n2', 'n3'],
+  params: [
+    { name: 'timestep', value: 0.002, min: 0, max: 0.004 },
+    { name: 'dx', value: 0.35, min: 0.08, max: 0.4 },
+    { name: 'beta', value: 10, min: 4, max: 12 },
+    { name: 'alpha', value: 0.85, min: 0.5, max: 0.9 },
+    { name: 'Le', value: 0.3, min: 0.2, max: 1.5 },
+    { name: 'cool', value: 0.08, min: 0, max: 0.5 },
+    { name: 'refuel', value: 0.15, min: 0, max: 0.3 },
+    { name: 'warm', value: 0.1, min: 0, max: 0.5 },
+    { name: 'richness', value: 0.25, min: 0, max: 0.4 },
+    { name: 'noise_rate', value: 0.02, min: 0, max: 0.1 },
+  ],
+  paramHints: {
+    ...FLAME_FRONT.paramHints,
+    warm: 'How fast refuelled gas warms towards catching (most where the noise is high; where warm·noise is below cool, never by itself)',
+    richness: 'How much richer or leaner the fresh gas is in pockets: rich burns hotter and faster, bulging the front',
+    noise_rate: 'How fast the noises turn (radians a unit time): where fronts start, and the pockets, drift',
+  },
+  paintable: ['Le', 'warm', 'richness'],
+  formula: `// the noises, turning over a sphere of three (the second rate the golden ratio of the first, so never repeating)
+float ph = noise_rate*time;
+float ph2 = 1.618034*ph;
+float nt = (n1 - 0.5)*cos(ph) + sin(ph)*((n2 - 0.5)*cos(ph2) + (n3 - 0.5)*sin(ph2));
+// how much fuel fresh gas holds here, and how readily it warms up (a second view of the same noise, turned)
+float fresh = 1.0 + 2.0*richness*nt;
+// (only its peaks: warmed all over, the gas lit in many places at once, and preheated, its front was smooth)
+float kindle = smoothstep(0.7, 0.9, 0.5 + (n2 - 0.5)*cos(ph) - sin(ph)*((n1 - 0.5)*cos(ph2) + (n3 - 0.5)*sin(ph2)));
+// the burning rate: Arrhenius, normalised so a flat front runs at about 1 flame thickness a unit time
+float Tc = max(T, 0.0);
+float w = beta*beta/(2.0*Le)*max(Y, 0.0)*exp(beta*(Tc - 1.0)/(1.0 + alpha*(Tc - 1.0)));
+// heat lost everywhere; refuelled gas warming towards catching; cool burnt gas taking fuel back in
+delta_T = laplacian_T + w - cool*T + warm*kindle*smoothstep(0.8, 0.95, Y/fresh)*(1.2 - T);
+delta_Y = laplacian_Y/Le - w + refuel*(fresh - Y)*(1.0 - smoothstep(0.1, 0.3, T));
+delta_n1 = 0.0;
+delta_n2 = 0.0;
+delta_n3 = 0.0;`,
+  size: { width: 512, height: 512 },
+  rest: [0, 1, 0.5, 0.5, 0.5],
+  seed: [1.2, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0],
+  initial: [
+    { chem: 'Y', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    ...(['n1', 'n2', 'n3'] as const).map((chem) =>
+      ({ chem, op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 160, octaves: 4, roughness: 0.5 }, shape: { type: 'everywhere' } }) as Overlay),
+  ],
+  view: { reagent: 'T', low: 0, high: 1.2, stepsPerFrame: 200, palette: 1 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6809,7 +6873,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
-  ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS]],
+  ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, KSE_OCTAVES, KSE_FRONTS]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
