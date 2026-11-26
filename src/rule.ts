@@ -7216,7 +7216,8 @@ delta_T = (advect_cubic_T(ux, uy) - T)/timestep - cooling*T;`,
  * changing, drives an incompressible flow (exact by FFT) whose direction follows cos(π·time/period), so it stirs the
  * dye one way, slows, and stirs it back. The true answer is the starting checkerboard again at every whole period;
  * what each scheme brings back shows its error: blur (numerical diffusion), ripples (dispersion) or neither. The flow
- * is held in ux, uy so the flux schemes can see it at their neighbours.
+ * is held in ux, uy so the flux schemes can see it at their neighbours. (Not in the menu: a benchmark for
+ * lab/advection-schemes.ts; the schemes themselves are in the Fluids family, as Fluid swirls.)
  */
 function advectionTest(name: string, scheme: string, dyeStep: string, extra: Partial<RuleDef> = {}): RuleDef {
   return {
@@ -7265,40 +7266,54 @@ ${dyeStep}`,
 }
 
 /**
- * A flux-form step for the dye: each cell gains what flows in across its faces and loses what flows out, so the
- * dye's total is kept exactly; x and y take turns (dimensional splitting), each sweep a double step. `face(F, L, R, LL, RR, u)` writes statements ending in `float F = …`: the flux across
- * a face from L to R (LL beyond L, RR beyond R) at face velocity u (+ from L to R).
+ * Flux-form advection of the reagents `qs`: each cell gains what flows in across its faces and loses what flows out,
+ * less q times the faces' net inflow (the face velocities, means of the cells', don't quite cancel, and uncorrected
+ * that slight squeeze piled the dye up until it blew); x and y take turns (dimensional splitting), each sweep a double step. Gives
+ * `adv_<q>`, q's rate of change. `face(F, L, R, LL, RR, u)` writes statements ending in `float F = …`: the flux
+ * across a face from L to R (LL beyond L, RR beyond R) at face velocity u (+ from L to R). Needs ux, uy and clock.
  */
-function fluxStep(face: (F: string, L: string, R: string, LL: string, RR: string, u: string) => string) {
+type FaceFlux = (F: string, L: string, R: string, LL: string, RR: string, u: string) => string;
+function fluxAdvect(face: FaceFlux, qs: string[]) {
   return `// the flow at each face, the mean of the cells either side
 float ue = 0.5*(ux + east_ux);
 float uw = 0.5*(west_ux + ux);
 float vn = 0.5*(uy + north_uy);
 float vs = 0.5*(south_uy + uy);
-${face('Fe', 'dye', 'east_dye', 'west_dye', 'east2_dye', 'ue')}
-${face('Fw', 'west_dye', 'dye', 'west2_dye', 'east_dye', 'uw')}
-${face('Gn', 'dye', 'north_dye', 'south_dye', 'north2_dye', 'vn')}
-${face('Gs', 'south_dye', 'dye', 'south2_dye', 'north_dye', 'vs')}
 // split by direction (both at once is unstable for the second-order ones): x on odd steps, y on even, each at twice
-// the rate, so a pair of steps moves the dye a whole step each way
+// the rate, so a pair of steps moves things a whole step each way
 float sx = step(0.5, fmod(clock/timestep + 0.25, 2.0));
-delta_dye = -2.0*(sx*(Fe - Fw) + (1.0 - sx)*(Gn - Gs))/dx;`;
+${qs.map((q) => `${face(`Fe_${q}`, q, `east_${q}`, `west_${q}`, `east2_${q}`, 'ue')}
+${face(`Fw_${q}`, `west_${q}`, q, `west2_${q}`, `east_${q}`, 'uw')}
+${face(`Gn_${q}`, q, `north_${q}`, `south_${q}`, `north2_${q}`, 'vn')}
+${face(`Gs_${q}`, `south_${q}`, q, `south2_${q}`, `north_${q}`, 'vs')}
+float adv_${q} = -2.0*(sx*(Fe_${q} - Fw_${q} - ${q}*(ue - uw)) + (1.0 - sx)*(Gn_${q} - Gs_${q} - ${q}*(vn - vs)))/dx;`).join('\n')}`;
 }
 
 // upwind: the face carries what's on its upstream side
 const upwindFlux = (L: string, R: string, u: string) => `0.5*(${u} + abs(${u}))*${L} + 0.5*(${u} - abs(${u}))*${R}`;
+const UPWIND_FACE: FaceFlux = (F, L, R, _LL, _RR, u) => `float ${F} = ${upwindFlux(L, R, u)};`;
+// Lax–Wendroff: the centred flux less the next Taylor term (the sweep's double step in its Courant number)
+const LAX_WENDROFF_FACE: FaceFlux = (F, L, R, _LL, _RR, u) => `float ${F} = ${u}*0.5*(${L} + ${R}) - ${u}*${u}*timestep/dx*(${R} - ${L});`;
+// flux-limited: upwind plus Lax–Wendroff's correction, scaled by the limiter of the upstream slope ratio r
+const LIMITED_FACE: FaceFlux = (F, L, R, LL, RR, u) => `// ${F}: r, the upstream slope over this face's (upstream is the side u comes from)
+float d${F} = ${R} - ${L};
+float r${F} = mix(${RR} - ${R}, ${L} - ${LL}, step(0.0, ${u}))*d${F}/(d${F}*d${F} + 1e-12);
+float p${F} = ${limiterBlend(`r${F}`)};
+float ${F} = ${upwindFlux(L, R, u)} + 0.5*abs(${u})*(1.0 - 2.0*abs(${u})*timestep/dx)*p${F}*d${F};`;
+const LIMITER_PARAM: ParamSpec = { name: 'limiter', value: 1, min: 0, max: 3 };
+const LIMITER_HINT = 'Which limiter: 0 minmod, 1 van Leer, 2 MC, 3 superbee (in between blends the two either side)';
 
 /** First-order upwind (donor cell): never overshoots, but smears everything, more the slower it moves across cells. */
 export const ADVECT_UPWIND = advectionTest('upwind',
   'First-order upwind (donor cell): each face carries what is upstream of it. Never makes new highs or lows, but ' +
   'smears heavily (its numerical diffusion is ½|u|·dx(1 − Courant number)).',
-  fluxStep((F, L, R, _LL, _RR, u) => `float ${F} = ${upwindFlux(L, R, u)};`));
+  `${fluxAdvect(UPWIND_FACE, ['dye'])}\ndelta_dye = adv_dye;`);
 
 /** Lax–Wendroff: second order (sharp where smooth), but its edges trail ripples, overshooting below 0 and above 1. */
 export const ADVECT_LAX_WENDROFF = advectionTest('Lax–Wendroff',
   'Lax–Wendroff: second order, the face flux corrected by the next term of the Taylor series. Much less blur than ' +
   'upwind, but sharp edges trail ripples that overshoot below 0 and above 1 (dispersion: short waves move too slowly).',
-  fluxStep((F, L, R, _LL, _RR, u) => `float ${F} = ${u}*0.5*(${L} + ${R}) - ${u}*${u}*timestep/dx*(${R} - ${L});`));
+  `${fluxAdvect(LAX_WENDROFF_FACE, ['dye'])}\ndelta_dye = adv_dye;`);
 
 /**
  * Flux-limited (TVD): Lax–Wendroff's correction scaled by a limiter φ(r) of the upstream slope ratio r, so it is
@@ -7309,15 +7324,8 @@ export const ADVECT_LIMITED = advectionTest('flux-limited (TVD)',
   'Flux-limited (TVD): Lax–Wendroff\'s correction where the dye is smooth, upwind at edges and peaks, chosen by a ' +
   'limiter of the upstream slopes: sharp and ripple-free. limiter: 0 minmod (softest), 1 van Leer, 2 MC, 3 superbee ' +
   '(sharpest, squares off smooth hills), and blends between.',
-  fluxStep((F, L, R, LL, RR, u) => `// ${F}: r, the upstream slope over this face's (upstream is the side u comes from)
-float d${F} = ${R} - ${L};
-float r${F} = mix(${RR} - ${R}, ${L} - ${LL}, step(0.0, ${u}))*d${F}/(d${F}*d${F} + 1e-12);
-float p${F} = ${limiterBlend(`r${F}`)};
-float ${F} = ${upwindFlux(L, R, u)} + 0.5*abs(${u})*(1.0 - 2.0*abs(${u})*timestep/dx)*p${F}*d${F};`),
-  {
-    params: [{ name: 'limiter', value: 1, min: 0, max: 3 }],
-    paramHints: { limiter: 'Which limiter: 0 minmod, 1 van Leer, 2 MC, 3 superbee (in between blends the two either side)' },
-  });
+  `${fluxAdvect(LIMITED_FACE, ['dye'])}\ndelta_dye = adv_dye;`,
+  { params: [LIMITER_PARAM], paramHints: { limiter: LIMITER_HINT } });
 
 /** φ(r) for the `limiter` param: minmod, van Leer, MC, superbee at 0–3, each weighted by its closeness (a smooth blend). */
 function limiterBlend(r: string) {
@@ -7341,6 +7349,55 @@ export const ADVECT_SL_CUBIC = advectionTest('semi-Lagrangian, cubic',
   'Semi-Lagrangian, clamped cubic: as bilinear, but Catmull–Rom over the 4×4 cells about the point, clamped to the ' +
   'nearest four\'s range. Far sharper, still stable at any timestep and never overshoots.',
   'delta_dye = (advect_cubic_dye(ux, uy) - dye)/timestep;');
+
+/**
+ * Stable fluids (swirls) with the spin and the dye carried by another advection scheme, to see what each does to a
+ * real flow: upwind smears the vortices (they slow and grow soft), Lax–Wendroff keeps them sharp but rings, flux-limited
+ * is sharp without rings, bilinear semi-Lagrangian blurs (but takes any step). The flux schemes keep the flow in ux, uy
+ * (to read it at the faces, a step behind) and take turns along x and y by the clock; they go unstable once the flow
+ * crosses half a cell a step, so they run shorter steps, more to a frame, on a gentler flow (half the spin).
+ */
+function fluidWith(label: string, scheme: string, face: FaceFlux | 'bilinear', extra: Partial<RuleDef> = {}): RuleDef {
+  const lapw = '(4.0*(north_omega + south_omega + east_omega + west_omega) + north_east_omega + north_west_omega + south_east_omega + south_west_omega - 20.0*omega)/(6.0*dx*dx)';
+  const flux = face !== 'bilinear';
+  return {
+    ...STABLE_FLUIDS,
+    // (half Stable fluids' spin: a slower, gentler flow, which the flux schemes' short steps can follow at 512²)
+    initial: STABLE_FLUIDS.initial.map((o) => (o.fill.type === 'gradient_noise' ? { ...o, fill: { ...o.fill, low: -0.07, high: 0.07 } } : o)),
+    name: `Fluid swirls: ${label}`,
+    description: `Stable fluids (swirls) with the spin and the dye carried by ${scheme}`,
+    reagents: [...STABLE_FLUIDS.reagents, 'ux', 'uy', 'clock'],
+    params: [
+      ...STABLE_FLUIDS.params.map((p) => (flux && p.name === 'timestep' ? { ...p, value: 0.1, max: 0.3 } : p)),
+      ...(extra.params ?? []),
+    ],
+    paramHints: {
+      ...STABLE_FLUIDS.paramHints,
+      ...(flux ? { timestep: 'Time per step: keep the flow under half a cell a step (the flux schemes blow up beyond)' } : {}),
+      ...(extra.paramHints ?? {}),
+    },
+    formula: `// the flow ω drives (exact, by FFT), kept for the faces to read
+delta_ux = (flow_x_omega - ux)/timestep;
+delta_uy = (flow_y_omega - uy)/timestep;
+delta_clock = 1.0;
+float lapw = ${lapw};
+${flux ? `${fluxAdvect(face, ['omega', 'dye'])}
+delta_omega = adv_omega + viscosity*lapw;
+delta_dye = adv_dye - dye_fade*dye;` : `delta_omega = (advect_omega(flow_x_omega, flow_y_omega) - omega)/timestep + viscosity*lapw;
+delta_dye = (advect_dye(flow_x_omega, flow_y_omega) - dye)/timestep - dye_fade*dye;`}`,
+    rest: [...STABLE_FLUIDS.rest, 0, 0, 0],
+    seed: [...STABLE_FLUIDS.seed, null, null, null],
+    seedNoise: [...STABLE_FLUIDS.seedNoise, 0, 0, 0],
+    // (about the same speed on screen: 0.25 × 2 a frame, or 0.1 × 4)
+    view: { ...STABLE_FLUIDS.view, stepsPerFrame: flux ? 4 : 2 },
+  };
+}
+
+export const FLUID_UPWIND = fluidWith('upwind', 'first-order upwind: never overshoots, but smears heavily, so the vortices go soft and slow down fast.', UPWIND_FACE);
+export const FLUID_LAX_WENDROFF = fluidWith('Lax–Wendroff', 'Lax–Wendroff: second order and sharp, but edges ring with ripples that overshoot.', LAX_WENDROFF_FACE);
+export const FLUID_LIMITED = fluidWith('flux-limited', 'a flux-limited (TVD) scheme: sharp where smooth, upwind at edges, so no ripples. limiter: 0 minmod … 3 superbee.', LIMITED_FACE,
+  { params: [LIMITER_PARAM], paramHints: { limiter: LIMITER_HINT } });
+export const FLUID_BILINEAR = fluidWith('bilinear semi-Lagrangian', 'bilinear semi-Lagrangian (Stam\'s original): stable at any step, but blurrier than the cubic one Stable fluids uses.', 'bilinear');
 
 /**
  * Schrödinger's Smoke (Chern, Knöppel, Pinkall, Schröder & Weißmann 2016, incompressible Schrödinger flow): the fluid
@@ -7422,7 +7479,7 @@ export const SCHRODINGER_SMOKE: RuleDef = {
   view: { reagent: 'dye', low: 0, high: 1, tint: 'core', stepsPerFrame: 6 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, ADVECT_UPWIND, ADVECT_LAX_WENDROFF, ADVECT_LIMITED, ADVECT_SL_BILINEAR, ADVECT_SL_CUBIC, SCHRODINGER_SMOKE];
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -7433,8 +7490,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
   ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, KSE_OCTAVES, KSE_OCTAVES_256, KSE_FRONTS]],
-  ['Fluids', [STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE]],
-  ['Advection schemes', [ADVECT_UPWIND, ADVECT_LAX_WENDROFF, ADVECT_LIMITED, ADVECT_SL_BILINEAR, ADVECT_SL_CUBIC]],
+  ['Fluids', [STABLE_FLUIDS, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, STABLE_SMOKE, SCHRODINGER_SMOKE]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
