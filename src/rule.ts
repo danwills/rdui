@@ -6858,12 +6858,67 @@ delta_n3 = 0.0;`,
   initial: [
     { chem: 'Y', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
     ...(['n1', 'n2', 'n3'] as const).map((chem) =>
-      ({ chem, op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 160, octaves: 4, roughness: 0.5 }, shape: { type: 'everywhere' } }) as Overlay),
+      ({ chem, op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 256, octaves: 2, roughness: 0.3 }, shape: { type: 'everywhere' } }) as Overlay),
   ],
   view: { reagent: 'T', low: 0, high: 1.2, stepsPerFrame: 200, palette: 1 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES];
+/**
+ * Flame waves 2: no ignition at all. The gas is excitable, as Enki's wavefront KSEs are: at rest until a front reaches
+ * it, burnt then, and ready again once it has cooled and refuelled. A front with a free end curls round it into a
+ * spiral (the end, burning into fresh gas on its open side, swings round into the wake, which has recovered by the time
+ * it gets there), and spirals keep themselves going for ever, so after the first broken front nothing needs to start
+ * them. (Letting the gas light itself, held warm, failed: it all went up at once, then smouldered, its slow burning
+ * eating the fuel as fast as it came back.) Fronts that break where cells pinch off make more spirals.
+ */
+export const FLAME_WAVES_2: RuleDef = {
+  ...FLAME_WAVES,
+  name: 'Flame waves 2 (spirals)',
+  description:
+    'Cellular flame fronts that keep themselves going with no ignition: the gas burns, cools and refuels, and a broken ' +
+    'front curls round its end into a spiral that sweeps back into its own recovered wake for ever. Cut a front with ' +
+    'the eraser for more; refuel for how tightly they wind, richness for pockets that bulge them.',
+  params: FLAME_WAVES.params.filter((p) => p.name !== 'warm'),
+  paintable: ['Le', 'refuel', 'richness'],
+  formula: `// the richness noise, turning over a sphere of three (the second rate the golden ratio of the first, so never repeating)
+float ph = noise_rate*time;
+float ph2 = 1.618034*ph;
+float nt = (n1 - 0.5)*cos(ph) + sin(ph)*((n2 - 0.5)*cos(ph2) + (n3 - 0.5)*sin(ph2));
+float fresh = 1.0 + 2.0*richness*nt;
+// the burning rate: Arrhenius, normalised so a flat front runs at about 1 flame thickness a unit time
+float Tc = max(T, 0.0);
+float w = beta*beta/(2.0*Le)*max(Y, 0.0)*exp(beta*(Tc - 1.0)/(1.0 + alpha*(Tc - 1.0)));
+// heat lost everywhere, and cooled burnt gas taking fuel back in
+delta_T = laplacian_T + w - cool*T;
+delta_Y = laplacian_Y/Le - w + refuel*(fresh - Y)*(1.0 - smoothstep(0.1, 0.3, T));
+delta_n1 = 0.0;
+delta_n2 = 0.0;
+delta_n3 = 0.0;`,
+  initial: [
+    ...FLAME_WAVES.initial,
+    // one front across half the field, burning up into fresh gas with burnt gas behind it: its free end curls up
+    { chem: 'T', op: 'overwrite', fill: { type: 'constant', value: 1.2 }, shape: { type: 'rectangle', x0: 0, y0: 0.47, x1: 0.5, y1: 0.53 } },
+    { chem: 'Y', op: 'overwrite', fill: { type: 'constant', value: 0 }, shape: { type: 'rectangle', x0: 0, y0: 0.5, x1: 0.5, y1: 0.62 } },
+  ],
+};
+
+/** KSE in octaves as Dan tuned it: 256², octaves wider apart (lacunarity ~3.26) and finer ones lower (roughness ~0.48). */
+export const KSE_OCTAVES_256: RuleDef = {
+  ...KSE_OCTAVES,
+  name: 'Kuramoto–Sivashinsky in octaves (256px tuned)',
+  params: KSE_OCTAVES.params.map((p) =>
+    p.name === 'kse_lacunarity' ? { ...p, value: 3.25925925925926 } : p.name === 'kse_roughness' ? { ...p, value: 0.477777777777778 } : p,
+  ),
+  size: { width: 256, height: 256 },
+  view: {
+    ...KSE_OCTAVES.view,
+    hueShape: 1.2, hueOffset: 0.6, fleckLow: -30, fleckHigh: 75, fleckGain: 1,
+    custom: [{ on: true, low: 0, high: 1, power: 1, color: [1, 0.55, 0.2] }] as RuleDef['view']['custom'],
+    customContrast: 1.2, customSaturation: 1, customGamma: 2.5,
+  },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6873,7 +6928,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
-  ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, KSE_OCTAVES, KSE_FRONTS]],
+  ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, FLAME_WAVES_2, KSE_OCTAVES, KSE_OCTAVES_256, KSE_FRONTS]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
