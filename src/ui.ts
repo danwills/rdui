@@ -653,6 +653,26 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   }
   syncers.push(() => (toolHint.textContent = TOOLS.find((t) => t.id === s.tool)!.hint));
 
+  /**
+   * A scene's name as listed under its rule, in its family's menu: without what the menus already say. The rule's
+   * name in front ("Gray-Scott Niches: worm battle" → "worm battle"), else the family's ("Contraptions 15: …" → "15: …"),
+   * or a word of it ("Schrödinger tunnelling" → "tunnelling"), and the rule in brackets at the end ("… (Momentum
+   * Bubbles 13)"). Saved scenes (★) as they are. The full name shows as the option's tooltip.
+   */
+  function shortScene(label: string, rule: string, family: string) {
+    if (label.startsWith('★')) return label;
+    const key = (w: string) => w.replace(/:$/, '').toLowerCase();
+    let s = label;
+    const tail = s.match(/^(.*\S)\s+\(([^()]+)\)$/);
+    if (tail && (rule.toLowerCase().startsWith(tail[2].toLowerCase()) || tail[2].toLowerCase().startsWith(rule.toLowerCase()))) s = tail[1];
+    const words = s.split(' '), rw = rule.split(' ').map(key);
+    let n = 0;
+    while (n < words.length - 1 && n < rw.length && key(words[n]) === rw[n]) n++;
+    // (or a word of the rule's name: "Schrödinger tunnelling" under Saturable Schrödinger (NLS))
+    if (!n && words.length > 1 && (key(words[0]) === family.toLowerCase() || rw.includes(key(words[0])))) n = 1;
+    return n ? words.slice(n).join(' ').replace(/^[:\s]+/, '') : s;
+  }
+
   // --- rule section (rebuilt when the rule changes)
   // Two menus: the family, then its rules, each followed by its own scenes (indented under it).
   const familySel = el('select', { class: 'rule-select', title: 'rule family' });
@@ -673,7 +693,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     const scenes = order(all.filter((c) => c.rule && c.group === family));
     const ruleId = here?.rule ?? cur;
     const opts: HTMLOptionElement[] = [];
-    const sceneOpt = (c: RuleChoice) => el('option', { value: c.id }, `\u00a0\u00a0\u00a0\u00a0${c.label}`);
+    const ruleLabel = new Map(all.map((c) => [c.id, c.label]));
+    const sceneOpt = (c: RuleChoice) => el('option', { value: c.id, title: c.label }, `\u00a0\u00a0\u00a0\u00a0${shortScene(c.label, ruleLabel.get(c.rule!) ?? '', family)}`);
     for (const r of rules) {
       opts.push(el('option', { value: r.id }, r.label));
       opts.push(...scenes.filter((c) => c.rule === r.id).map(sceneOpt));
