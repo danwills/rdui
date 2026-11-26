@@ -198,6 +198,7 @@ footer { border-top: 1px solid var(--line); padding-top: 8px; }
 #app.ui-hidden #panel { display: none; }
 #app.ui-hidden #stage { flex: 1; height: auto; }
 #app.ui-hidden #readout { display: none; }
+#app.ui-hidden #viewport { border: 0; }
 #app.fill #stage { overflow: hidden; }
 .analysis { display: none; }
 #app.split #stage { grid-template-rows: 55% 45%; grid-template-columns: 100%; min-height: 0; overflow: hidden; }
