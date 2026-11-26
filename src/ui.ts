@@ -1,7 +1,7 @@
 import { showAbout } from './about';
 import { PRESETS } from './presets';
 import { F_RANGE, K_RANGE, LOUPE_ZOOM, drawMap, drawMarkers, mapFrame, onMapLoaded, openFKMap, openLoupe } from './fkmap';
-import { MAX_REAGENTS, paramHint, type RuleDef } from './rule';
+import { MAX_REAGENTS, paramHint, type RuleDef, type ParamSpec } from './rule';
 import type { CustomChannel } from './sim';
 import { PALETTES, paletteCss } from './palettes';
 import { ladder, onLadderClaim } from './ladder';
@@ -796,17 +796,37 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       wallBox.append(r.row);
     }
 
-    // Global params: live sliders.
-    const globalBox = el('div', { class: 'globals' });
-    for (const spec of rule.params) {
-      if (rule.paintable.includes(spec.name) || WALL_PARAMS.includes(spec.name)) continue;
+    // Global params: live sliders (in both tabs, so kept in step)
+    const globalRow = (spec: ParamSpec) => {
       const paint = button('🖌', () => actions.togglePaintable(spec.name), 'make this parameter paintable per cell');
       paint.classList.add('mini');
       const r = valueRow(spec.name, () => globals[spec.name], (v) => {
         globals[spec.name] = v;
         actions.setGlobal(spec.name, v);
+        sync();
       }, [spec.min, spec.max], paint, paramHint(rule, spec), () => spec.value);
-      globalBox.append(r.row);
+      ruleSyncers.push(r.refresh);
+      return r.row;
+    };
+    const globalBox = el('div', { class: 'globals' });
+    for (const spec of rule.params) {
+      if (WALL_PARAMS.includes(spec.name) || spec.distance) continue;
+      // a paintable one: here its background (every cell not painted), its brush value on the Tool tab
+      if (rule.paintable.includes(spec.name)) {
+        const unpaint = button('🖌', () => actions.togglePaintable(spec.name), 'painted per cell (its brush value is in the Tool tab\'s Paint Values): click to make it global again');
+        unpaint.classList.add('mini', 'on');
+        const r = valueRow(spec.name, () => globals[spec.name], (v) => actions.setBackground({ [spec.name]: v }),
+          [spec.min, spec.max], unpaint, `${paramHint(rule, spec)} · here the background, for every cell not painted (painted cells keep theirs)`, () => spec.value);
+        ruleSyncers.push(r.refresh);
+        globalBox.append(r.row);
+        continue;
+      }
+      globalBox.append(globalRow(spec));
+    }
+    // the global ones again on the Tool tab, under the paint values, so all are at hand while painting
+    const toolGlobals = el('div', { class: 'globals' });
+    for (const spec of rule.params) {
+      if (!WALL_PARAMS.includes(spec.name) && !spec.distance && !rule.paintable.includes(spec.name)) toolGlobals.append(globalRow(spec));
     }
 
     // Seed values: which reagents the Seed tool paints, and to what
@@ -837,6 +857,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       el('details', { class: 'globals-wrap' }, el('summary', {}, 'Seed Values'), seedBox),
       el('h3', {}, 'Paint Values'), paintBox,
       el('div', { class: 'buttons' }, button('Fill all', actions.fillParams, 'apply the paint values to the whole field (keeps walls) · F')),
+      ...(toolGlobals.childElementCount ? [el('details', { class: 'globals-wrap', open: '' }, el('summary', {}, `Global Parameters (${toolGlobals.childElementCount})`), toolGlobals)] : []),
     );
     nodes.push(
       el('div', { class: 'buttons' },
@@ -844,7 +865,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         button('Clear all', actions.clearAll, 'a blank field: chemistry at rest, painted params and walls removed (Clear chem keeps them)'),
       ),
       ...(wallBox.childElementCount ? [el('h3', { title: 'walls drawn with the Wall tool (walls reflect / walls absorb): wall_grow moves every edge out (or in, below 0) by that many cells' }, 'Walls'), wallBox] : []),
-      el('details', { class: 'globals-wrap', open: '' }, el('summary', {}, `Global Parameters (${globalBox.childElementCount})`), globalBox),
+      el('details', { class: 'globals-wrap', open: '' }, el('summary', {}, `Parameters (${globalBox.childElementCount})`), globalBox),
     );
     ruleBody.replaceChildren(...nodes);
     viewReagent.fill();
