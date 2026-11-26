@@ -693,6 +693,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   });
   ruleSel.addEventListener('change', () => actions.selectRule(ruleSel.value));
   const ruleBody = el('div');
+  // what the Seed and Params tools paint, on the Tool tab (rebuilt with the rule, as ruleBody is)
+  const paintBody = el('div');
   let ruleSyncers: (() => void)[] = [];
   syncers.push(() => ruleSyncers.forEach((f) => f()));
 
@@ -827,11 +829,13 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     }
     seedBox.append(el('p', { class: 'hint' }, 'The Seed tool paints the ● reagents at these values (with the rule\'s noise); ○ to leave one as it is.'));
 
-    nodes.push(
+    paintBody.replaceChildren(
       el('details', { class: 'globals-wrap' }, el('summary', {}, 'Seed Values'), seedBox),
       el('h3', {}, 'Paint Values'), paintBox,
+      el('div', { class: 'buttons' }, button('Fill all', actions.fillParams, 'apply the paint values to the whole field (keeps walls) · F')),
+    );
+    nodes.push(
       el('div', { class: 'buttons' },
-        button('Fill all', actions.fillParams, 'apply the paint values to the whole field (keeps walls) · F'),
         button('Reset', actions.reset, 'regenerate the initial pattern · R'),
         button('Clear all', actions.clearAll, 'a blank field: chemistry at rest, painted params and walls removed (Clear chem keeps them)'),
       ),
@@ -969,6 +973,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       strengthRow(),
       slider('hardness', 'hardness', 0, 1, 0.01, 2),
       select('shape', 'brushShape', () => [['free', 'freehand'], ['line', 'line (press, drag to the end)'], ['circle', 'circle (press the centre, drag out)']]).row,
+      paintBody,
     ),
     section('Rule', el('div', { class: 'rule-row' }, familySel, importBtn), el('div', { class: 'rule-row' }, ruleSel),
       checkbox('newest first', 'menuNewest', 'list each family\'s rules, and each rule\'s scenes, newest first (untick for oldest first)', fillRules), ruleBody),
