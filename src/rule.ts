@@ -6961,6 +6961,8 @@ w *= exp(2.0*clamp(sfr, -1.0, 1.0));`)
     .replace('// the richness noise', `// the flame's own diffusion: the 9-point stencil, written out (heat mode takes the spectral channels)
 ${(['T', 'Y'] as const).map((X) => `float lap${X} = (4.0*(north_${X} + south_${X} + east_${X} + west_${X}) + north_east_${X} + north_west_${X} + south_east_${X} + south_west_${X} - 20.0*${X})/(6.0*dx*dx);`).join('\n')}
 // the richness noise`),
+  // (32 steps a frame: its FFT steps are slower, and it reads best seen more often)
+  view: { ...FLAME_WAVES_2.view, stepsPerFrame: 32 },
   rest: [...FLAME_WAVES_2.rest, 0, 0],
   seed: [...FLAME_WAVES_2.seed, null, null],
   seedNoise: [...FLAME_WAVES_2.seedNoise, 0, 0],
