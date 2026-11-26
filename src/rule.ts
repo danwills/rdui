@@ -168,6 +168,13 @@ export interface RuleDef {
    * (cells ~8.9 dx across, then kse_lacunarity times that, …; each finer octave's cells about kse_roughness as tall),
    * stepped exactly, so big cells cost no more than small ones; the field's mean decays at stabilize instead. Write
    * delta_u = (kse_u - u)/timestep + 0.5*gradient_mag_squared_u for multi-octave KSE. Takes the first channel.
+   *
+   * And `flow_x_<r>` / `flow_y_<r>`: the velocity (y up) that the reagent, taken as a 2D vorticity, drives
+   * (Biot–Savart, exact by FFT: incompressible). Takes both channels.
+   *
+   * Any rule can also call `advect_<r>(ux, uy)`: the reagent a step upstream along the velocity (ux, uy) (y up, in dx
+   * units per time), bilinear between cells (semi-Lagrangian). delta_r = (advect_r(ux, uy) - r)/timestep carries r along.
+   * `advect_cubic_<r>(ux, uy)` is the same by clamped Catmull–Rom: far less blur, no overshoot.
    */
   laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
   /** The formula is a whole step (a map, as Ready kernel rules are), so it is never split into substeps at small feature sizes. */
@@ -253,6 +260,13 @@ export function translateFormula(formula: string, known: Set<string>): { code: s
       out += 'var';
       continue;
     }
+    if (next === '(' && t.startsWith('advect_') && known.has(t)) {
+      // a sampler, not a value: rd_advect_<r>(x, y, dx, dt, ux, uy), the cell and spacing filled in
+      used.add(t);
+      out += `rd_${t}(x, y, rd_dx, v_timestep, `;
+      i = j;
+      continue;
+    }
     if (next === '(') {
       const f = FUNCTIONS[t];
       if (!f) throw new RuleError(`unsupported function '${t}'`);
@@ -327,7 +341,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (mem && !rule.params.some((p) => p.name === mem.param)) throw new RuleError(`membrane param '${mem.param}' isn't a parameter`);
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
-    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2', 'kse'].map((op) => `${op}_${r}`)),
+    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2', 'kse', 'flow_x', 'flow_y', 'advect', 'advect_cubic'].map((op) => `${op}_${r}`)),
     ...rule.params.map((p) => p.name), 'timestep', 'time',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
@@ -369,8 +383,12 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const kse = kseSlots.size > 0;
   if (kse && !spectral) throw new RuleError(`kse_ needs laplacian: 'spectral'`);
   if (kse && (propagator || heat || lapSlots.size || kernelSlots.size || needs('bilaplacian').size)) throw new RuleError(`kse_ can't be combined with other spectral operators`);
-  for (const k of [...sinSlots, ...heat1Slots, ...kseSlots]) lapSlots.add(k);
-  for (const k of [...cosSlots, ...heat2Slots]) kernelSlots.add(k);
+  const flowXSlots = needs('flow_x'), flowYSlots = needs('flow_y');
+  const flow = flowXSlots.size + flowYSlots.size > 0;
+  if (flow && !spectral) throw new RuleError(`flow_x_ and flow_y_ need laplacian: 'spectral'`);
+  if (flow && (propagator || heat || kse || lapSlots.size || kernelSlots.size || needs('bilaplacian').size)) throw new RuleError(`flow_x_/flow_y_ can't be combined with other spectral operators`);
+  for (const k of [...sinSlots, ...heat1Slots, ...kseSlots, ...flowXSlots]) lapSlots.add(k);
+  for (const k of [...cosSlots, ...heat2Slots, ...flowYSlots]) kernelSlots.add(k);
   const spectralBilap = spectral && (needs('bilaplacian').size > 0 || kernelSlots.size > 0);
   const L: string[] = [];
   const add = (s: string) => L.push(s);
@@ -403,6 +421,31 @@ fn rd_pow(x: f32, y: f32) -> f32 {
   return pow(x, y);
 }
 fn rd_fmod(x: f32, y: f32) -> f32 { return x - y * trunc(x / y); }`);
+  // advect_<r>(ux, uy): r where the flow brings it from, a step back along (ux, uy) (y up), bilinear between the four
+  // cells about that point (semi-Lagrangian, stable at any step)
+  // advect_cubic_<r>: the same, Catmull–Rom over the 4×4 cells about it (much less blur), held within the nearest
+  // four's range so it never overshoots (no new highs or lows, no ringing)
+  R.forEach((r, i) => {
+    const at = (a: string, b: string) => `src[cellIndex(${a}, ${b}) * ${S}u + ${i >> 2}u].${COMP[i & 3]}`;
+    const head = (name: string) => `fn rd_${name}_${r}(x: i32, y: i32, ddx: f32, dt: f32, ux: f32, uy: f32) -> f32 {
+  let px = f32(x) - ux * dt / ddx; let py = f32(y) + uy * dt / ddx;
+  let fx = px - floor(px); let fy = py - floor(py);
+  let i = i32(floor(px)); let j = i32(floor(py));`;
+    if (used.has(`advect_${r}`)) add(`${head('advect')}
+  return mix(mix(${at('i', 'j')}, ${at('i + 1', 'j')}, fx), mix(${at('i', 'j + 1')}, ${at('i + 1', 'j + 1')}, fx), fy);
+}`);
+    if (used.has(`advect_cubic_${r}`)) add(`${head('advect_cubic')}
+  let wx = vec4<f32>(((-0.5 * fx + 1.0) * fx - 0.5) * fx, (1.5 * fx - 2.5) * fx * fx + 1.0, ((-1.5 * fx + 2.0) * fx + 0.5) * fx, (0.5 * fx - 0.5) * fx * fx);
+  let wy = vec4<f32>(((-0.5 * fy + 1.0) * fy - 0.5) * fy, (1.5 * fy - 2.5) * fy * fy + 1.0, ((-1.5 * fy + 2.0) * fy + 0.5) * fy, (0.5 * fy - 0.5) * fy * fy);
+  var sum = 0.0;
+  for (var b = 0; b < 4; b++) {
+    let row = vec4<f32>(${[0, 1, 2, 3].map((a) => at(`i + ${a - 1}`, 'j + b - 1')).join(', ')});
+    sum += wy[b] * dot(wx, row);
+  }
+  let q00 = ${at('i', 'j')}; let q10 = ${at('i + 1', 'j')}; let q01 = ${at('i', 'j + 1')}; let q11 = ${at('i + 1', 'j + 1')};
+  return clamp(sum, min(min(q00, q10), min(q01, q11)), max(max(q00, q10), max(q01, q11)));
+}`);
+  });
   add(`@compute @workgroup_size(8, 8)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   if (gid.x >= info.width || gid.y >= info.height) { return; }
@@ -496,6 +539,8 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (used.has(`heat1_${r}`)) add(`  let v_heat1_${r} = L${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`heat2_${r}`)) add(`  let v_heat2_${r} = KR${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`kse_${r}`)) add(`  let v_kse_${r} = L${i >> 2}.${COMP[i & 3]};`);
+    if (used.has(`flow_x_${r}`)) add(`  let v_flow_x_${r} = L${i >> 2}.${COMP[i & 3]};`);
+    if (used.has(`flow_y_${r}`)) add(`  let v_flow_y_${r} = KR${i >> 2}.${COMP[i & 3]};`);
     add(`  var v_delta_${r} = 0.0;`);
     if (used.has(`laplacian_${r}`)) add(`  let v_laplacian_${r} = L${i >> 2}.${COMP[i & 3]};`);
     const c = `${i >> 2}.${COMP[i & 3]}`;
@@ -522,7 +567,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     add(`  dst[sb + ${k}u] = vec4<f32>(${comps.join(', ')});`);
   }
   add(`}`);
-  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: kse ? 'kse' : heat ? 'heat' : propagator ? 'propagator' : kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
+  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: flow ? 'flow' : kse ? 'kse' : heat ? 'heat' : propagator ? 'propagator' : kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
 }
 
 // --- initial state
@@ -7061,7 +7106,95 @@ export const KSE_OCTAVES_256: RuleDef = {
   },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5];
+/**
+ * Stable fluids (Stam 1999), in 2D as vorticity: ω, the fluid's spin, is all there is. Each step its velocity comes
+ * exactly from it by FFT (flow_x_/flow_y_: the stream function ψ̂ = ω̂/|k|², u = ∂ψ/∂y, v = −∂ψ/∂x, so the flow never
+ * compresses), then ω and the dye are carried along it semi-Lagrangian (advect_: each cell takes what was a step back
+ * upstream, bilinearly), stable at any timestep, and ω spreads a little by viscosity. In 2D spin is carried, never
+ * made, so like-spinning vortices merge and the swirls grow (the inverse cascade) as they slowly wind down. The
+ * bilinear sampling blurs a little each step (its numerical diffusion, Stam's trade for stability).
+ */
+export const STABLE_FLUIDS: RuleDef = {
+  name: 'Stable fluids (swirls)',
+  description:
+    'A 2D fluid by Stam\'s stable fluids, as vorticity: the flow comes from the spin ω exactly (FFT), and ω and the dye ' +
+    'are carried along it semi-Lagrangian, stable at any step. Vortices pull the dye into spirals and merge with their ' +
+    'own kind. Paint ω with the Seed tool to stir: + spins anticlockwise, − clockwise (Seed Values, on the Tool tab).',
+  reagents: ['omega', 'dye'],
+  laplacian: 'spectral',
+  size: { width: 512, height: 512 },
+  params: [
+    { name: 'timestep', value: 0.25, min: 0.01, max: 2 },
+    { name: 'dx', value: 1, min: 0.25, max: 4 },
+    { name: 'viscosity', value: 0.01, min: 0, max: 0.2 },
+    { name: 'dye_fade', value: 0, min: 0, max: 0.05 },
+  ],
+  paramHints: {
+    timestep: 'Time per step: stable at any size, but longer steps carry things farther between looks (blurrier)',
+    viscosity: 'How fast the spin spreads and winds down (0 for none: only the sampling\'s own blur)',
+    dye_fade: 'How fast the dye fades away',
+  },
+  paintable: ['viscosity'],
+  formula: `// the flow ω drives (exact, by FFT)
+float ux = flow_x_omega;
+float uy = flow_y_omega;
+// viscosity: the 9-point Laplacian of ω, written out (the FFT is busy with the flow)
+float lapw = (4.0*(north_omega + south_omega + east_omega + west_omega) + north_east_omega + north_west_omega + south_east_omega + south_west_omega - 20.0*omega)/(6.0*dx*dx);
+// carried along the flow: each cell takes what was a step upstream
+delta_omega = (advect_cubic_omega(ux, uy) - omega)/timestep + viscosity*lapw;
+delta_dye = (advect_cubic_dye(ux, uy) - dye)/timestep - dye_fade*dye;`,
+  rest: [0, 0],
+  seed: [1.5, 1],
+  seedNoise: [0, 0],
+  initial: [
+    // swirls of both spins, the field's quarter and half that
+    { chem: 'omega', op: 'overwrite', fill: { type: 'gradient_noise', low: -0.4, high: 0.4, size: 128, octaves: 2, roughness: 0.4 }, shape: { type: 'everywhere' } },
+    // dye in bands, to show the stirring
+    ...Array.from({ length: 8 }, (_, i): Overlay => ({ chem: 'dye', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'rectangle', x0: 0, y0: i / 8, x1: 1, y1: i / 8 + 1 / 16 } })),
+  ],
+  view: { reagent: 'dye', low: 0, high: 1, tint: 'omega', stepsPerFrame: 2 },
+};
+
+/**
+ * Stable fluids with buoyant smoke: T, the smoke's heat, is carried along the flow and lifts it. In vorticity form the
+ * lift (βT, up) turns into spin at its sideways edges: dω/dt += β·∂T/∂x, so a hot puff rolls up into a mushroom, its
+ * rim curls (Kelvin–Helmholtz) and it breaks into ever finer wisps. The field wraps, so what rises comes back in
+ * from below. Paint more T with the Seed tool.
+ */
+export const STABLE_SMOKE: RuleDef = {
+  ...STABLE_FLUIDS,
+  name: 'Stable fluids (rising smoke)',
+  description:
+    'Stable fluids with hot smoke: its heat T is carried along the flow and lifts it, the lift setting the fluid ' +
+    'spinning at the smoke\'s edges, so a puff rises into a mushroom with curling rims. Paint T with the Seed tool for more.',
+  reagents: ['omega', 'T'],
+  params: [
+    ...STABLE_FLUIDS.params.filter((p) => p.name !== 'dye_fade'),
+    { name: 'buoyancy', value: 0.03, min: -0.3, max: 0.3 },
+    { name: 'cooling', value: 0, min: 0, max: 0.05 },
+  ],
+  paramHints: {
+    ...STABLE_FLUIDS.paramHints,
+    buoyancy: 'How hard heat lifts the fluid (negative: heavy smoke that sinks)',
+    cooling: 'How fast the smoke cools (and so slows)',
+  },
+  paintable: ['viscosity', 'buoyancy'],
+  formula: `float ux = flow_x_omega;
+float uy = flow_y_omega;
+float lapw = (4.0*(north_omega + south_omega + east_omega + west_omega) + north_east_omega + north_west_omega + south_east_omega + south_west_omega - 20.0*omega)/(6.0*dx*dx);
+// carried along, ω also spun up by the lift's sideways change (the curl of βT pointing up)
+delta_omega = (advect_cubic_omega(ux, uy) - omega)/timestep + viscosity*lapw + buoyancy*x_gradient_T;
+delta_T = (advect_cubic_T(ux, uy) - T)/timestep - cooling*T;`,
+  seed: [null, 1],
+  initial: [
+    // a hot puff low down, slightly lopsided (a little noise in it) so it doesn't stay perfectly symmetric
+    { chem: 'T', op: 'overwrite', fill: { type: 'bump', value: 1, edge: 6 }, shape: { type: 'circle', cx: 0.5, cy: 0.8, r: 0.08 } },
+    { chem: 'T', op: 'multiply', fill: { type: 'gradient_noise', low: 0.85, high: 1, size: 32, octaves: 2 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'T', low: 0, high: 1, tint: 'omega', stepsPerFrame: 2 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -7072,6 +7205,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
   ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, KSE_OCTAVES, KSE_OCTAVES_256, KSE_FRONTS]],
+  ['Fluids', [STABLE_FLUIDS, STABLE_SMOKE]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],

@@ -21,6 +21,9 @@
 // 1, as KSE's cells do, and since a band's cells stand ∝ its growth × ℓ², each finer octave's cells stand roughness
 // as tall as the next coarser one's (the big ones growing, and changing, slower).
 // k = 0, the mean, decays at kstab instead (KSE's ½|∇u|² lifts it).
+// With second = 6 (flow), each field is taken as a vorticity ω and the pairs get the velocity it drives (Biot–Savart,
+// y up): the stream function ψ̂ = ω̂/|k|², u = ∂ψ/∂y into the first, v = −∂ψ/∂x into the second. The multipliers are
+// imaginary and odd (Hermitian), so the packed pairs' outputs stay real and come back apart as the Laplacian's do.
 override S: u32 = 1u;
 override P: u32 = 1u;
 
@@ -88,6 +91,21 @@ fn kmul(@builtin(global_invocation_id) gid: vec3<u32>) {
     for (var k = 0u; k < P; k++) {
       re[c + k] = re[c + k] * m;
       im[c + k] = im[c + k] * m;
+    }
+    return;
+  }
+  if (info.second == 6u) {
+    // rows run down, so ∂/∂y (up) is −i·ky; × −i·a is (r + i·s) → (a·s, −a·r)
+    let inv = select(0.0, 1.0 / k2, k2 > 0.0);
+    let au = ky * inv;
+    let av = kx * inv;
+    for (var k = 0u; k < P; k++) {
+      let r = re[c + k];
+      let s = im[c + k];
+      re[c + k] = au * s;
+      im[c + k] = -au * r;
+      bre[c + k] = av * s;
+      bim[c + k] = -av * r;
     }
     return;
   }
