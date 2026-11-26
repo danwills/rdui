@@ -3,7 +3,7 @@
 import * as R from '../src/rule';
 import { makeLab, saveFrame, log } from './lab';
 
-export default async function (cfg: { rule?: string; N?: number; steps?: number; parts?: number; globals?: Record<string, number>; fields?: string[] }) {
+export default async function (cfg: { rule?: string; N?: number; steps?: number; parts?: number; globals?: Record<string, number>; fields?: string[]; show?: string }) {
   const rule = (R as unknown as Record<string, R.RuleDef>)[cfg.rule ?? 'SAND_RIPPLES'];
   const N = cfg.N ?? rule.size?.width ?? 512, parts = cfg.parts ?? 4;
   const l = await makeLab(rule, N, cfg.globals ?? {}, 'initial');
@@ -29,6 +29,6 @@ export default async function (cfg: { rule?: string; N?: number; steps?: number;
       return `${f} ${lo.toFixed(2)}…${hi.toFixed(2)} slope mean ${(ssum / N / N).toFixed(3)} max ${smax.toFixed(2)}… mean ${mean.toFixed(4)} spacing ${bestLag}${bad ? ` NaN ${bad}` : ''}`;
     });
     log(`@${k}: ${line.join(' · ')}`);
-    await saveFrame(`${cfg.rule ?? 'SAND_RIPPLES'}-${k}.png`, l, { ri: 0, lo: 0, hi: 1, scale: 1, caption: `@${k}` });
+    await saveFrame(`${cfg.rule ?? 'SAND_RIPPLES'}-${k}.png`, l, { ri: cfg.show ? l.layout.reagents.indexOf(cfg.show) : 0, lo: 0, hi: 1, scale: 1, caption: `@${k}` });
   }
 }
