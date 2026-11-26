@@ -175,6 +175,10 @@ export interface RuleDef {
    * Any rule can also call `advect_<r>(ux, uy)`: the reagent a step upstream along the velocity (ux, uy) (y up, in dx
    * units per time), bilinear between cells (semi-Lagrangian). delta_r = (advect_r(ux, uy) - r)/timestep carries r along.
    * `advect_cubic_<r>(ux, uy)` is the same by clamped Catmull–Rom: far less blur, no overshoot.
+   *
+   * And `poisson_<r>`: φ with ∇²φ = the reagent (the 9-point-matched Laplacian inverted, the mean dropped), as for a
+   * pressure projection. It can share the FFT with wave_cos_/wave_sin_ as long as their reagents are in different groups
+   * of 8 (the FFT treats each 8 alike).
    */
   laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
   /** The formula is a whole step (a map, as Ready kernel rules are), so it is never split into substeps at small feature sizes. */
@@ -329,7 +333,7 @@ export interface CompiledRule {
   globalIndex: Map<string, number>;
   globalVec4s: number;
   /** Set when the step shader reads FFT-computed operators (bindings 5, 6). */
-  spectral?: { second: Second; exact: boolean };
+  spectral?: { second: Second; exact: boolean; /** mixed: the FFT pairs given the Poisson solve, as a bitmask */ poissonPairs?: number };
 }
 
 export function compileRule(rule: RuleDef): CompiledRule {
@@ -344,7 +348,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (mem && !rule.params.some((p) => p.name === mem.param)) throw new RuleError(`membrane param '${mem.param}' isn't a parameter`);
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
-    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2', 'kse', 'flow_x', 'flow_y', 'advect', 'advect_cubic'].map((op) => `${op}_${r}`)),
+    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2', 'kse', 'flow_x', 'flow_y', 'poisson', 'advect', 'advect_cubic'].map((op) => `${op}_${r}`)),
     ...rule.params.map((p) => p.name), 'timestep', 'time',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
@@ -390,7 +394,15 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const flow = flowXSlots.size + flowYSlots.size > 0;
   if (flow && !spectral) throw new RuleError(`flow_x_ and flow_y_ need laplacian: 'spectral'`);
   if (flow && (propagator || heat || kse || lapSlots.size || kernelSlots.size || needs('bilaplacian').size)) throw new RuleError(`flow_x_/flow_y_ can't be combined with other spectral operators`);
-  for (const k of [...sinSlots, ...heat1Slots, ...kseSlots, ...flowXSlots]) lapSlots.add(k);
+  const poissonSlots = needs('poisson');
+  const poisson = poissonSlots.size > 0;
+  if (poisson && !spectral) throw new RuleError(`poisson_ needs laplacian: 'spectral'`);
+  if (poisson && (heat || kse || flow || lapSlots.size || kernelSlots.size || needs('bilaplacian').size)) throw new RuleError(`poisson_ can only share the FFT with wave_cos_/wave_sin_`);
+  // the FFT works on pairs of state slots (8 reagents), each pair getting one treatment: Poisson or the propagator
+  const poissonPairs = new Set([...poissonSlots].map((k) => k >> 1));
+  const clash = [...cosSlots, ...sinSlots].find((k) => poissonPairs.has(k >> 1));
+  if (clash !== undefined) throw new RuleError(`poisson_ and wave_ reagents must be in different groups of 8 (reagents ${clash * 4 + 1}… share one)`);
+  for (const k of [...sinSlots, ...heat1Slots, ...kseSlots, ...flowXSlots, ...poissonSlots]) lapSlots.add(k);
   for (const k of [...cosSlots, ...heat2Slots, ...flowYSlots]) kernelSlots.add(k);
   const spectralBilap = spectral && (needs('bilaplacian').size > 0 || kernelSlots.size > 0);
   const L: string[] = [];
@@ -542,6 +554,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (used.has(`heat1_${r}`)) add(`  let v_heat1_${r} = L${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`heat2_${r}`)) add(`  let v_heat2_${r} = KR${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`kse_${r}`)) add(`  let v_kse_${r} = L${i >> 2}.${COMP[i & 3]};`);
+    if (used.has(`poisson_${r}`)) add(`  let v_poisson_${r} = L${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`flow_x_${r}`)) add(`  let v_flow_x_${r} = L${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`flow_y_${r}`)) add(`  let v_flow_y_${r} = KR${i >> 2}.${COMP[i & 3]};`);
     add(`  var v_delta_${r} = 0.0;`);
@@ -570,7 +583,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     add(`  dst[sb + ${k}u] = vec4<f32>(${comps.join(', ')});`);
   }
   add(`}`);
-  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: flow ? 'flow' : kse ? 'kse' : heat ? 'heat' : propagator ? 'propagator' : kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
+  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { poissonPairs: [...poissonPairs].reduce((m, p) => m | (1 << p), 0), second: poisson ? 'mixed' : flow ? 'flow' : kse ? 'kse' : heat ? 'heat' : propagator ? 'propagator' : kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
 }
 
 // --- initial state
@@ -7329,7 +7342,87 @@ export const ADVECT_SL_CUBIC = advectionTest('semi-Lagrangian, cubic',
   'nearest four\'s range. Far sharper, still stable at any timestep and never overshoots.',
   'delta_dye = (advect_cubic_dye(ux, uy) - dye)/timestep;');
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, ADVECT_UPWIND, ADVECT_LAX_WENDROFF, ADVECT_LIMITED, ADVECT_SL_BILINEAR, ADVECT_SL_CUBIC];
+/**
+ * Schrödinger's Smoke (Chern, Knöppel, Pinkall, Schröder & Weißmann 2016, incompressible Schrödinger flow): the fluid
+ * is a two-part wavefunction ψ = (ψ1, ψ2) of unit size, and its velocity is ψ's phase gradient, u = Im(ψ̄·∇ψ) (ħ = 1).
+ * Each step: ψ moves by the free Schrödinger equation (exact, by FFT), is renormalised, and is projected: the flow's
+ * divergence d = Im(ψ̄·∇²ψ) is solved for, ∇²φ = d (FFT), and ψ turned by e^{−iφ}, which takes ∇φ off the velocity.
+ * Vortices are where ψ1's phase winds round (ψ2 fills their cores): points that drift in each other's flow and never
+ * spread or fade, so vortex pairs glide and two pairs leapfrog for ever (Love's 2D leapfrog: the inner pair speeds
+ * through the outer, which slows and narrows, and they swap). The steps are three passes, chosen by the clock (one
+ * pass's results are the next's FFT input): A the Schrödinger step and renormalising, with the dye carried along the
+ * flow; B the divergence; C the projection. Painted dye is carried along too.
+ */
+function schrodingerSmoke(): string {
+  const comps = [['a1', 'b1'], ['a2', 'b2']];
+  // a 9-point Laplacian, written out (the FFT takes the propagator and Poisson)
+  const lap = (X: string) => `(4.0*(north_${X} + south_${X} + east_${X} + west_${X}) + north_east_${X} + north_west_${X} + south_east_${X} + south_west_${X} - 20.0*${X})/(6.0*dx*dx)`;
+  return `// which pass: A (0) Schrödinger step, B (1) divergence, C (2) projection
+float pass = fmod(floor(clock/timestep + 0.5), 3.0);
+float isA = 1.0 - step(0.5, pass);
+float isC = step(1.5, pass);
+float isB = 1.0 - isA - isC;
+delta_clock = 1.0;
+// A: the velocity of the projected ψ, Im(ψ̄∇ψ), carrying the dye; then the free step e^{iΔt/2} and back to unit size
+float uxn = ${comps.map(([a, b]) => `${a}*x_gradient_${b} - ${b}*x_gradient_${a}`).join(' + ')};
+float uyn = ${comps.map(([a, b]) => `${a}*y_gradient_${b} - ${b}*y_gradient_${a}`).join(' + ')};
+${comps.map(([a, b]) => `float p${a} = wave_cos_${a} + wave_sin_${b};\nfloat p${b} = wave_cos_${b} - wave_sin_${a};`).join('\n')}
+float norm = rsqrt(${comps.flat().map((x) => `p${x}*p${x}`).join(' + ')} + 1e-20);
+// B: the divergence of the flow, Im(ψ̄∇²ψ)
+float dn = ${comps.map(([a, b]) => `${a}*${lap(b)} - ${b}*${lap(a)}`).join(' + ')};
+// C: turn ψ by e^{−iφ}, ∇²φ = d
+float cph = cos(poisson_d);
+float sph = sin(poisson_d);
+${comps.map(([a, b]) => `delta_${a} = (isA*p${a}*norm + isC*(${a}*cph + ${b}*sph) - (isA + isC)*${a})/timestep;
+delta_${b} = (isA*p${b}*norm + isC*(${b}*cph - ${a}*sph) - (isA + isC)*${b})/timestep;`).join('\n')}
+delta_d = isB*(dn - d)/timestep;
+delta_ux = isA*(uxn - ux)/timestep;
+delta_uy = isA*(uyn - uy)/timestep;
+delta_dye = isA*(advect_cubic_dye(uxn, uyn) - dye)/timestep;
+// (how much ψ2 there is, for the view: 1 in the vortex cores)
+delta_core = (a2*a2 + b2*b2 - core)/timestep;`;
+}
+
+export const SCHRODINGER_SMOKE: RuleDef = {
+  name: 'Schrödinger\'s Smoke (leapfrogging vortices)',
+  description:
+    'Schrödinger\'s Smoke (Chern et al. 2016): the fluid is a two-part wavefunction, its velocity the phase gradient, ' +
+    'moved by the Schrödinger equation and kept incompressible by projection. Vortices are points where the phase ' +
+    'winds; they never spread, so two vortex pairs leapfrog through each other for ever, trailing dye. Paint dye with the Seed tool.',
+  // (wave_ and poisson_ must be in different groups of 8 reagents: ψ, clock and the flow in the first, d in the second)
+  reagents: ['a1', 'b1', 'a2', 'b2', 'dye', 'ux', 'uy', 'clock', 'd', 'core'],
+  laplacian: 'spectral',
+  size: { width: 256, height: 256 },
+  params: [
+    // (ħ = 1, dx 1: a vortex r cells away moves things at 1/r cells per time)
+    { name: 'timestep', value: 2, min: 0.1, max: 8 },
+    { name: 'dx', value: 1, min: 0.25, max: 4 },
+  ],
+  paramHints: {
+    timestep: 'Time per step (each is three passes): exact and stable at any size, but longer steps make the vortices\' paths coarser',
+  },
+  paintable: [],
+  formula: schrodingerSmoke(),
+  rest: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  seed: [null, null, null, null, 1, null, null, null, null, null],
+  seedNoise: Array(10).fill(0),
+  initial: [
+    // ψ1: two vortex pairs on one axis, the inner half as wide as the outer (Love's leapfrog: above 0.38 they pass
+    // through each other), + above and − below so both pairs glide the same way
+    ...(['cos', 'sin'] as const).map((part, k): Overlay => ({
+      chem: k ? 'b1' : 'a1', op: 'overwrite', shape: { type: 'everywhere' },
+      fill: { type: 'vortices', amp: 0.98, core: 3, part, list: [[0.25, 0.32, 1], [0.25, 0.68, -1], [0.25, 0.41, 1], [0.25, 0.59, -1]] },
+    })),
+    // ψ2: a little everywhere, so the cores (where ψ1 vanishes) stay smooth
+    { chem: 'a2', op: 'overwrite', fill: { type: 'constant', value: 0.2 }, shape: { type: 'everywhere' } },
+    // dye: a cloud about each side's pair, to trail behind, and two bands across their path for them to plough through
+    ...[0.365, 0.635].map((y): Overlay => ({ chem: 'dye', op: 'overwrite', fill: { type: 'bump', value: 1, edge: 3 }, shape: { type: 'circle', cx: 0.25, cy: y, r: 0.06 } })),
+    ...[0.55, 0.8].map((x): Overlay => ({ chem: 'dye', op: 'overwrite', fill: { type: 'constant', value: 0.6 }, shape: { type: 'rectangle', x0: x, y0: 0.2, x1: x + 0.03, y1: 0.8 } })),
+  ],
+  view: { reagent: 'dye', low: 0, high: 1, tint: 'core', stepsPerFrame: 6 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, ADVECT_UPWIND, ADVECT_LAX_WENDROFF, ADVECT_LIMITED, ADVECT_SL_BILINEAR, ADVECT_SL_CUBIC, SCHRODINGER_SMOKE];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -7340,7 +7433,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
   ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, KSE_OCTAVES, KSE_OCTAVES_256, KSE_FRONTS]],
-  ['Fluids', [STABLE_FLUIDS, STABLE_SMOKE]],
+  ['Fluids', [STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE]],
   ['Advection schemes', [ADVECT_UPWIND, ADVECT_LAX_WENDROFF, ADVECT_LIMITED, ADVECT_SL_BILINEAR, ADVECT_SL_CUBIC]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],

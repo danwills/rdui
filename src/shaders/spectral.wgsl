@@ -24,11 +24,13 @@
 // With second = 6 (flow), each field is taken as a vorticity ω and the pairs get the velocity it drives (Biot–Savart,
 // y up): the stream function ψ̂ = ω̂/|k|², u = ∂ψ/∂y into the first, v = −∂ψ/∂x into the second. The multipliers are
 // imaginary and odd (Hermitian), so the packed pairs' outputs stay real and come back apart as the Laplacian's do.
+// With second = 7 (mixed), each pair gets its own: the pairs in the bitmask kmask the inverse Laplacian (a Poisson
+// solve, φ̂ = −d̂/λ, the mean dropped) into the first, the rest the Schrödinger propagator as with second = 3.
 override S: u32 = 1u;
 override P: u32 = 1u;
 
 struct Info { width: u32, height: u32, second: u32, matched: u32, dx: f32, sigma1: f32, b: f32, sigma2: f32,
-  kdt: f32, koct: f32, klac: f32, krough: f32, kstab: f32, kp0: f32, kp1: f32, kp2: f32 };
+  kdt: f32, koct: f32, klac: f32, krough: f32, kstab: f32, kmask: f32, kp1: f32, kp2: f32 };
 @group(0) @binding(0) var<uniform> info: Info;
 @group(0) @binding(1) var<storage, read> src: array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read_write> re: array<vec4<f32>>;
@@ -134,7 +136,15 @@ fn kmul(@builtin(global_invocation_id) gid: vec3<u32>) {
       im[c + k] = i * h1;
       continue;
     }
-    if (info.second == 3u) {
+    if (info.second == 7u && ((u32(info.kmask) >> k) & 1u) == 1u) {
+      let inv = select(0.0, 1.0 / k2, k2 > 0.0);
+      re[c + k] = -inv * r;
+      im[c + k] = -inv * i;
+      bre[c + k] = vec4<f32>(0.0);
+      bim[c + k] = vec4<f32>(0.0);
+      continue;
+    }
+    if (info.second == 3u || info.second == 7u) {
       let th = info.sigma1 * (kx * kx + ky * ky);
       bre[c + k] = r * cos(th);
       bim[c + k] = i * cos(th);

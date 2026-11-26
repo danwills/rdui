@@ -129,7 +129,7 @@ const WG = 8;
  */
 /** Whether a rule's diffusion is unconditionally stable (exact spectral operators), so its grid can be made finer without shorter steps. */
 export function stableAtAnySpacing(c: CompiledRule) {
-  return !!c.rule.discrete || ['heat', 'kernel', 'propagator', 'kse'].includes(c.spectral?.second ?? '');
+  return !!c.rule.discrete || ['heat', 'kernel', 'propagator', 'kse', 'mixed'].includes(c.spectral?.second ?? '');
 }
 
 export class Simulation {
@@ -233,7 +233,8 @@ export class Simulation {
       const ri = compiled.globalIndex.get(KERNEL_RADIUS);
       if (ri !== undefined) this.spectral.setKernel({ sigma1: this.globals[ri] / 2 });
       const ts = compiled.globalIndex.get('timestep');
-      if (compiled.spectral.second === 'propagator') this.spectral.setKernel({ sigma1: 0.5 * (ts !== undefined ? this.globals[ts] : 1) });
+      if (compiled.spectral.second === 'mixed') this.spectral.setPoissonPairs(compiled.spectral.poissonPairs ?? 0);
+      if (compiled.spectral.second === 'propagator' || compiled.spectral.second === 'mixed') this.spectral.setKernel({ sigma1: 0.5 * (ts !== undefined ? this.globals[ts] : 1) });
       this.setHeat();
       this.setKse();
     }
@@ -320,7 +321,7 @@ export class Simulation {
     const kp = KERNEL_PARAMS.find(([n]) => n === name);
     if (kp) this.spectral?.setKernel({ [kp[1]]: value });
     if (name === KERNEL_RADIUS) this.spectral?.setKernel({ sigma1: value / 2 });
-    if (name === 'timestep' && this.compiled.spectral?.second === 'propagator') this.spectral?.setKernel({ sigma1: 0.5 * value });
+    if (name === 'timestep' && (this.compiled.spectral?.second === 'propagator' || this.compiled.spectral?.second === 'mixed')) this.spectral?.setKernel({ sigma1: 0.5 * value });
     if (HEAT_PARAMS.includes(name)) this.setHeat();
     if (KSE_PARAMS.includes(name)) this.setKse();
   }

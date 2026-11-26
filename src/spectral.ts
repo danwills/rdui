@@ -4,7 +4,7 @@ import spectralWGSL from './shaders/spectral.wgsl?raw';
 const WG = 8;
 
 /** What the second spectral channel computes. */
-export type Second = 'none' | 'bilap' | 'kernel' | 'propagator' | 'heat' | 'kse' | 'flow';
+export type Second = 'none' | 'bilap' | 'kernel' | 'propagator' | 'heat' | 'kse' | 'flow' | 'mixed';
 
 /**
  * Spectral Laplacian (and optionally a second operator: the bilaplacian, or
@@ -29,6 +29,8 @@ export class Spectral {
   private kernel = { sigma1: 1, b: 0, sigma2: 1 };
   private kse = { dt: 0, octaves: 1, lacunarity: 2, roughness: 0.5, stab: 0 };
   private dx = 1;
+  /** The mixed mode's pairs that get the Poisson solve (bit p for pair p; the rest the propagator). */
+  private poissonPairs = 0;
   /** Complex work buffers, P = ceil(S/2) slot pairs per cell. */
   private re: GPUBuffer;
   private im: GPUBuffer;
@@ -125,11 +127,17 @@ export class Spectral {
     this.writeInfo();
   }
 
+  /** Which pairs the mixed mode solves Poisson for (a bitmask); the others get the Schrödinger propagator. */
+  setPoissonPairs(mask: number) {
+    this.poissonPairs = mask;
+    this.writeInfo();
+  }
+
   private writeInfo() {
     const buf = new ArrayBuffer(64);
-    new Uint32Array(buf).set([this.W, this.H, ['none', 'bilap', 'kernel', 'propagator', 'heat', 'kse', 'flow'].indexOf(this.second), this.matched ? 1 : 0]);
+    new Uint32Array(buf).set([this.W, this.H, ['none', 'bilap', 'kernel', 'propagator', 'heat', 'kse', 'flow', 'mixed'].indexOf(this.second), this.matched ? 1 : 0]);
     const q = this.kse;
-    new Float32Array(buf).set([this.dx, this.kernel.sigma1, this.kernel.b, this.kernel.sigma2, q.dt, q.octaves, q.lacunarity, q.roughness, q.stab], 4);
+    new Float32Array(buf).set([this.dx, this.kernel.sigma1, this.kernel.b, this.kernel.sigma2, q.dt, q.octaves, q.lacunarity, q.roughness, q.stab, this.poissonPairs], 4);
     this.device.queue.writeBuffer(this.info, 0, buf);
   }
 
