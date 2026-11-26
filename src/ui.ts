@@ -30,6 +30,8 @@ export interface Settings {
   fkTarget: 'brush' | 'background';
   running: boolean;
   stepsPerFrame: number;
+  /** The most of the GPU's time the sim takes (0–1): above it, fewer steps run, leaving the rest for the desktop. */
+  gpuShare: number;
   /** Whether loading a rule or scene sets steps/frame (untick to keep your own). */
   ruleSpeed: boolean;
   /** The Rule menu lists each family's rules (and each rule's scenes) newest first; unticked, oldest first, as it was. */
@@ -178,6 +180,7 @@ export function defaultSettings(): Settings {
     seedPaint: {},
     running: true,
     stepsPerFrame: 10,
+    gpuShare: 0.75,
     ruleSpeed: true,
     menuNewest: true,
     wallsReflect: true,
@@ -395,6 +398,7 @@ const SETTING_HINTS: Partial<Record<keyof Settings, string>> = {
   hardness: 'the brush edge: 1 sharp, 0 soft and fading out',
   brushShape: 'freehand strokes, straight lines, or circles',
   stepsPerFrame: 'simulation steps run each frame (per 1/60 s): more is faster, if the GPU keeps up',
+  gpuShare: 'the most of the GPU\'s time the sim takes: when steps/frame would need more, it runs fewer, so the desktop and other apps stay smooth (1 takes all it can)',
   gridSize: 'the field\'s size in cells (bigger is more detail and slower); the field starts over',
   resScale: 'run on fewer cells than the grid (faster, coarser); the field starts over',
   featureSize: 'how big features are, in cells: above 1× the same pattern spans more cells (finer looking, slower)',
@@ -980,6 +984,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     section('Simulation',
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Restart', actions.restart, 'start the rule or scene over from scratch: its own parameters, opening, paint and stamps (Reset keeps your parameters)'), button('Clear chem', actions.clearChemistry, 'C')),
       logSlider('steps/frame', 'stepsPerFrame', 64, 5000, () => rc.rule().view.stepsPerFrame ?? defaultSettings().stepsPerFrame), // the rule's own speed, else the app's
+      slider('GPU share', 'gpuShare', 0.1, 1, 0.05, 2),
       checkbox('rules set steps/frame', 'ruleSpeed', 'untick to keep your own steps/frame when you load a rule or scene (e.g. to watch a fast one start slowly)'),
       select('grid', 'gridSize', () => [[128, '128²'], [256, '256²'], [512, '512²'], [1024, '1024²'], [2048, '2048²']], () => actions.resize(s.gridSize)).row,
       select('resolution', 'resScale', () => [[1, 'full'], [0.5, '½'], [0.25, '¼'], [0.125, '⅛']], () => actions.resize(s.gridSize)).row,

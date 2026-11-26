@@ -186,6 +186,9 @@ async function init() {
   const strokes: BrushStroke[] = []; // resolved at input time so later tool changes don't affect them
   let pendingSteps = 0;
   let lastFrameT = performance.now(), stepCarry = 0;
+  // sharing the GPU: one frame's work in flight at a time, and the steps scaled by `throttle` so the GPU is busy with
+  // ours (submit to done, which counts others' work queued ahead too) for at most gpuShare of the time
+  let gpuBusy = false, busyMs = 0, busyT = performance.now(), throttle = 1, gpuUse = 0;
   // no steps while a scene is being set up: its stamps go down one GPU read at a time, and solitons meant to
   // meet in phase must all start on the same step (one frame apart is ~30° of phase for a standard soliton)
   let settingUp = false;
@@ -1457,6 +1460,8 @@ async function init() {
 
   let brushTool = s.tool; // the tool the brush settings belong to
   function frame() {
+    // the last frame's work isn't done yet: wait, rather than queue more behind it
+    if (gpuBusy) { requestAnimationFrame(frame); return; }
     // each tool keeps its own brush (radius, strength, hardness, shape): changing tool (button, key or stamp) puts the
     // old one's away and brings the new one's back, so a small seed and a big erase are a tool switch apart
     if (s.tool !== brushTool) {
@@ -1477,8 +1482,16 @@ async function init() {
     // steps per frame means per 1/60 s: phones raise the refresh rate (to 120 Hz) while touched,
     // which made painting run the sim faster. Never more per frame than set, so slow frames don't pile up.
     const t = performance.now();
-    const due = s.running ? Math.min(s.stepsPerFrame, s.stepsPerFrame * Math.max(0, t - lastFrameT) / (1000 / 60) + stepCarry) : 0;
+    const elapsed = Math.max(0, t - lastFrameT);
     lastFrameT = t;
+    if (t - busyT > 250) {
+      gpuUse = busyMs / (t - busyT);
+      // ease the steps down when over the share, back up (to all of steps/frame) when under
+      throttle = s.gpuShare >= 1 ? 1 : Math.min(1, Math.max(0.01, throttle * Math.min(1.25, Math.max(0.5, s.gpuShare / Math.max(gpuUse, 1e-3)))));
+      busyMs = 0;
+      busyT = t;
+    }
+    const due = s.running ? Math.min(s.stepsPerFrame, s.stepsPerFrame * throttle * elapsed / (1000 / 60) + stepCarry) : 0;
     const run = Math.floor(due);
     stepCarry = s.running ? due - run : 0;
     const n = settingUp ? 0 : run + pendingSteps;
@@ -1487,6 +1500,9 @@ async function init() {
     stepsDone += n;
     sim.render(enc, ctx.getCurrentTexture().createView(), canvas.width, canvas.height, viewOptions());
     device.queue.submit([enc.finish()]);
+    gpuBusy = true;
+    const sent = performance.now();
+    void device.queue.onSubmittedWorkDone().then(() => { busyMs += performance.now() - sent; gpuBusy = false; });
 
     if (++frameNo % PROBE_SAMPLE_EVERY === 0) probes.sample(sim);
 
@@ -1505,7 +1521,7 @@ async function init() {
     const now = performance.now();
     if (now - lastStat > 500) {
       const dt = (now - lastStat) / 1000;
-      stats = `${(frames / dt).toFixed(0)} fps · ${(stepsDone / dt).toFixed(0)} steps/s · ${sim.width}×${sim.height} · ${rule.name}`;
+      stats = `${(frames / dt).toFixed(0)} fps · ${(stepsDone / dt).toFixed(0)} steps/s · GPU ${(gpuUse * 100).toFixed(0)}%${throttle < 0.99 ? ` (eased to ${(throttle * 100).toFixed(0)}% of steps/frame)` : ''} · ${sim.width}×${sim.height} · ${rule.name}`;
       if (s.running && blowSim !== sim) {
         const checked = sim;
         void checked.blownUp().then((bad) => { if (bad && checked === sim && blowSim !== sim) showBlow(); });
