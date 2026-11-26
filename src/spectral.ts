@@ -4,7 +4,7 @@ import spectralWGSL from './shaders/spectral.wgsl?raw';
 const WG = 8;
 
 /** What the second spectral channel computes. */
-export type Second = 'none' | 'bilap' | 'kernel' | 'propagator' | 'heat';
+export type Second = 'none' | 'bilap' | 'kernel' | 'propagator' | 'heat' | 'kse';
 
 /**
  * Spectral Laplacian (and optionally a second operator: the bilaplacian, or
@@ -27,6 +27,7 @@ export class Spectral {
   private second: Second;
   private matched: boolean;
   private kernel = { sigma1: 1, b: 0, sigma2: 1 };
+  private kse = { dt: 0, octaves: 1, lacunarity: 2, roughness: 0.5, stab: 0 };
   private dx = 1;
   /** Complex work buffers, P = ceil(S/2) slot pairs per cell. */
   private re: GPUBuffer;
@@ -66,7 +67,7 @@ export class Spectral {
     this.bre = buf(P, 'bispectrum-re', withBilap);
     this.bim = buf(P, 'bispectrum-im', withBilap);
     const uniform = GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST;
-    this.info = device.createBuffer({ size: 32, usage: uniform });
+    this.info = device.createBuffer({ size: 64, usage: uniform });
     this.setDx(1);
 
     const spec = device.createShaderModule({ code: spectralWGSL, label: 'spectral' });
@@ -118,10 +119,17 @@ export class Spectral {
     this.writeInfo();
   }
 
+  /** The kse mode's octaves of growth (see spectral.wgsl): the step, how many, their spacing and weights, and the mean's decay. */
+  setKse(k: Partial<{ dt: number; octaves: number; lacunarity: number; roughness: number; stab: number }>) {
+    Object.assign(this.kse, k);
+    this.writeInfo();
+  }
+
   private writeInfo() {
-    const buf = new ArrayBuffer(32);
-    new Uint32Array(buf).set([this.W, this.H, ['none', 'bilap', 'kernel', 'propagator', 'heat'].indexOf(this.second), this.matched ? 1 : 0]);
-    new Float32Array(buf).set([this.dx, this.kernel.sigma1, this.kernel.b, this.kernel.sigma2], 4);
+    const buf = new ArrayBuffer(64);
+    new Uint32Array(buf).set([this.W, this.H, ['none', 'bilap', 'kernel', 'propagator', 'heat', 'kse'].indexOf(this.second), this.matched ? 1 : 0]);
+    const q = this.kse;
+    new Float32Array(buf).set([this.dx, this.kernel.sigma1, this.kernel.b, this.kernel.sigma2, q.dt, q.octaves, q.lacunarity, q.roughness, q.stab], 4);
     this.device.queue.writeBuffer(this.info, 0, buf);
   }
 

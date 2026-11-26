@@ -14,10 +14,18 @@
 // isotropic, explicit-stable like the stencil, and close to it for tuned media.
 // With second = 4 (heat), each pair gets its own Gaussian, exp(σ²λ/2): exact
 // diffusion over a step when σ² = 2·D·timestep, unconditionally stable for any D.
+// With second = 5 (kse), the first pair gets the exact step e^{dt·G(k)} of a Kuramoto–Sivashinsky-like growth in
+// octaves: G = Σ_i w_i·B(k·ℓ_i) − k⁴/4 (the last damping the finest scales), ℓ_i = lacunarity^i, octave 0 the
+// finest, B(q) = ½q²e^{1−2q²} (KSE's q² − q⁴ near its peak, ¼ at q = 1/√2, but falling to 0 rather than below, so
+// one octave's damping doesn't swamp the finer ones' growth), w_i = (roughness·lacunarity²)^−i: the finest grows at
+// 1, as KSE's cells do, and since a band's cells stand ∝ its growth × ℓ², each finer octave's cells stand roughness
+// as tall as the next coarser one's (the big ones growing, and changing, slower).
+// k = 0, the mean, decays at kstab instead (KSE's ½|∇u|² lifts it).
 override S: u32 = 1u;
 override P: u32 = 1u;
 
-struct Info { width: u32, height: u32, second: u32, matched: u32, dx: f32, sigma1: f32, b: f32, sigma2: f32 };
+struct Info { width: u32, height: u32, second: u32, matched: u32, dx: f32, sigma1: f32, b: f32, sigma2: f32,
+  kdt: f32, koct: f32, klac: f32, krough: f32, kstab: f32, kp0: f32, kp1: f32, kp2: f32 };
 @group(0) @binding(0) var<uniform> info: Info;
 @group(0) @binding(1) var<storage, read> src: array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read_write> re: array<vec4<f32>>;
@@ -64,6 +72,25 @@ fn kmul(@builtin(global_invocation_id) gid: vec3<u32>) {
   let kx = wave(gid.x, info.width);
   let ky = wave(gid.y, info.height);
   var k2 = kx * kx + ky * ky;
+  if (info.second == 5u) {
+    let n = i32(info.koct + 0.5);
+    var gr = 0.0;
+    var l = 1.0;
+    let wr = info.krough * info.klac * info.klac;
+    for (var o = 0; o < n; o++) {
+      let q2 = k2 * l * l;
+      gr += pow(wr, -f32(o)) * 0.5 * q2 * exp(1.0 - 2.0 * q2);
+      l *= info.klac;
+    }
+    gr -= 0.25 * k2 * k2;
+    if (k2 == 0.0) { gr = -info.kstab; }
+    let m = exp(info.kdt * gr);
+    for (var k = 0u; k < P; k++) {
+      re[c + k] = re[c + k] * m;
+      im[c + k] = im[c + k] * m;
+    }
+    return;
+  }
   let kernel = exp(-0.5 * info.sigma1 * info.sigma1 * k2) - info.b * exp(-0.5 * info.sigma2 * info.sigma2 * k2);
   if (info.matched == 1u) {
     let q = min(sqrt(k2) * info.dx, 3.141592653589793);

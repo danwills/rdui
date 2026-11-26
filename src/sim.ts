@@ -11,6 +11,8 @@ const KERNEL_PARAMS = [['kernel_sigma', 'sigma1'], ['kernel_b', 'b'], ['kernel_s
 const KERNEL_RADIUS = 'lap_size';
 /** Global params that set the heat mode's diffusion (see `heat1_` in rule.ts). */
 const HEAT_PARAMS = ['heat_D1', 'heat_D2', 'zoom', 'timestep'];
+/** Global params that set the kse mode's octaves of growth (see `kse_` in rule.ts). */
+const KSE_PARAMS = ['timestep', 'kse_octaves', 'kse_lacunarity', 'kse_roughness', 'stabilize'];
 
 // Uniform layouts (in floats), sized for MAX_REAGENTS: brush.wgsl / smooth.wgsl's Brush (12 header floats, then the
 // per-reagent seed, mask, noise and rest arrays, then 8 param slots) and render.wgsl's View (custom palette: 2 vec4s a reagent)
@@ -125,7 +127,7 @@ const WG = 8;
  */
 /** Whether a rule's diffusion is unconditionally stable (exact spectral operators), so its grid can be made finer without shorter steps. */
 export function stableAtAnySpacing(c: CompiledRule) {
-  return !!c.rule.discrete || ['heat', 'kernel', 'propagator'].includes(c.spectral?.second ?? '');
+  return !!c.rule.discrete || ['heat', 'kernel', 'propagator', 'kse'].includes(c.spectral?.second ?? '');
 }
 
 export class Simulation {
@@ -231,6 +233,7 @@ export class Simulation {
       const ts = compiled.globalIndex.get('timestep');
       if (compiled.spectral.second === 'propagator') this.spectral.setKernel({ sigma1: 0.5 * (ts !== undefined ? this.globals[ts] : 1) });
       this.setHeat();
+      this.setKse();
     }
     const usesLap = /\blapK\b/.test(compiled.stepWGSL), usesBilap = /\bbilapK\b/.test(compiled.stepWGSL);
     const stepGroup = (from: number) =>
@@ -317,6 +320,7 @@ export class Simulation {
     if (name === KERNEL_RADIUS) this.spectral?.setKernel({ sigma1: value / 2 });
     if (name === 'timestep' && this.compiled.spectral?.second === 'propagator') this.spectral?.setKernel({ sigma1: 0.5 * value });
     if (HEAT_PARAMS.includes(name)) this.setHeat();
+    if (KSE_PARAMS.includes(name)) this.setKse();
   }
 
   /** Heat mode: Gaussian widths for exact diffusion over a step, σ² = 2·D·zoom²·timestep. */
@@ -328,6 +332,16 @@ export class Simulation {
     };
     const zt = g('zoom', 1) ** 2 * g('timestep', 1);
     this.spectral?.setKernel({ sigma1: Math.sqrt(2 * g('heat_D1', 0) * zt), sigma2: Math.sqrt(2 * g('heat_D2', 0) * zt) });
+  }
+
+  /** kse mode: the octaves of growth stepped exactly over a timestep. */
+  private setKse() {
+    if (this.compiled.spectral?.second !== 'kse') return;
+    const g = (n: string, d: number) => {
+      const i = this.compiled.globalIndex.get(n);
+      return i === undefined ? d : this.globals[i];
+    };
+    this.spectral?.setKse({ dt: g('timestep', 1), octaves: g('kse_octaves', 1), lacunarity: g('kse_lacunarity', 2), roughness: g('kse_roughness', 0.5), stab: g('stabilize', 0) });
   }
 
   getGlobals(): Record<string, number> {

@@ -163,6 +163,11 @@ export interface RuleDef {
    * as wide as wanted at the same cost per step. Write the step as
    * delta_a = (heat1_a - a)/timestep + reaction(heat1_a, …). Like wave_, this
    * takes both channels.
+   *
+   * And `kse_<r>`: the reagent after one timestep of Kuramoto–Sivashinsky-like linear growth in kse_octaves octaves
+   * (cells ~8.9 dx across, then kse_lacunarity times that, …; each finer octave's cells about kse_roughness as tall),
+   * stepped exactly, so big cells cost no more than small ones; the field's mean decays at stabilize instead. Write
+   * delta_u = (kse_u - u)/timestep + 0.5*gradient_mag_squared_u for multi-octave KSE. Takes the first channel.
    */
   laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
   /** The formula is a whole step (a map, as Ready kernel rules are), so it is never split into substeps at small feature sizes. */
@@ -322,7 +327,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (mem && !rule.params.some((p) => p.name === mem.param)) throw new RuleError(`membrane param '${mem.param}' isn't a parameter`);
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
-    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2'].map((op) => `${op}_${r}`)),
+    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2', 'kse'].map((op) => `${op}_${r}`)),
     ...rule.params.map((p) => p.name), 'timestep', 'time',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
@@ -360,7 +365,11 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (heat && !spectral) throw new RuleError(`heat1_ and heat2_ need laplacian: 'spectral'`);
   if (heat && (propagator || lapSlots.size || kernelSlots.size || needs('bilaplacian').size)) throw new RuleError(`heat1_/heat2_ can't be combined with other spectral operators`);
   if (heat && !rule.params.some((p) => p.name === 'heat_D1')) throw new RuleError(`heat1_/heat2_ need 'heat_D1' (and 'heat_D2') parameters`);
-  for (const k of [...sinSlots, ...heat1Slots]) lapSlots.add(k);
+  const kseSlots = needs('kse');
+  const kse = kseSlots.size > 0;
+  if (kse && !spectral) throw new RuleError(`kse_ needs laplacian: 'spectral'`);
+  if (kse && (propagator || heat || lapSlots.size || kernelSlots.size || needs('bilaplacian').size)) throw new RuleError(`kse_ can't be combined with other spectral operators`);
+  for (const k of [...sinSlots, ...heat1Slots, ...kseSlots]) lapSlots.add(k);
   for (const k of [...cosSlots, ...heat2Slots]) kernelSlots.add(k);
   const spectralBilap = spectral && (needs('bilaplacian').size > 0 || kernelSlots.size > 0);
   const L: string[] = [];
@@ -486,6 +495,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     if (used.has(`wave_sin_${r}`)) add(`  let v_wave_sin_${r} = L${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`heat1_${r}`)) add(`  let v_heat1_${r} = L${i >> 2}.${COMP[i & 3]};`);
     if (used.has(`heat2_${r}`)) add(`  let v_heat2_${r} = KR${i >> 2}.${COMP[i & 3]};`);
+    if (used.has(`kse_${r}`)) add(`  let v_kse_${r} = L${i >> 2}.${COMP[i & 3]};`);
     add(`  var v_delta_${r} = 0.0;`);
     if (used.has(`laplacian_${r}`)) add(`  let v_laplacian_${r} = L${i >> 2}.${COMP[i & 3]};`);
     const c = `${i >> 2}.${COMP[i & 3]}`;
@@ -512,7 +522,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     add(`  dst[sb + ${k}u] = vec4<f32>(${comps.join(', ')});`);
   }
   add(`}`);
-  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: heat ? 'heat' : propagator ? 'propagator' : kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
+  return { rule, layout, stepWGSL: L.join('\n'), globalIndex, globalVec4s, spectral: spectral ? { second: kse ? 'kse' : heat ? 'heat' : propagator ? 'propagator' : kernelSlots.size ? 'kernel' : spectralBilap ? 'bilap' : 'none', exact: rule.laplacian === 'spectral-exact' } : undefined };
 }
 
 // --- initial state
@@ -6667,7 +6677,129 @@ delta_Y = laplacian_Y/Le - w + refuel*(1.0 - Y)*(1.0 - smoothstep(0.1, 0.3, T));
   view: { reagent: 'T', low: 0, high: 1.2, stepsPerFrame: 200, palette: 1 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT];
+/**
+ * Flame rings: Flame front's flame burning out in every direction from pilot sparks rather than up from a band. Each
+ * ring wrinkles into cells as it grows (a circle stretches its cells, so they keep splitting at their tips), and where
+ * rings meet they burn each other out. The burnt gas cools and refuels, and the pilots (paintable) relight it, so rings
+ * keep coming.
+ */
+export const FLAME_RINGS: RuleDef = {
+  ...FLAME_FRONT,
+  name: 'Flame rings (cellular, spreading)',
+  description:
+    'Flame front\'s cellular flame spreading out in every direction from pilot sparks: each ring wrinkles into cells that ' +
+    'split at their tips as it grows, and rings burn each other out where they meet. The pilots relight the refuelled gas, ' +
+    'so rings keep coming. Paint pilots in (or out) with the pilot brush, or a one-off spark with the seed brush.',
+  params: [
+    ...FLAME_FRONT.params.map((p) => (p.name === 'Le' ? { ...p, value: 0.35 } : p.name === 'beta' ? { ...p, value: 10 } : p.name === 'dx' ? { ...p, value: 0.3, max: 0.4 } : p)),
+    { name: 'pilot', value: 0, min: 0, max: 20 },
+  ],
+  paramHints: {
+    ...FLAME_FRONT.paramHints,
+    pilot: 'Heat fed in where painted: a pilot light that relights the gas each time it has refuelled',
+  },
+  paintable: ['Le', 'refuel', 'pilot'],
+  formula: `// the burning rate: Arrhenius, normalised so a flat front runs at about 1 flame thickness a unit time
+float Tc = max(T, 0.0);
+float w = beta*beta/(2.0*Le)*max(Y, 0.0)*exp(beta*(Tc - 1.0)/(1.0 + alpha*(Tc - 1.0)));
+// the gas losing heat everywhere (so the burnt gas cools right down), taking fuel back in once cool, and the pilots
+// sparking once their gas has refuelled (lit all the time they burn the fuel as it comes, a steady flame, no rings)
+delta_T = laplacian_T + w - cool*T + pilot*smoothstep(0.75, 0.9, Y)*(1.2 - T);
+delta_Y = laplacian_Y/Le - w + refuel*(1.0 - Y)*(1.0 - smoothstep(0.1, 0.3, T));`,
+  initial: [
+    { chem: 'Y', op: 'overwrite', fill: { type: 'gradient_noise', low: 0.95, high: 1.05, size: 24, octaves: 2, roughness: 0.5 }, shape: { type: 'everywhere' } },
+    ...([[0.5, 0.5], [0.2, 0.25], [0.78, 0.7]] as const).flatMap(([cx, cy]) => [
+      { chem: 'T', op: 'overwrite', fill: { type: 'bump', value: 1.2, edge: 4 }, shape: { type: 'circle', cx, cy, r: 8 / 512 } },
+      { chem: 'pilot', op: 'overwrite', fill: { type: 'bump', value: 10, edge: 3 }, shape: { type: 'circle', cx, cy, r: 5 / 512 } },
+    ] as Overlay[]),
+  ],
+};
+
+/**
+ * Kuramoto–Sivashinsky in octaves: one field whose wrinkles grow at several scales at once, like octaves of noise:
+ * cells ~8.9 dx across, and kse_lacunarity, kse_lacunarity², … times that, each finer octave's about kse_roughness as
+ * tall, so small restless cells ride on bigger, slower ones (and those on bigger still), swept along their slopes and
+ * gathered into their cusps by ½|∇u|². The growth is stepped exactly by FFT (kse_), so the big cells cost no more than
+ * the small; only the mean is taken back (stabilize), not the cells.
+ */
+export const KSE_OCTAVES: RuleDef = {
+  name: 'Kuramoto–Sivashinsky in octaves',
+  description:
+    'Kuramoto–Sivashinsky wrinkling at several scales at once, like octaves of noise: restless small cells riding on ' +
+    'bigger, slower ones, gathered into their cusps. kse_octaves for how many, kse_lacunarity for how much bigger each ' +
+    'is, kse_roughness for how tall the finer ones stand.',
+  reagents: ['u'],
+  laplacian: 'spectral',
+  params: [
+    { name: 'timestep', value: 0.02, min: 0, max: 0.05 },
+    { name: 'dx', value: 0.7, min: 0.1, max: 1 },
+    { name: 'kse_octaves', value: 4, min: 1, max: 5 },
+    { name: 'kse_lacunarity', value: 2, min: 1.5, max: 4 },
+    { name: 'kse_roughness', value: 0.7, min: 0.1, max: 1 },
+    { name: 'stabilize', value: 0.05, min: 0, max: 0.5 },
+  ],
+  paramHints: {
+    dx: 'The size of a pixel in the equation\'s units: smaller, bigger cells (the finest are ~8.9 units across)',
+    kse_octaves: 'How many scales of cells, each kse_lacunarity times the last',
+    kse_lacunarity: 'How much bigger each octave\'s cells are than the next finer one\'s',
+    kse_roughness: 'How tall each finer octave\'s cells stand, against the next coarser one\'s',
+    stabilize: 'How fast the mean is taken back (½|∇u|² keeps lifting it); the cells themselves are left alone',
+  },
+  paintable: [],
+  formula: 'delta_u = (kse_u - u)/timestep + 0.5*gradient_mag_squared_u;',
+  size: { width: 512, height: 512 },
+  rest: [0],
+  seed: [2],
+  seedNoise: [0.5],
+  initial: [
+    { chem: 'u', op: 'overwrite', fill: { type: 'gradient_noise', low: -0.5, high: 0.5, size: 16, octaves: 3, roughness: 0.5 }, shape: { type: 'everywhere' } },
+  ],
+  view: { reagent: 'u', low: -30, high: 75, stepsPerFrame: 50, palette: 1 },
+};
+
+/**
+ * KSE fronts: KSE in octaves read as Sivashinsky meant, u as how far a flame has burnt, so each contour of u is a
+ * front. The pilots (paintable) push u up, and ½|∇u|² (Huygens: each bit of front burning out along its normal)
+ * spreads that outward as a cone, its contours rings moving out from the pilot in every direction, wrinkled by the
+ * octaves of cells; where two pilots' rings meet they burn into each other, leaving a cusped seam, as the max of
+ * their cones. f shows the rings: a soft band on every ring_spacing of u.
+ */
+export const KSE_FRONTS: RuleDef = {
+  ...KSE_OCTAVES,
+  name: 'KSE fronts (in octaves)',
+  description:
+    'Flame fronts as Kuramoto–Sivashinsky has them: rings burning outward from pilot lights in every direction, ' +
+    'wrinkled by octaves of cells, small ones riding bigger ones, and cusped where neighbouring rings meet. Paint ' +
+    'pilots in (or out) with the pilot brush; kse_roughness for how bumpy, ring_spacing for how many rings.',
+  reagents: ['u', 'f'],
+  params: [
+    ...KSE_OCTAVES.params,
+    { name: 'pilot', value: 0, min: 0, max: 2 },
+    { name: 'ring_spacing', value: 16, min: 2, max: 40 },
+  ],
+  paramHints: {
+    ...KSE_OCTAVES.paramHints,
+    pilot: 'How fast u is pushed up where painted: a pilot light, sending out rings (its cone\'s slope is √(2·pilot))',
+    ring_spacing: 'How much of u between rings drawn: smaller, more rings',
+    stabilize: 'How fast the mean is taken back (the pilots and ½|∇u|² keep lifting it), keeping u in range: a uniform shift, so the rings move just the same',
+  },
+  paintable: ['pilot'],
+  formula: `delta_u = (kse_u - u)/timestep + 0.5*gradient_mag_squared_u + pilot;
+// the rings: a soft bright band on each ring_spacing of u
+float ring = 0.5 + 0.5*cos(6.283185*u/ring_spacing);
+delta_f = (ring*ring*ring - f)/timestep;`,
+  rest: [0, 0],
+  seed: [10, null],
+  seedNoise: [0, 0],
+  initial: [
+    { chem: 'u', op: 'overwrite', fill: { type: 'gradient_noise', low: -0.5, high: 0.5, size: 16, octaves: 3, roughness: 0.5 }, shape: { type: 'everywhere' } },
+    ...([[0.5, 0.5], [0.22, 0.27], [0.76, 0.72]] as const).map(([cx, cy]) =>
+      ({ chem: 'pilot', op: 'overwrite', fill: { type: 'bump', value: 0.5, edge: 4 }, shape: { type: 'circle', cx, cy, r: 8 / 512 } }) as Overlay),
+  ],
+  view: { reagent: 'f', low: 0, high: 1, stepsPerFrame: 50, palette: 1 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6677,7 +6809,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
-  ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT]],
+  ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
