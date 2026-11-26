@@ -175,6 +175,8 @@ export interface RuleDef {
    * Any rule can also call `advect_<r>(ux, uy)`: the reagent a step upstream along the velocity (ux, uy) (y up, in dx
    * units per time), bilinear between cells (semi-Lagrangian). delta_r = (advect_r(ux, uy) - r)/timestep carries r along.
    * `advect_cubic_<r>(ux, uy)` is the same by clamped Catmull–Rom: far less blur, no overshoot.
+   * `sample_<r>(di, dj)`: the reagent di cells east and dj north (y up) of this cell, bilinear between cells, wrapping
+   * round the field however far (whole numbers read a cell exactly).
    *
    * And `poisson_<r>`: φ with ∇²φ = the reagent (the 9-point-matched Laplacian inverted, the mean dropped), as for a
    * pressure projection. It can share the FFT with wave_cos_/wave_sin_ as long as their reagents are in different groups
@@ -271,6 +273,13 @@ export function translateFormula(formula: string, known: Set<string>): { code: s
       i = j;
       continue;
     }
+    if (next === '(' && t.startsWith('sample_') && known.has(t)) {
+      // rd_sample_<r>(x, y, di, dj): the cell filled in
+      used.add(t);
+      out += `rd_${t}(x, y, `;
+      i = j;
+      continue;
+    }
     if (next === '(') {
       const f = FUNCTIONS[t];
       if (!f) throw new RuleError(`unsupported function '${t}'`);
@@ -348,7 +357,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   if (mem && !rule.params.some((p) => p.name === mem.param)) throw new RuleError(`membrane param '${mem.param}' isn't a parameter`);
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
-    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2', 'kse', 'flow_x', 'flow_y', 'poisson', 'advect', 'advect_cubic'].map((op) => `${op}_${r}`)),
+    ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2', 'kse', 'flow_x', 'flow_y', 'poisson', 'advect', 'advect_cubic', 'sample'].map((op) => `${op}_${r}`)),
     ...rule.params.map((p) => p.name), 'timestep', 'time',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
@@ -446,6 +455,14 @@ fn rd_fmod(x: f32, y: f32) -> f32 { return x - y * trunc(x / y); }`);
   let px = f32(x) - ux * dt / ddx; let py = f32(y) + uy * dt / ddx;
   let fx = px - floor(px); let fy = py - floor(py);
   let i = i32(floor(px)); let j = i32(floor(py));`;
+    // sample_<r>(di, dj): r di cells east and dj north (y up) of here, bilinear between cells, wrapping however far
+    if (used.has(`sample_${r}`)) add(`fn rd_sample_${r}(x: i32, y: i32, di: f32, dj: f32) -> f32 {
+  let px = f32(x) + di; let py = f32(y) - dj;
+  let fx = px - floor(px); let fy = py - floor(py);
+  let w = i32(info.width); let h = i32(info.height);
+  let i = ((i32(floor(px)) % w) + w) % w; let j = ((i32(floor(py)) % h) + h) % h;
+  return mix(mix(${at('i', 'j')}, ${at('i + 1', 'j')}, fx), mix(${at('i', 'j + 1')}, ${at('i + 1', 'j + 1')}, fx), fy);
+}`);
     if (used.has(`advect_${r}`)) add(`${head('advect')}
   return mix(mix(${at('i', 'j')}, ${at('i + 1', 'j')}, fx), mix(${at('i', 'j + 1')}, ${at('i + 1', 'j + 1')}, fx), fy);
 }`);
@@ -7479,7 +7496,215 @@ export const SCHRODINGER_SMOKE: RuleDef = {
   view: { reagent: 'dye', low: 0, high: 1, tint: 'core', stepsPerFrame: 6 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR];
+/**
+ * Wind ripples in sand (Nishimori & Ouchi 1993), ported from Dusty Dunes v12 (Enki; ~/dev/shaders/dunes): every cell
+ * launches `flux` of sand each step, which hops downwind (east) `hop` cells plus `hop_rise` per unit of height it
+ * starts from, landing shared between the two cells either side of where it comes down (so not a grain is lost);
+ * creep, weaker along the crests, relaxes the surface. Higher sand hops further, so bumps throw sand onto the next
+ * bump downwind and ripples grow about a hop apart, lopsided (a gentle stoss, a steep lee) and creeping downwind,
+ * merging and forking. Gust patches drift downwind varying the hop, which keeps forks forming and moving. One pass
+ * a step: the landings are gathered from the 2–11 cells upwind (sample_). `shade` is the sand lit by a low sun
+ * downwind, so the steep lee faces catch it. The Seed tool flattens the sand: watch the ripples come back.
+ */
+function rippleSaltation(h: string, rate = '1.0') {
+  return Array.from({ length: 10 }, (_, n) => {
+    const k = n + 2;
+    return `hp = clamp(hop*(1.0 + gust*(sample_g(${-k}.0 - gust_speed*clock, 0.0) - 0.5)) + hop_rise*sample_${h}(${-k}.0, 0.0), 2.5, 10.5);
+land += ${rate === '1.0' ? '' : `sample_${rate}(${-k}.0, 0.0)*`}flux*max(0.0, 1.0 - abs(hp - ${k}.0));`;
+  }).join('\n');
+}
+
+const SAND_VIEW = (reagents: number): RuleDef['view'] => ({
+  reagent: 'shade', low: 0, high: 1, palette: 7, stepsPerFrame: 4,
+  custom: [{ on: true, low: 0, high: 1, power: 1, color: [0.86, 0.56, 0.33] },
+    ...Array.from({ length: reagents - 1 }, () => ({ on: false, low: 0, high: 1, power: 1, color: [0.5, 0.5, 0.5] as [number, number, number] }))],
+  customContrast: 1.1, customSaturation: 1, customGamma: 1.2,
+});
+
+export const SAND_RIPPLES: RuleDef = {
+  name: 'Sand ripples',
+  description:
+    'Wind ripples (Nishimori & Ouchi), from Dusty Dunes: sand hops downwind (east) further the higher it starts, so ' +
+    'ripples grow about a hop apart from noise, lopsided and creeping downwind, forking and merging; gusts vary the hop. ' +
+    'Lit by a low sun downwind. Seed flattens the sand, and the ripples come back.',
+  reagents: ['shade', 'h', 'g', 'clock'],
+  discrete: true,
+  size: { width: 512, height: 512 },
+  params: [
+    { name: 'hop', value: 6, min: 3, max: 9 },
+    { name: 'hop_rise', value: 1, min: 0, max: 2 },
+    { name: 'flux', value: 0.1, min: 0, max: 0.3 },
+    { name: 'creep', value: 0.08, min: 0, max: 0.2 },
+    { name: 'creep_along', value: 0.25, min: 0, max: 1 },
+    { name: 'gust', value: 0.5, min: 0, max: 1 },
+    { name: 'gust_speed', value: 0.13, min: 0, max: 1 },
+    { name: 'sun', value: 0.35, min: 0.05, max: 1.5 },
+    { name: 'relief', value: 0.12, min: 0, max: 1 },
+  ],
+  paramHints: {
+    hop: 'Cells sand hops from level ground (about the ripples\' spacing; 2.5–10.5 in all)',
+    hop_rise: 'Extra cells per unit of height it starts from: what makes ripples grow (0: none)',
+    flux: 'Sand each cell launches per step (how fast everything goes)',
+    creep: 'Surface relaxation across the crests (above ~0.1 no ripples form at hop 6)',
+    creep_along: 'Creep along the crests, times creep (less: shorter crests, more forks)',
+    gust: 'How much the hop varies in gust patches (more: more forks)',
+    gust_speed: 'Cells per step the gust patches drift downwind',
+    sun: 'The sun\'s height above the horizon (radians), downwind: low shows the ripples best',
+    relief: 'How steep the ripples look in the light (the view only)',
+  },
+  paintable: ['flux', 'hop'],
+  formula: `// the sand landing here this step: from each of the cells 2–11 upwind, its flux if its hop comes down here
+float land = 0.0;
+float hp = 0.0;
+${rippleSaltation('h')}
+// creep, weaker along the crests
+float hn = h - flux + land + creep*(east_h + west_h - 2.0*h) + creep*creep_along*(north_h + south_h - 2.0*h);
+// the view: lit by a low sun downwind (east)
+float zx = 0.5*relief*(east_h - west_h);
+float zy = 0.5*relief*(north_h - south_h);
+shade = max(0.0, (-zx*cos(sun) + sin(sun))/sqrt(zx*zx + zy*zy + 1.0))/sin(sun)*0.6;
+h = hn;
+clock = clock + 1.0;`,
+  rest: [0.6, 0, 0.5, 0],
+  seed: [null, 0, null, null],
+  seedNoise: [0, 0, 0, 0],
+  initial: [
+    { chem: 'h', op: 'overwrite', fill: { type: 'white_noise', low: -0.5, high: 0.5 }, shape: { type: 'everywhere' } },
+    { chem: 'g', op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 48, octaves: 1 }, shape: { type: 'everywhere' } },
+  ],
+  view: SAND_VIEW(4),
+};
+
+/**
+ * Dunes with ripples on them: two scales of sand. The dunes H (a continuum model in the spirit of Kroy, Sauermann &
+ * Herrmann's): the wind's push tau rises on windward slopes, measured a little upwind (the flow over a hill speeds up
+ * ahead of its crest, which is what makes flat sand unstable into dunes); behind a brink, in the lee of anything
+ * higher upwind than a 1-in-`shadow` line, the flow has separated and tau is 0; the sand flux q catches up with what
+ * tau can carry over `saturation` cells, and H changes by q's divergence (no sand lost). H is the sand's depth over a
+ * hard floor the wind can't dig into, so how much sand there is (about 5 deep to start) bounds the dunes. Slopes past `repose` avalanche,
+ * so the lee sides become slip faces. The ripples r are Sand ripples' model riding on top (a relief, moving no sand
+ * of their own: when they carried it, it drained the windward slopes), run at the wind's strength: fast up the
+ * windward slopes, fading on the slip faces (no wind there, and the avalanches smooth them).
+ */
+function dunesFormula(deeper = false) {
+  const shadowTerms = Array.from({ length: 12 }, (_, n) => `sample_H(${-2 * (n + 1)}.0, 0.0) + ${2 * (n + 1)}.0*(-1.0/shadow)`);
+  const aval = (nb: string) => `${nb} - H - clamp(${nb} - H, -repose, repose)`;
+  return `// --- dunes
+// the wind's push, from the slope measured a little upwind (it peaks ahead of the crest)
+float slope_up = (sample_H(0.0, 0.0) - sample_H(-4.0, 0.0))/4.0;
+// the lee: anything upwind standing above a 1-in-shadow line down to here hides this cell from the wind
+float top = -1e9;
+${shadowTerms.map((s) => `top = max(top, ${s});`).join('\n')}
+float hide = top - H;
+// (the boost saturates smoothly, at most 2.5 times, so steep slopes can't feed on themselves)
+float taun = max(0.0, 1.0 + 1.5*tanh(windward*slope_up/1.5))*(1.0 - smoothstep(0.0, 0.6, hide));
+// the flux catches up with what the wind can carry, over saturation cells (from upwind, a cell a step)
+float qn = west_q + (dune_flux*taun - west_q)/saturation;
+// the ground under the sand: the wind can't pick up more than is there (H is sand depth), so troughs stop at the floor
+qn = min(qn, west_q + max(H, 0.0));
+// slopes past repose slide (each pair of cells swaps the excess, so no sand is lost)
+// (at 0.24, about as fast as a step can take: the slope stands above repose by about the flux over 0.24)
+float slide = 0.24*(${['east_H', 'west_H', 'north_H', 'south_H'].map(aval).join(' + ')});
+float Hn = H - (q - west_q) + slide + 0.01*(east_H + west_H + north_H + south_H - 4.0*H);
+${deeper ? `// --- ripples on top, carrying sand: launched in proportion to the wind (none in the lee), smoothed where the sand
+// slides; ripple sand that comes to rest joins the dunes, fast in the lee, slowly everywhere (the two layers' total is
+// kept exactly). The ripples drain the windward slopes into the lee, and the hollows go on deepening
+float land = 0.0;
+float hp = 0.0;
+${rippleSaltation('r', 'tau')}
+${(['east', 'west', 'north', 'south'] as const).map((d) => `float s_${d} = ${d === 'east' || d === 'west' ? 'creep' : 'creep*creep_along'} + 0.15*smoothstep(0.5*repose, repose, abs(${d}_H - H));`).join('\n')}
+float rn = r - flux*tau + land + s_east*(east_r - r) + s_west*(west_r - r) + s_north*(north_r - r) + s_south*(south_r - r);
+float settle = (0.002 + 0.05*(1.0 - smoothstep(0.0, 0.5, tau)))*rn;
+rn -= settle;
+Hn += settle;
+` : `// --- ripples on top: Sand ripples' step (the same launch everywhere, so the ripples themselves move no sand overall),
+// run faster where the wind is stronger and not at all in the lee, where they fade; smoothed where the sand slides
+float land = 0.0;
+float hp = 0.0;
+${rippleSaltation('r')}
+// (the smoothing is set face by face, from the slope across each face, so it moves sand between cells without losing any)
+${(['east', 'west', 'north', 'south'] as const).map((d) => `float s_${d} = 0.15*smoothstep(0.8*repose, repose, abs(${d}_H - H));`).join('\n')}
+float dr = land - flux + creep*(east_r + west_r - 2.0*r) + creep*creep_along*(north_r + south_r - 2.0*r);
+float rn = r + min(taun, 2.0)*dr + s_east*(east_r - r) + s_west*(west_r - r) + s_north*(north_r - r) + s_south*(south_r - r);
+rn *= 1.0 - 0.004*(1.0 - smoothstep(0.0, 0.5, taun));
+// turbulence in the wind seeds new ripples (a frozen white noise n, sampled drifting, as a noise that changes every
+// step): without it the ripples drift into the lee and die, each windward slope gets clean sand, and they fade out
+rn += ripple_seed*(sample_n(0.618*clock, 0.382*clock) - 0.5)*smoothstep(0.0, 0.3, taun);
+`}// --- the view: a low sun downwind (east)
+float zx = 0.5*(dune_relief*(east_H - west_H) + relief*(east_r - west_r));
+float zy = 0.5*(dune_relief*(north_H - south_H) + relief*(north_r - south_r));
+shade = max(0.0, (-zx*cos(sun) + sin(sun))/sqrt(zx*zx + zy*zy + 1.0))/sin(sun)*0.6;
+H = Hn;
+q = qn;
+tau = taun;
+r = rn;
+clock = clock + 1.0;`;
+}
+
+export const SAND_DUNES: RuleDef = {
+  ...SAND_RIPPLES,
+  name: 'Sand dunes with ripples',
+  description:
+    'Dunes with wind ripples on them: the wind pushes harder up windward slopes, drops behind brinks (the lee), and ' +
+    'steep sand avalanches, so flat sand grows into dunes with slip faces, creeping downwind (east); Sand ripples\' ' +
+    'ripples ride on top, strongest up the windward slopes and gone on the slip faces.',
+  reagents: ['shade', 'H', 'r', 'q', 'tau', 'g', 'n', 'clock'],
+  params: [
+    // (a higher sun than the ripples': at 0.35 the windward slopes went black)
+    ...SAND_RIPPLES.params.map((p) => (p.name === 'sun' ? { ...p, value: 0.5 } : p)),
+    { name: 'dune_flux', value: 0.012, min: 0, max: 0.05 },
+    { name: 'windward', value: 4, min: 0, max: 10 },
+    { name: 'saturation', value: 8, min: 1, max: 30 },
+    { name: 'shadow', value: 4, min: 2, max: 10 },
+    { name: 'repose', value: 0.65, min: 0.2, max: 1.5 },
+    { name: 'dune_relief', value: 0.5, min: 0, max: 2 },
+    { name: 'ripple_seed', value: 0.2, min: 0, max: 0.5 },
+  ],
+  paramHints: {
+    ...SAND_RIPPLES.paramHints,
+    flux: 'Sand each cell launches into ripples per step, in a wind of 1 (how fast the ripples go)',
+    dune_flux: 'Sand the wind carries as dunes per step at a push of 1 (how fast the dunes grow and move)',
+    windward: 'How much more the wind pushes up a windward slope (more: dunes grow faster and taller)',
+    saturation: 'Cells the flux takes to catch up with the wind (sets the dunes\' size: they come out a few tens of times this apart)',
+    shadow: 'The lee behind a brink reaches down a line 1 in this (cells across per cell down)',
+    repose: 'The steepest the sand stands (height per cell) before it slides',
+    ripple_seed: 'Turbulence in the wind that starts new ripples (0: they drift into the lees and die out)',
+    dune_relief: 'How steep the dunes look in the light (the view only)',
+  },
+  paintable: ['dune_flux', 'flux'],
+  formula: dunesFormula(),
+  rest: [0.6, 0, 0, 0.05, 1, 0.5, 0.5, 0],
+  seed: [null, 0, 0, null, null, null, null, null],
+  seedNoise: [0, 0, 0, 0, 0, 0, 0, 0],
+  initial: [
+    // sand about 5 deep (what there is sets how big the dunes can grow), a little uneven
+    { chem: 'H', op: 'overwrite', fill: { type: 'gradient_noise', low: 4.25, high: 5.75, size: 96, octaves: 2 }, shape: { type: 'everywhere' } },
+    { chem: 'r', op: 'overwrite', fill: { type: 'white_noise', low: -0.5, high: 0.5 }, shape: { type: 'everywhere' } },
+    { chem: 'q', op: 'overwrite', fill: { type: 'constant', value: 0.05 }, shape: { type: 'everywhere' } },
+    { chem: 'tau', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'g', op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 48, octaves: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'n', op: 'overwrite', fill: { type: 'white_noise', low: 0, high: 1 }, shape: { type: 'everywhere' } },
+  ],
+  view: { ...SAND_VIEW(8), stepsPerFrame: 8 },
+};
+
+/**
+ * Sand dunes with ripples at an earlier stage that Dan liked the look of: here the ripples carry sand themselves
+ * (launched in proportion to the wind, settling into the dunes fastest in the lee), which drains the windward slopes
+ * into the lee and lets the hollows keep deepening past the floor, so the relief goes on growing (about 25 a 20k steps)
+ * and the light turns to bold sunlit and shadowed swathes with sharp brinks between.
+ */
+export const SAND_DUNES_DEEPER: RuleDef = {
+  ...SAND_DUNES,
+  name: 'Sand dunes (ever deeper)',
+  description:
+    'An earlier Sand dunes with ripples, kept for its look: the ripples carry sand from the windward slopes into the ' +
+    'lee, so the dunes keep deepening and the light becomes bold sunlit and shadowed swathes with sharp brinks.',
+  params: SAND_DUNES.params,
+  formula: dunesFormula(true),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, SAND_RIPPLES, SAND_DUNES, SAND_DUNES_DEEPER];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -7491,6 +7716,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
   ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, KSE_OCTAVES, KSE_OCTAVES_256, KSE_FRONTS]],
   ['Fluids', [STABLE_FLUIDS, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, STABLE_SMOKE, SCHRODINGER_SMOKE]],
+  ['Sand', [SAND_RIPPLES, SAND_DUNES, SAND_DUNES_DEEPER]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
