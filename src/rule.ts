@@ -6878,7 +6878,10 @@ export const FLAME_WAVES_2: RuleDef = {
     'Cellular flame fronts that keep themselves going with no ignition: the gas burns, cools and refuels, and a broken ' +
     'front curls round its end into a spiral that sweeps back into its own recovered wake for ever. Cut a front with ' +
     'the eraser for more; refuel for how tightly they wind, richness for pockets that bulge them.',
-  params: FLAME_WAVES.params.filter((p) => p.name !== 'warm'),
+  size: { width: 256, height: 256 },
+  // (recovering faster than Flame waves, so the spirals wind tighter and fit in 256²: at its rates their arms came back
+  // round before the gas had refuelled, and they died)
+  params: FLAME_WAVES.params.filter((p) => p.name !== 'warm').map((p) => (p.name === 'cool' ? { ...p, value: 0.15 } : p.name === 'refuel' ? { ...p, value: 0.3, max: 0.5 } : p)),
   paintable: ['Le', 'refuel', 'richness'],
   formula: `// the richness noise, turning over a sphere of three (the second rate the golden ratio of the first, so never repeating)
 float ph = noise_rate*time;
@@ -6900,6 +6903,65 @@ delta_n3 = 0.0;`,
     { chem: 'T', op: 'overwrite', fill: { type: 'constant', value: 1.2 }, shape: { type: 'rectangle', x0: 0, y0: 0.47, x1: 0.5, y1: 0.53 } },
     { chem: 'Y', op: 'overwrite', fill: { type: 'constant', value: 0 }, shape: { type: 'rectangle', x0: 0, y0: 0.5, x1: 0.5, y1: 0.62 } },
   ],
+};
+
+/**
+ * Flame waves 3: Flame waves 2's spirals, wrinkled at several scales at once. Real flames go fractal through the
+ * Darrieus–Landau instability (the burnt gas expands, so a bulge pushing into fresh gas is fed faster, at every scale);
+ * here a stand-in: b2 and b3 are the burnt gas (1 − Y/fresh) blurred over about fractal_size and three times that, and
+ * at each scale the finer view against the coarser tells a bit of front whether it is a tip (more fresh gas about it)
+ * or a trough. Tips burn faster, troughs slower, the coarse scale most and the finer fractal_roughness as much, so
+ * bulges grow on bulges, and the Le < 1 cells wrinkle them finer still. The blurs must keep up with the front (diffused
+ * by stencil they lagged ~8 time units behind it and only sped the whole front up), so they are spread by exact
+ * spectral diffusion (heat1_, heat2_) and relax fast; the flame's own diffusion is a hand-written 9-point stencil.
+ */
+export const FLAME_WAVES_3: RuleDef = {
+  ...FLAME_WAVES_2,
+  name: 'Flame waves 3 (fractal spirals)',
+  description:
+    'Flame waves 2\'s self-sustaining spirals with fronts wrinkled at several scales: bulges on bulges on cells, as real ' +
+    'flames go fractal (here a stand-in for the burnt gas pushing out: tips burn faster, troughs slower, at each scale). ' +
+    'fractal_gain for how wild, fractal_roughness for how much the finer scale counts, fractal_size for the scales.',
+  reagents: [...FLAME_WAVES_2.reagents, 'b2', 'b3'],
+  laplacian: 'spectral',
+  params: [
+    ...FLAME_WAVES_2.params,
+    { name: 'fractal_gain', value: 1, min: 0, max: 3 },
+    { name: 'fractal_roughness', value: 0.6, min: 0, max: 1 },
+    { name: 'fractal_size', value: 6, min: 2, max: 15 },
+    { name: 'blur_rate', value: 4, min: 1, max: 20 },
+    // (set from fractal_size and blur_rate as the run starts: the blurs' spread, blur_rate·size², and nine times that)
+    { name: 'heat_D1', value: 144, min: 0, max: 5000 },
+    { name: 'heat_D2', value: 1296, min: 0, max: 50000 },
+  ],
+  paramHints: {
+    ...FLAME_WAVES_2.paramHints,
+    fractal_gain: 'How much faster a bulge burns (and a trough slower), at the coarse scale: 0 for Flame waves 2',
+    fractal_roughness: 'How much the finer scale counts, against the coarse',
+    fractal_size: 'The finer blur\'s size, in flame thicknesses (the coarse three times it); set heat_D1 to blur_rate·size² to match',
+    blur_rate: 'How fast the blurs catch up with the front',
+    heat_D1: 'The finer blur\'s spread: blur_rate·fractal_size²',
+    heat_D2: 'The coarse blur\'s spread: blur_rate·(3·fractal_size)²',
+  },
+  paintable: ['Le', 'refuel', 'fractal_gain'],
+  formula: FLAME_WAVES_2.formula
+    .replace('delta_T = laplacian_T', 'delta_T = lapT')
+    .replace('delta_Y = laplacian_Y/Le', 'delta_Y = lapY/Le')
+    .replace('float w = beta*beta/(2.0*Le)*max(Y, 0.0)*exp(beta*(Tc - 1.0)/(1.0 + alpha*(Tc - 1.0)));', `float w = beta*beta/(2.0*Le)*max(Y, 0.0)*exp(beta*(Tc - 1.0)/(1.0 + alpha*(Tc - 1.0)));
+// the burnt gas, blurred at two scales: spread exactly by heat1_/heat2_ each step and relaxing fast towards it
+float burnt = clamp(1.0 - Y/fresh, 0.0, 1.0);
+delta_b2 = (heat1_b2 - b2)/timestep + blur_rate*(burnt - b2);
+delta_b3 = (heat2_b3 - b3)/timestep + blur_rate*(burnt - b3);
+// tip or trough at each scale (at a tip the coarser view sees more fresh gas); the rate goes up by e^(2s), so the
+// front's speed by about e^s
+float sfr = fractal_gain*((b2 - b3) + fractal_roughness*(burnt - b2));
+w *= exp(2.0*clamp(sfr, -1.0, 1.0));`)
+    .replace('// the richness noise', `// the flame's own diffusion: the 9-point stencil, written out (heat mode takes the spectral channels)
+${(['T', 'Y'] as const).map((X) => `float lap${X} = (4.0*(north_${X} + south_${X} + east_${X} + west_${X}) + north_east_${X} + north_west_${X} + south_east_${X} + south_west_${X} - 20.0*${X})/(6.0*dx*dx);`).join('\n')}
+// the richness noise`),
+  rest: [...FLAME_WAVES_2.rest, 0, 0],
+  seed: [...FLAME_WAVES_2.seed, null, null],
+  seedNoise: [...FLAME_WAVES_2.seedNoise, 0, 0],
 };
 
 /** KSE in octaves as Dan tuned it: 256², octaves wider apart (lacunarity ~3.26) and finer ones lower (roughness ~0.48). */
