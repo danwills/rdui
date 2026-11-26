@@ -6968,6 +6968,52 @@ ${(['T', 'Y'] as const).map((X) => `float lap${X} = (4.0*(north_${X} + south_${X
   seedNoise: [...FLAME_WAVES_2.seedNoise, 0, 0],
 };
 
+/**
+ * Flame waves 4: Flame waves 3 with a signal that is about the front's shape alone. 3's (the blurs' difference) was
+ * nearly as big on a flat front as on a tip, so its gain mostly sped the whole flame up (and hit its clamp by gain 1).
+ * Here each blur's level lines give the front's curvature at that scale (zero when flat, + for a bulge into fresh gas,
+ * − for a trough); measured in each blur's size, tips burn faster and troughs slower. Fronts long and flat at one scale
+ * are unstable at it (as in Darrieus–Landau), and each blur quiets the bends finer than itself, so the coarse scale
+ * makes big bulges and the finer one (fractal_roughness as much) bulges on them. The boost saturates smoothly.
+ */
+export const FLAME_WAVES_4: RuleDef = {
+  ...FLAME_WAVES_3,
+  name: 'Flame waves 4 (curvature fractal)',
+  description:
+    'Flame waves 3 with the wrinkling driven by the front\'s curvature at two scales: bulges into fresh gas burn faster, ' +
+    'troughs slower, so long flat fronts break into bulges with bulges on them. fractal_gain for how wild (paint it), ' +
+    'fractal_roughness for how much the finer scale counts, heat_D1 / heat_D2 for the two scales.',
+  // (roughness 0.3: the coarse bulges show plainly, the finer ones on them)
+  params: FLAME_WAVES_3.params.filter((p) => p.name !== 'fractal_size').map((p) => (p.name === 'fractal_roughness' ? { ...p, value: 0.3 } : p)),
+  paramHints: {
+    ...Object.fromEntries(Object.entries(FLAME_WAVES_3.paramHints ?? {}).filter(([k]) => k !== 'fractal_size')),
+    fractal_gain: 'How much faster a bulge burns (and a trough slower), per unit of curvature measured in the blur\'s size: 0 for Flame waves 2',
+    heat_D1: 'The finer blur\'s spread: its size is √(heat_D1/blur_rate)',
+    heat_D2: 'The coarse blur\'s spread: its size is √(heat_D2/blur_rate)',
+  },
+  formula: FLAME_WAVES_3.formula.replace(
+    /\/\/ tip or trough at each scale[^\n]*\n[^\n]*\nfloat sfr = [^\n]*\nw \*= exp\(2\.0\*clamp\(sfr, -1\.0, 1\.0\)\);/,
+    `// the front's curvature at each scale: of the blur's level lines, + where it bulges into fresh gas (burnt behind)
+float gb2x = (east_b2 - west_b2)/(2.0*dx);
+float gb2y = (south_b2 - north_b2)/(2.0*dx);
+float gb2xx = (east_b2 + west_b2 - 2.0*b2)/(dx*dx);
+float gb2yy = (south_b2 + north_b2 - 2.0*b2)/(dx*dx);
+float gb2xy = (south_east_b2 - south_west_b2 - north_east_b2 + north_west_b2)/(4.0*dx*dx);
+float gb22 = gb2x*gb2x + gb2y*gb2y;
+float kb2 = -(gb2xx*gb2y*gb2y - 2.0*gb2x*gb2y*gb2xy + gb2yy*gb2x*gb2x)/pow(gb22 + 1e-6, 1.5);
+float gb3x = (east_b3 - west_b3)/(2.0*dx);
+float gb3y = (south_b3 - north_b3)/(2.0*dx);
+float gb3xx = (east_b3 + west_b3 - 2.0*b3)/(dx*dx);
+float gb3yy = (south_b3 + north_b3 - 2.0*b3)/(dx*dx);
+float gb3xy = (south_east_b3 - south_west_b3 - north_east_b3 + north_west_b3)/(4.0*dx*dx);
+float gb32 = gb3x*gb3x + gb3y*gb3y;
+float kb3 = -(gb3xx*gb3y*gb3y - 2.0*gb3x*gb3y*gb3xy + gb3yy*gb3x*gb3x)/pow(gb32 + 1e-6, 1.5);
+// in each blur's own size, the coarse one whole and the finer fractal_roughness as much; the rate goes up by e^(2s),
+// saturating smoothly at e^±2, so the front's speed by about e^s
+float sfr = fractal_gain*(sqrt(heat_D2/blur_rate)*kb3 + fractal_roughness*sqrt(heat_D1/blur_rate)*kb2);
+w *= exp(2.0*sfr/sqrt(1.0 + sfr*sfr));`),
+};
+
 /** KSE in octaves as Dan tuned it: 256², octaves wider apart (lacunarity ~3.26) and finer ones lower (roughness ~0.48). */
 export const KSE_OCTAVES_256: RuleDef = {
   ...KSE_OCTAVES,
@@ -6984,7 +7030,7 @@ export const KSE_OCTAVES_256: RuleDef = {
   },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3];
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -6994,7 +7040,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Parameters as fields', [META_GS, WEATHER_GS]],
   ['Heredity', [GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES]],
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
-  ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, FLAME_WAVES_2, FLAME_WAVES_3, KSE_OCTAVES, KSE_OCTAVES_256, KSE_FRONTS]],
+  ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, KSE_OCTAVES, KSE_OCTAVES_256, KSE_FRONTS]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
