@@ -62,6 +62,8 @@ export interface BrushStroke {
   clear?: boolean;
   /** SetParam: the param's unpainted value (strokes raise or lower towards paint from it, never past it). */
   base?: number;
+  /** Stir: how fast to shove (cells per time), e.g. the drag's own speed; the rule's speed if not given. */
+  pushSpeed?: number;
 }
 
 export interface CellSample {
@@ -475,7 +477,9 @@ export class Simulation {
       const st = rule.stir;
       if (!st) return null;
       const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
-      const sp = st.speed * Math.sign(b.strength) * Math.max(1, Math.abs(b.strength));
+      // the drag's speed, as a paddle's (up to the rule's most), or the rule's own
+      const base = b.pushSpeed !== undefined ? Math.min(b.pushSpeed, st.max ?? 10 * st.speed) : st.speed;
+      const sp = base * Math.sign(b.strength) * Math.max(1, Math.abs(b.strength));
       f[6] = Math.min(1, Math.abs(b.strength));
       if (!b.clear && len < 1e-6) return null;
       const v = b.clear || len < 1e-6 ? [0, 0] : [(sp * dx) / len, (-sp * dy) / len];

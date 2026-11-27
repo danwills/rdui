@@ -1195,17 +1195,17 @@ async function init() {
 
   // (x0, y0: where it started, and launched: whether its vortex pair has gone, for a wavefunction fluid's Push)
   // (pts: the path's last few points, which the spline runs through, drawn one point behind)
-  let drag: { x: number; y: number; alt: boolean; x0: number; y0: number; launched?: boolean; pts: [number, number][] } | null = null;
+  let drag: { x: number; y: number; alt: boolean; x0: number; y0: number; launched?: boolean; pts: [number, number, number][] } | null = null;
 
   /**
    * The piece of a centripetal Catmull-Rom spline from p1 to p2 (p0 before, p3 after), as brush strokes: as many
    * straight bits as keep it within ~0.2 cells of the curve (1 where it's straight). Centripetal, so it never
    * overshoots into loops at sharp turns.
    */
-  function splineStrokes(p0: [number, number], p1: [number, number], p2: [number, number], p3: [number, number], alt: boolean): BrushStroke[] {
-    const knot = (a: [number, number], b: [number, number]) => Math.max(Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])), 1e-3);
+  function splineStrokes(p0: number[], p1: number[], p2: number[], p3: number[], alt: boolean): BrushStroke[] {
+    const knot = (a: number[], b: number[]) => Math.max(Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])), 1e-3);
     const t1 = knot(p0, p1), t2 = t1 + knot(p1, p2), t3 = t2 + knot(p2, p3);
-    const lerp = (a: [number, number], b: [number, number], ta: number, tb: number, t: number): [number, number] =>
+    const lerp = (a: number[], b: number[], ta: number, tb: number, t: number): [number, number] =>
       [a[0] + ((b[0] - a[0]) * (t - ta)) / (tb - ta), a[1] + ((b[1] - a[1]) * (t - ta)) / (tb - ta)];
     // Barry and Goldman's pyramid
     const at = (u: number): [number, number] => {
@@ -1215,20 +1215,24 @@ async function init() {
     };
     const m = at(0.5), dev = Math.hypot(m[0] - (p1[0] + p2[0]) / 2, m[1] - (p1[1] + p2[1]) / 2);
     const n = Math.min(16, Math.max(1, Math.ceil(Math.sqrt(dev / 0.2))));
+    // the finger's speed over this piece (cells per ms), for a fluid's push to go with it, as a paddle does
+    const ms = p2[2] - p1[2], speed = ms > 0 ? Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / ms : undefined;
     const out: BrushStroke[] = [];
     let a = p1;
     for (let k = 1; k <= n; k++) {
       const b = k === n ? p2 : at(k / n);
-      out.push(...toBrush(a[0], a[1], b[0], b[1], alt));
+      // (in the sim's own time: cells per ms over sim time per ms; paused, the rule's own speed)
+      const pushSpeed = speed !== undefined && simPerMs > 1e-6 ? speed / simPerMs : undefined;
+      out.push(...toBrush(a[0], a[1], b[0], b[1], alt).map((st) => (st.mode === BrushMode.Stir && pushSpeed !== undefined ? { ...st, pushSpeed } : st)));
       a = b;
     }
     return out;
   }
   /** A new point on a freehand drag: draws the spline's piece up to the point before it. */
-  function dragTo(x: number, y: number) {
+  function dragTo(x: number, y: number, t: number) {
     const d = drag!, pts = d.pts, last = pts[pts.length - 1];
     if (Math.hypot(x - last[0], y - last[1]) < 0.5) return; // (closer than half a cell: wait for more)
-    pts.push([x, y]);
+    pts.push([x, y, t]);
     if (pts.length > 4) pts.shift();
     if (pts.length >= 3) {
       const n = pts.length;
@@ -1294,7 +1298,7 @@ async function init() {
       shapeDrag = { kind: s.brushShape, x0: x, y0: y, x1: x, y1: y, alt };
       return;
     }
-    drag = { x, y, alt, x0: x, y0: y, pts: [[x, y]] };
+    drag = { x, y, alt, x0: x, y0: y, pts: [[x, y, e.timeStamp]] };
     strokes.push(...toBrush(x, y, x, y, alt));
   });
   canvas.addEventListener('pointermove', (e) => {
@@ -1320,7 +1324,7 @@ async function init() {
     }
     // every sample the pointer took since the last event (phones take 120-240 a second; events come once a frame)
     const evs = e.getCoalescedEvents?.() ?? [];
-    for (const ev of evs.length ? evs : [e]) dragTo(...toGrid(ev));
+    for (const ev of evs.length ? evs : [e]) dragTo(...toGrid(ev), ev.timeStamp);
   });
   canvas.addEventListener('pointerup', (e) => {
     if (drag && !drag.alt && s.tool === 'smooth') smoothNudge(e.clientX, e.clientY);
@@ -1494,6 +1498,8 @@ async function init() {
   let frames = 0;
   let frameNo = 0;
   let stepsDone = 0;
+  // how fast sim time goes, per ms of real time (eased): to turn a drag's speed into the sim's own
+  let simPerMs = 0;
   let lastStat = performance.now();
   let stats = '';
 
@@ -1559,6 +1565,7 @@ async function init() {
     pendingSteps = 0;
     sim.step(enc, n);
     stepsDone += n;
+    if (elapsed > 0 && elapsed < 250) simPerMs += ((n * (globals.timestep ?? 1)) / elapsed - simPerMs) * 0.1;
     sim.render(enc, ctx.getCurrentTexture().createView(), canvas.width, canvas.height, viewOptions());
     device.queue.submit([enc.finish()]);
     gpuBusy = true;

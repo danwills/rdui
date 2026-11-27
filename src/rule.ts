@@ -199,7 +199,7 @@ export interface RuleDef {
    * A vorticity fluid's spin reagent, for the Push tool without a momentum: a drag adds the spin of a flow along the
    * stroke at `speed` (cells per time), so the fluid itself is shoved, nothing painted in (right-drag stills it).
    */
-  stir?: { omega: string; speed: number };
+  stir?: { omega: string; speed: number; /** the fastest a drag may shove (cells per time): 10 × speed if not given */ max?: number };
   /**
    * A wavefunction fluid's (Schrödinger's Smoke) vortex part ψ1, as its real and imaginary reagents, for the Push tool:
    * its flow is the phase's gradient, so only vortices can move it, and a drag launches a vortex pair along the drag
@@ -7424,6 +7424,8 @@ delta_dye = (advect_dye(flow_x_omega, flow_y_omega) - dye)/timestep - dye_fade*d
     seedNoise: [...STABLE_FLUIDS.seedNoise, 0, 0, 0],
     // (about the same speed on screen: 0.25 × 2 a frame, or 0.1 × 4)
     view: { ...STABLE_FLUIDS.view, stepsPerFrame: flux ? 4 : 2 },
+    // (a drag's shove kept well under the flux schemes' limit, half a cell a step)
+    ...(flux ? { stir: { ...STABLE_FLUIDS.stir!, max: 2 } } : {}),
   };
 }
 
