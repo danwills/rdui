@@ -16,7 +16,8 @@ const KSE_PARAMS = ['timestep', 'kse_octaves', 'kse_lacunarity', 'kse_roughness'
 
 // Uniform layouts (in floats), sized for MAX_REAGENTS: brush.wgsl / smooth.wgsl's Brush (12 header floats, then the
 // per-reagent seed, mask, noise and rest arrays, then 8 param slots) and render.wgsl's View (custom palette: 2 vec4s a reagent)
-const B_SEED = 12, B_MASK = B_SEED + MAX_REAGENTS, B_NOISE = B_MASK + MAX_REAGENTS, B_REST = B_NOISE + MAX_REAGENTS, B_PAINT = B_REST + MAX_REAGENTS;
+// (12-15: the box of cells a stroke's pass covers, its corner and size)
+const B_BOX = 12, B_SEED = 16, B_MASK = B_SEED + MAX_REAGENTS, B_NOISE = B_MASK + MAX_REAGENTS, B_REST = B_NOISE + MAX_REAGENTS, B_PAINT = B_REST + MAX_REAGENTS;
 const BRUSH_BYTES = (B_PAINT + 8) * 4;
 const V_CUSTOM = 40, V_GRADE = V_CUSTOM + 8 * MAX_REAGENTS;
 const VIEW_BYTES = (V_GRADE + 8) * 4;
@@ -124,6 +125,10 @@ export interface ViewOptions {
 }
 
 const WG = 8;
+/** How far past its edge an SDF stroke writes distances (brush.wgsl's SDF_REACH). */
+const SDF_REACH = 24;
+/** Brush strokes per submit (each its own uniform). */
+const BRUSH_RING = 32;
 
 /**
  * GPU reaction-diffusion field for a compiled rule. State is ping-ponged
@@ -169,7 +174,8 @@ export class Simulation {
   private finite?: { pipeline: GPUComputePipeline; flag: GPUBuffer; read: GPUBuffer; count: GPUBuffer; busy: boolean };
 
   private stepGroups: [GPUBindGroup, GPUBindGroup];
-  private brushGroups: [GPUBindGroup, GPUBindGroup];
+  /** A ring of brush uniforms (and their bind groups, per current state), so a batch of strokes goes in one submit. */
+  private brushRing: { buffer: GPUBuffer; groups: [GPUBindGroup, GPUBindGroup] }[] = [];
   private renderGroups: [GPUBindGroup, GPUBindGroup];
 
   /** FFT operators for rules with a spectral Laplacian. */
@@ -258,17 +264,19 @@ export class Simulation {
       });
     this.stepGroups = [stepGroup(0), stepGroup(1)];
 
-    const brushGroup = (cur: number) =>
-      device.createBindGroup({
+    for (let k = 0; k < BRUSH_RING; k++) {
+      const buffer = device.createBuffer({ size: BRUSH_BYTES, usage: uniform, label: `brush${k}` });
+      const group = (cur: number) => device.createBindGroup({
         layout: this.brushPipeline.getBindGroupLayout(0),
         entries: [
-          { binding: 0, resource: { buffer: this.brushUniform } },
+          { binding: 0, resource: { buffer } },
           { binding: 1, resource: { buffer: this.infoUniform } },
           { binding: 2, resource: { buffer: this.params } },
           { binding: 3, resource: { buffer: this.state[cur] } },
         ],
       });
-    this.brushGroups = [brushGroup(0), brushGroup(1)];
+      this.brushRing.push({ buffer, groups: [group(0), group(1)] });
+    }
 
     const renderGroup = (cur: number) =>
       device.createBindGroup({
@@ -380,6 +388,53 @@ export class Simulation {
   }
 
   brush(b: BrushStroke) {
+    this.brushAll([b]);
+  }
+
+  /**
+   * Strokes in order, in as few submits as can be: each (but Smooth) a pass over only the box of cells it can reach,
+   * from its own slot of the uniform ring; Smooth strokes (which copy the field first) go on their own, as before.
+   */
+  brushAll(strokes: BrushStroke[]) {
+    let enc: GPUCommandEncoder | null = null, used = 0;
+    const flush = () => {
+      if (enc) this.device.queue.submit([enc.finish()]);
+      enc = null;
+      used = 0;
+    };
+    for (const b of strokes) {
+      const filled = this.fillBrush(b);
+      if (!filled) continue;
+      if (b.mode === BrushMode.Smooth) {
+        flush();
+        this.smoothStroke(filled, b.strength);
+        continue;
+      }
+      const f = new Float32Array(filled);
+      // the box: the stroke and its radius (and an SDF's reach past it), on the wrapping field; all of it if that's wider
+      const reach = f[4] + (b.mode === BrushMode.Sdf ? SDF_REACH : 0) + 1;
+      const box = (lo: number, hi: number, n: number) => {
+        const a = Math.floor(lo - reach), z = Math.ceil(hi + reach);
+        return z - a >= n ? [0, n] : [a, z - a];
+      };
+      const [x0, w] = box(Math.min(f[0], f[2]), Math.max(f[0], f[2]), this.width);
+      const [y0, h] = box(Math.min(f[1], f[3]), Math.max(f[1], f[3]), this.height);
+      f[B_BOX] = x0; f[B_BOX + 1] = y0; f[B_BOX + 2] = w; f[B_BOX + 3] = h;
+      if (used === BRUSH_RING) flush();
+      const slot = this.brushRing[used++];
+      this.device.queue.writeBuffer(slot.buffer, 0, filled);
+      enc ??= this.device.createCommandEncoder();
+      const pass = enc.beginComputePass();
+      pass.setPipeline(this.brushPipeline);
+      pass.setBindGroup(0, slot.groups[this.current]);
+      pass.dispatchWorkgroups(Math.ceil(w / WG), Math.ceil(h / WG));
+      pass.end();
+    }
+    flush();
+  }
+
+  /** A stroke's uniform, or null if it does nothing (e.g. Push in a rule without momentum). */
+  private fillBrush(b: BrushStroke): ArrayBuffer | null {
     const rule = this.compiled.rule;
     const buf = new ArrayBuffer(BRUSH_BYTES);
     const f = new Float32Array(buf);
@@ -403,7 +458,7 @@ export class Simulation {
     if (b.mode === BrushMode.Push) {
       // the momentum's reagents, its mass (-1: none), and the velocity along the stroke (y up, as the rules' y)
       const mo = rule.momentum;
-      if (!mo) return;
+      if (!mo) return null;
       const ix = (n?: string) => (n ? rule.reagents.indexOf(n) : -1);
       const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
       // strength past 1 multiplies the speed (each dab then goes all the way), and negative sends it the other way
@@ -413,16 +468,16 @@ export class Simulation {
       f[B_SEED] = v[0]; f[B_SEED + 1] = v[1];
       f[B_SEED + 2] = ix(mo.x); f[B_SEED + 3] = ix(mo.y); f[B_SEED + 4] = ix(mo.mass); f[B_SEED + 5] = ix(mo.size);
       // a click (no direction) leaves the momentum be, unless braking
-      if (!b.clear && len < 1e-6) return;
+      if (!b.clear && len < 1e-6) return null;
     }
     if (b.mode === BrushMode.Stir) {
       // the spin reagent and the velocity along the stroke (y up), as Push's
       const st = rule.stir;
-      if (!st) return;
+      if (!st) return null;
       const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
       const sp = st.speed * Math.sign(b.strength) * Math.max(1, Math.abs(b.strength));
       f[6] = Math.min(1, Math.abs(b.strength));
-      if (!b.clear && len < 1e-6) return;
+      if (!b.clear && len < 1e-6) return null;
       const v = b.clear || len < 1e-6 ? [0, 0] : [(sp * dx) / len, (-sp * dy) / len];
       f[B_SEED] = v[0]; f[B_SEED + 1] = v[1]; f[B_SEED + 2] = rule.reagents.indexOf(st.omega);
       // each segment its share of the stroke: a drag's short segments overlap by about 2r/len, so summed they shove
@@ -433,7 +488,7 @@ export class Simulation {
       // a pair as wide as the brush across the stroke, at its start, + on the heading's left (as the vortices fill)
       const vp = rule.vortexPush;
       const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
-      if (!vp || len < 1e-6) return;
+      if (!vp || len < 1e-6) return null;
       const flip = b.strength < 0 ? -1 : 1;
       const w = Math.max(2 * vp.core, Math.min(2 * b.radius, Math.min(this.width, this.height) / 10));
       const nx = (-dy / len) * (w / 2) * flip, ny = (dx / len) * (w / 2) * flip;
@@ -449,21 +504,23 @@ export class Simulation {
       names.forEach((n, i) => (f[B_PAINT + i] = i > 0 && n !== rule.membrane?.param ? 1 : 0));
     } else b.paint.forEach((v, i) => (f[B_PAINT + 1 + i] = v));
 
-    // Smooth: strength 0.5 is one full pass (the blend at 1); above it, more passes per dab, up to 8 at 1
-    const smooth = b.mode === BrushMode.Smooth;
-    if (smooth) f[6] = Math.max(-1, Math.min(1, 2 * b.strength));
-    const passes = smooth && b.strength > 0.5 ? 1 + Math.round((b.strength - 0.5) * 14) : 1;
+    return buf;
+  }
+
+  /** A Smooth stroke: the field copied, then one pass over all of it, or more (strength 0.5 is one full pass, the blend at 1; above it, up to 8 at 1). */
+  private smoothStroke(buf: ArrayBuffer, strength: number) {
+    const f = new Float32Array(buf);
+    f[6] = Math.max(-1, Math.min(1, 2 * strength));
+    const passes = strength > 0.5 ? 1 + Math.round((strength - 0.5) * 14) : 1;
     this.device.queue.writeBuffer(this.brushUniform, 0, buf);
     const enc = this.device.createCommandEncoder();
     for (let n = 0; n < passes; n++) {
-      if (smooth) {
-        const src = this.smoothBuffers();
-        enc.copyBufferToBuffer(this.state[this.current], 0, src.state, 0, src.state.size);
-        enc.copyBufferToBuffer(this.params, 0, src.params, 0, src.params.size);
-      }
+      const src = this.smoothBuffers();
+      enc.copyBufferToBuffer(this.state[this.current], 0, src.state, 0, src.state.size);
+      enc.copyBufferToBuffer(this.params, 0, src.params, 0, src.params.size);
       const pass = enc.beginComputePass();
-      pass.setPipeline(smooth ? this.smoothPipeline! : this.brushPipeline);
-      pass.setBindGroup(0, smooth ? this.smoothGroups![this.current] : this.brushGroups[this.current]);
+      pass.setPipeline(this.smoothPipeline!);
+      pass.setBindGroup(0, this.smoothGroups![this.current]);
       pass.dispatchWorkgroups(Math.ceil(this.width / WG), Math.ceil(this.height / WG));
       pass.end();
     }

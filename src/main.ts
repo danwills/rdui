@@ -1194,7 +1194,56 @@ async function init() {
   ];
 
   // (x0, y0: where it started, and launched: whether its vortex pair has gone, for a wavefunction fluid's Push)
-  let drag: { x: number; y: number; alt: boolean; x0: number; y0: number; launched?: boolean } | null = null;
+  // (pts: the path's last few points, which the spline runs through, drawn one point behind)
+  let drag: { x: number; y: number; alt: boolean; x0: number; y0: number; launched?: boolean; pts: [number, number][] } | null = null;
+
+  /**
+   * The piece of a centripetal Catmull-Rom spline from p1 to p2 (p0 before, p3 after), as brush strokes: as many
+   * straight bits as keep it within ~0.2 cells of the curve (1 where it's straight). Centripetal, so it never
+   * overshoots into loops at sharp turns.
+   */
+  function splineStrokes(p0: [number, number], p1: [number, number], p2: [number, number], p3: [number, number], alt: boolean): BrushStroke[] {
+    const knot = (a: [number, number], b: [number, number]) => Math.max(Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1])), 1e-3);
+    const t1 = knot(p0, p1), t2 = t1 + knot(p1, p2), t3 = t2 + knot(p2, p3);
+    const lerp = (a: [number, number], b: [number, number], ta: number, tb: number, t: number): [number, number] =>
+      [a[0] + ((b[0] - a[0]) * (t - ta)) / (tb - ta), a[1] + ((b[1] - a[1]) * (t - ta)) / (tb - ta)];
+    // Barry and Goldman's pyramid
+    const at = (u: number): [number, number] => {
+      const t = t1 + (t2 - t1) * u;
+      const a1 = lerp(p0, p1, 0, t1, t), a2 = lerp(p1, p2, t1, t2, t), a3 = lerp(p2, p3, t2, t3, t);
+      return lerp(lerp(a1, a2, 0, t2, t), lerp(a2, a3, t1, t3, t), t1, t2, t);
+    };
+    const m = at(0.5), dev = Math.hypot(m[0] - (p1[0] + p2[0]) / 2, m[1] - (p1[1] + p2[1]) / 2);
+    const n = Math.min(16, Math.max(1, Math.ceil(Math.sqrt(dev / 0.2))));
+    const out: BrushStroke[] = [];
+    let a = p1;
+    for (let k = 1; k <= n; k++) {
+      const b = k === n ? p2 : at(k / n);
+      out.push(...toBrush(a[0], a[1], b[0], b[1], alt));
+      a = b;
+    }
+    return out;
+  }
+  /** A new point on a freehand drag: draws the spline's piece up to the point before it. */
+  function dragTo(x: number, y: number) {
+    const d = drag!, pts = d.pts, last = pts[pts.length - 1];
+    if (Math.hypot(x - last[0], y - last[1]) < 0.5) return; // (closer than half a cell: wait for more)
+    pts.push([x, y]);
+    if (pts.length > 4) pts.shift();
+    if (pts.length >= 3) {
+      const n = pts.length;
+      strokes.push(...splineStrokes(pts[Math.max(0, n - 4)], pts[n - 3], pts[n - 2], pts[n - 1], d.alt));
+    }
+    d.x = x;
+    d.y = y;
+  }
+  /** The drag's last piece (up to where it ended), on letting go. */
+  function dragEnd() {
+    const d = drag;
+    if (!d || d.pts.length < 2) return;
+    const n = d.pts.length;
+    strokes.push(...splineStrokes(d.pts[Math.max(0, n - 3)], d.pts[n - 2], d.pts[n - 1], d.pts[n - 1], d.alt));
+  }
   let rectDrag: { x0: number; y0: number; x1: number; y1: number } | null = null;
   /** A line or circle being dragged out (brushShape), painted on release. */
   let shapeDrag: { kind: 'line' | 'circle'; x0: number; y0: number; x1: number; y1: number; alt: boolean } | null = null;
@@ -1245,7 +1294,7 @@ async function init() {
       shapeDrag = { kind: s.brushShape, x0: x, y0: y, x1: x, y1: y, alt };
       return;
     }
-    drag = { x, y, alt, x0: x, y0: y };
+    drag = { x, y, alt, x0: x, y0: y, pts: [[x, y]] };
     strokes.push(...toBrush(x, y, x, y, alt));
   });
   canvas.addEventListener('pointermove', (e) => {
@@ -1269,12 +1318,13 @@ async function init() {
       }
       return;
     }
-    strokes.push(...toBrush(drag.x, drag.y, x, y, drag.alt));
-    drag.x = x;
-    drag.y = y;
+    // every sample the pointer took since the last event (phones take 120-240 a second; events come once a frame)
+    const evs = e.getCoalescedEvents?.() ?? [];
+    for (const ev of evs.length ? evs : [e]) dragTo(...toGrid(ev));
   });
   canvas.addEventListener('pointerup', (e) => {
     if (drag && !drag.alt && s.tool === 'smooth') smoothNudge(e.clientX, e.clientY);
+    if (drag && !(s.tool === 'push' && !rule.momentum && !rule.stir && rule.vortexPush)) dragEnd();
     drag = null;
     if (shapeDrag) {
       const d = shapeDrag;
@@ -1486,7 +1536,7 @@ async function init() {
       wanderT = performance.now();
       void randomiseCustom(false); // new colours and powers; the ranges stay
     }
-    for (const b of strokes.splice(0)) sim.brush(b);
+    sim.brushAll(strokes.splice(0));
 
     const enc = device.createCommandEncoder();
     // steps per frame means per 1/60 s: phones raise the refresh rate (to 120 Hz) while touched,

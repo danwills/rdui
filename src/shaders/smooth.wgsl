@@ -23,6 +23,8 @@ struct Brush {
   slot: f32,
   clear: f32,     // 1 = blur the reagents too
   base: f32,
+  boxOrigin: vec2<f32>, // the corner and size of the box of cells this pass covers (it may run off the edge: it wraps)
+  boxSize: vec2<f32>,
   seed: array<vec4<f32>, 8>,
   seedMask: array<vec4<f32>, 8>,
   seedNoise: array<vec4<f32>, 8>,

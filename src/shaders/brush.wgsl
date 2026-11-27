@@ -15,6 +15,8 @@ struct Brush {
   slot: f32,      // MODE_SET_PARAM: flat param slot
   clear: f32,     // MODE_SET_PARAM: 1 = reset chemistry to rest
   base: f32,      // MODE_SET_PARAM: the param's unpainted value; MODE_WALL: 2 = a feed wall (else sealed)
+  boxOrigin: vec2<f32>, // the corner and size of the box of cells this pass covers (it may run off the edge: it wraps)
+  boxSize: vec2<f32>,
   seed: array<vec4<f32>, 8>,      // seed target per reagent (up to MAX_REAGENTS, 32)
   seedMask: array<vec4<f32>, 8>,  // 1 where the seed brush touches that reagent
   seedNoise: array<vec4<f32>, 8>, // noise amplitude added to the seed target
@@ -86,10 +88,15 @@ fn hash(p: vec2<f32>) -> f32 {
 
 @compute @workgroup_size(8, 8)
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
-  if (gid.x >= size.width || gid.y >= size.height) {
+  if (f32(gid.x) >= brush.boxSize.x || f32(gid.y) >= brush.boxSize.y) {
     return;
   }
-  let cell = vec2<f32>(f32(gid.x) + 0.5, f32(gid.y) + 0.5);
+  // the cell: the box's, wrapped onto the field
+  let W = i32(size.width);
+  let H = i32(size.height);
+  let cx = ((i32(gid.x) + i32(brush.boxOrigin.x)) % W + W) % W;
+  let cy = ((i32(gid.y) + i32(brush.boxOrigin.y)) % H + H) % H;
+  let cell = vec2<f32>(f32(cx) + 0.5, f32(cy) + 0.5);
   let d = wrapDist(cell, brush.a, brush.b);
   if (d > brush.radius + select(0.0, SDF_REACH, brush.mode == MODE_SDF)) {
     return;
@@ -97,7 +104,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
   let t = 1.0 - d / brush.radius;
   let falloff = clamp(t / max(1.0 - brush.hardness, 1e-3), 0.0, 1.0);
   let k = brush.strength * falloff;
-  let i = gid.y * size.width + gid.x;
+  let i = u32(cy) * size.width + u32(cx);
   let sb = i * S;
   let pb = i * P;
   let wall = params[pb].x > 0.5;
