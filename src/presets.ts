@@ -19,6 +19,7 @@ export const PRESETS: Preset[] = [
   { name: 'bubbles', feed: 0.098, kill: 0.0555, note: 'holes in a sea' },
   { name: 'chaos', feed: 0.026, kill: 0.051, note: 'turbulent spots' },
   { name: 'dead', feed: 0.01, kill: 0.07, note: 'everything decays (insulator)' },
+  { name: 'crowding', feed: 0.01987, kill: 0.05891, note: 'spots divide and die of overcrowding (Dan\'s find; between Pearson\'s ε and ζ)' },
 ];
 
 export const DEFAULT_PRESET = PRESETS[0];
