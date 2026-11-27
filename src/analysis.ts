@@ -1,13 +1,17 @@
 /**
  * Live analysis beside the sim (the split view): the field read back a few times a second
  * (its middle 512² at most) and shown as
- * - a phase plot (as Ready has): each dot a cell, at its values of three reagents (a turning cloud; drag to turn
- *   it), or for two the third axis how many cells share the state (log, as a histogram's height); the same cells each time, gliding from one reading to the next, so the field's states are
- *   seen flowing through the space; tap to step to the next reagents;
+ * - a phase plot (as Ready has): each dot a cell, at its values of three reagents (a cloud in a cube; drag to turn
+ *   it, pinch or the wheel to zoom), or for two the third axis how many cells share the state (log, as a histogram's
+ *   height); the same cells each time, gliding from one reading to the next, so the field's states are seen flowing
+ *   through the space; each dot coloured as its cell is in the view (brightened where that's dark); tap to step to
+ *   the next reagents;
  * - each reagent's histogram, over a range that follows the field (smoothed 1st-99th percentiles);
  * - the shown reagent's mean and spread over time.
  */
 import type { Simulation } from './sim';
+
+import type { RGB } from './palettes';
 
 const DOTS = 16000, HBINS = 64, HISTORY = 240, READ_MS = 300;
 
@@ -16,13 +20,19 @@ export interface AnalysisSource {
   reagents(): string[];
   /** The reagent the main view shows (the phase plot's first axis to start with). */
   shown(): number;
+  /** A cell's colour in the main view from its reagents' values, or null where the plot colours by depth instead. */
+  colour?(val: (r: number) => number): RGB | null;
 }
 
 export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
   const g = canvas.getContext('2d')!;
   let raf = 0, timer = 0, busy = false, stopped = false;
   let axes: number[] | null = null; // the phase plot's reagents: three (or two, for a two-reagent rule)
-  let yaw = 0.7, pitch = 0.45, spinning = true;
+  let yaw = 0.7, pitch = 0.45;
+  // zoom, and the plot's offset from its box's middle (in CSS pixels)
+  let zoom = 1, panX = 0, panY = 0;
+  // the dots in groups of one colour (indices into the dots), each group's fill
+  let groups: { fill: string; idx: number[] }[] = [];
   // the dots: the same cells each reading (picked once per region size), each at -1..1 on each axis, the last
   // reading (from) and this one (to), eased between over a reading's time
   let cells: Uint32Array | null = null, cellsFor = '';
@@ -106,6 +116,22 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
           for (let m = k + 1; m < 3; m++) dots[i * 3 + m] = 0;
         }
       }
+      // each dot's colour, as the view shows its cell (brightened so dark ones still show, added up); grouped by colour
+      // (quantised), so the plot sets each fill once
+      const byFill = new Map<string, number[]>();
+      cells!.forEach((c, i) => {
+        const v = src.colour?.((r) => state[c * S4 + r]) ?? null;
+        let rgb: RGB;
+        if (v) {
+          const gain = Math.min(5, 1.2 / (Math.max(...v) + 0.2));
+          rgb = v.map((x) => Math.min(1, x * gain)) as RGB;
+        } else rgb = depthColour(0.15 + 0.85 * (dots[i * 3 + 2] + 1) / 2);
+        const fill = `rgba(${rgb.map((x) => Math.round(x * 31) * 8).join(',')},0.4)`;
+        let list = byFill.get(fill);
+        if (!list) byFill.set(fill, (list = []));
+        list.push(i);
+      });
+      groups = [...byFill].map(([fill, idx]) => ({ fill, idx }));
       from = to && to.length === dots.length ? eased() : dots;
       to = dots;
       readT = performance.now();
@@ -141,12 +167,9 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
     return out;
   }
 
-  function colour(t: number) {
+  function depthColour(t: number): RGB {
     // dark blue → cyan → yellow, like the default palette's spirit
-    const r = Math.round(255 * Math.min(1, Math.max(0, t * 1.6 - 0.5)));
-    const gg = Math.round(255 * Math.min(1, t * 1.3));
-    const b = Math.round(255 * Math.min(1, 0.35 + t * 0.9 - Math.max(0, t - 0.7) * 2));
-    return `rgb(${r},${gg},${b})`;
+    return [Math.min(1, Math.max(0, t * 1.6 - 0.5)), Math.min(1, t * 1.3), Math.min(1, 0.35 + t * 0.9 - Math.max(0, t - 0.7) * 2)];
   }
 
   function draw() {
@@ -180,8 +203,13 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
     const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toPrecision(2));
     // world: each axis -1..1 (a cube, or for two reagents a square seen face on)
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-    const sc = Math.min(b.w, b.h - 20) / 3.7;
-    const ox = b.x + b.w / 2, oy = b.y + 14 + (b.h - 14) / 2;
+    const sc = (Math.min(b.w, b.h - 20) / 3.7) * zoom;
+    const ox = b.x + b.w / 2 + panX, oy = b.y + 14 + (b.h - 14) / 2 + panY;
+    phaseBox = b;
+    g.save();
+    g.beginPath();
+    g.rect(b.x, b.y, b.w, b.h);
+    g.clip();
     const proj = (x: number, y: number, z: number): [number, number] => {
       // turned about the upright (z) axis, then tilted towards the viewer
       const X = x * cy - y * sy, Y = x * sy + y * cy;
@@ -201,15 +229,17 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
       g.lineTo(c[0], c[1]);
     }
     g.stroke();
-    // the dots, added up (where many cells share a state it glows), coloured by the third axis
+    // the dots, added up (where many cells share a state it glows)
     g.globalCompositeOperation = 'lighter';
-    const d = Math.max(1.2, Math.min(2.2, sc / 90));
-    for (let i = 0; i < pts.length; i += 3) {
-      const x = pts[i], y = pts[i + 1], z = pts[i + 2];
-      if (!(Math.abs(x) <= 1.05 && Math.abs(y) <= 1.05 && Math.abs(z) <= 1.05)) continue;
-      const [px, py] = proj(x, y, z);
-      g.fillStyle = colour(0.15 + 0.85 * (z + 1) / 2).replace('rgb', 'rgba').replace(')', ',0.4)');
-      g.fillRect(px - d / 2, py - d / 2, d, d);
+    const d = Math.max(1.2, Math.min(2.2, sc / 90 / Math.sqrt(zoom)));
+    for (const { fill, idx } of groups) {
+      g.fillStyle = fill;
+      for (const j of idx) {
+        const i = j * 3, x = pts[i], y = pts[i + 1], z = pts[i + 2];
+        if (!(Math.abs(x) <= 1.05 && Math.abs(y) <= 1.05 && Math.abs(z) <= 1.05)) continue;
+        const [px, py] = proj(x, y, z);
+        g.fillRect(px - d / 2, py - d / 2, d, d);
+      }
     }
     g.globalCompositeOperation = 'source-over';
     // the axes: each reagent's name at its far end, its range from the near corner
@@ -222,8 +252,9 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
       lab(proj(ends[k][0], ends[k][1], ends[k][2]), `${names[r]} ${fmt(spans[k][0])}…${fmt(spans[k][1])}`);
     });
     if (A.length < 3) lab(proj(ends[A.length][0], ends[A.length][1], ends[A.length][2]), 'how many (log)');
+    g.restore();
     g.fillStyle = 'rgba(255,255,255,0.6)';
-    g.fillText(`phase plot: ${A.map((r) => names[r]).join(' × ')} (each dot a cell) · drag to turn, tap for the next reagents`, b.x + 6, b.y + 4);
+    g.fillText(`phase plot: ${A.map((r) => names[r]).join(' × ')} (each dot a cell) · drag to turn, pinch or wheel to zoom, tap for the next reagents`, b.x + 6, b.y + 4);
   }
 
   function drawStrips(b: { x: number; y: number; w: number; h: number }) {
@@ -268,30 +299,63 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
   }
 
   function frame() {
-    if (spinning) yaw += 0.004;
     draw();
     raf = requestAnimationFrame(frame);
   }
 
-  // drag turns the phase plot; a tap steps to the next reagents
-  let drag: { x: number; y: number; moved: boolean } | null = null;
+  // one finger (or the mouse) turns the phase plot, two pinch to zoom (and move it); the wheel zooms about the
+  // pointer; a tap steps to the next reagents
+  let phaseBox = { x: 0, y: 0, w: 0, h: 0 };
+  const touches = new Map<number, { x: number; y: number }>();
+  let drag: { moved: boolean } | null = null;
+  const local = (x: number, y: number) => { const r = canvas.getBoundingClientRect(); return [x - r.left, y - r.top]; };
+  /** Zoom by k about the point (x, y) in the canvas, keeping what's under it there. */
+  const zoomAt = (x: number, y: number, k: number) => {
+    const nz = Math.min(40, Math.max(0.5, zoom * k));
+    k = nz / zoom;
+    zoom = nz;
+    const cx = phaseBox.x + phaseBox.w / 2, cy = phaseBox.y + 14 + (phaseBox.h - 14) / 2;
+    panX = x - cx - (x - cx - panX) * k;
+    panY = y - cy - (y - cy - panY) * k;
+    if (zoom <= 1) panX = panY = 0; // zoomed all the way out: back in the middle, so it can't be lost
+  };
+  const pair = () => {
+    const [a, b] = [...touches.values()];
+    return { d: Math.hypot(a.x - b.x, a.y - b.y), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  };
   const down = (e: PointerEvent) => {
     canvas.setPointerCapture(e.pointerId);
-    drag = { x: e.clientX, y: e.clientY, moved: false };
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 1) drag = { moved: false };
+    else if (drag) drag.moved = true; // a pinch is never a tap
   };
   const move = (e: PointerEvent) => {
-    if (!drag) return;
-    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    const t = touches.get(e.pointerId);
+    if (!t || !drag) return;
+    if (touches.size >= 2) {
+      const before = pair();
+      t.x = e.clientX;
+      t.y = e.clientY;
+      const after = pair(), [x, y] = local(after.x, after.y);
+      if (zoom > 1) {
+        panX += after.x - before.x;
+        panY += after.y - before.y;
+      }
+      if (before.d > 1) zoomAt(x, y, after.d / before.d);
+      return;
+    }
+    const dx = e.clientX - t.x, dy = e.clientY - t.y;
     if (!drag.moved && Math.hypot(dx, dy) < 5) return;
     drag.moved = true;
-    spinning = false;
     yaw += dx * 0.01;
     pitch = Math.min(1.45, Math.max(0.05, pitch + dy * 0.01));
-    drag.x = e.clientX;
-    drag.y = e.clientY;
+    t.x = e.clientX;
+    t.y = e.clientY;
   };
-  const up = () => {
-    if (drag && !drag.moved && axes && names.length > 1) {
+  const up = (e: PointerEvent) => {
+    touches.delete(e.pointerId);
+    if (touches.size) return;
+    if (drag && !drag.moved && e.type === 'pointerup' && axes && names.length > 1) {
       // the next three in turn (or, for two, the other way round)
       axes = axesFrom((axes[0] + 1) % names.length, names.length);
       from = to = null;
@@ -300,6 +364,12 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
     }
     drag = null;
   };
+  const wheel = (e: WheelEvent) => {
+    e.preventDefault();
+    const [x, y] = local(e.clientX, e.clientY);
+    zoomAt(x, y, Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0015)));
+  };
+  canvas.addEventListener('wheel', wheel, { passive: false });
   canvas.addEventListener('pointerdown', down);
   canvas.addEventListener('pointermove', move);
   canvas.addEventListener('pointerup', up);
@@ -325,6 +395,7 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
       canvas.removeEventListener('pointermove', move);
       canvas.removeEventListener('pointerup', up);
       canvas.removeEventListener('pointercancel', up);
+      canvas.removeEventListener('wheel', wheel);
     },
   };
 }

@@ -7489,7 +7489,7 @@ export const SCHRODINGER_SMOKE: RuleDef = {
   size: { width: 256, height: 256 },
   params: [
     // (ħ = 1, dx 1: a vortex r cells away moves things at 1/r cells per time)
-    { name: 'timestep', value: 2, min: 0.1, max: 8 },
+    { name: 'timestep', value: 3, min: 0.1, max: 8 },
     { name: 'dx', value: 1, min: 0.25, max: 4 },
   ],
   paramHints: {

@@ -19,6 +19,7 @@ import { SavedScenes } from './saved-scenes';
 import { openExplorerPanel } from './explorer';
 import { openCollection, presetImport } from './collection';
 import { startAnalysis } from './analysis';
+import { viewColour } from './palettes';
 import { STARTER_STAMPS, boostStamp, compositeOnto, stampBackground } from './stamps';
 
 /** An OKLCH colour (lightness 0-1, chroma, hue in turns) as sRGB 0-1, scaled down to fit if it's out of gamut. */
@@ -130,6 +131,8 @@ async function init() {
   };
   if (session?.settings) {
     const defs = defaultSettings();
+    // a phone's GPU share remembered at the old default (0.75) takes the phone's own (all of it)
+    if (session.settings.gpuShare === 0.75) session.settings.gpuShare = defs.gpuShare;
     // only known keys of the right type (a setting renamed since is left at its default)
     for (const [k, v] of Object.entries(session.settings)) if (k in defs && k !== 'running' && typeof v === typeof (defs as unknown as Record<string, unknown>)[k]) (s as unknown as Record<string, unknown>)[k] = v;
   }
@@ -1119,7 +1122,10 @@ async function init() {
     app.classList.toggle('fill', hide && mode === 'fill');
     app.classList.toggle('split', hide && mode === 'split');
     analysis?.stop();
-    analysis = hide && mode === 'split' ? startAnalysis(analysisCanvas, { sim: () => sim, reagents: () => rule.reagents, shown: () => s.reagent }) : null;
+    analysis = hide && mode === 'split' ? startAnalysis(analysisCanvas, {
+      sim: () => sim, reagents: () => rule.reagents, shown: () => s.reagent,
+      colour: (val) => (s.viewMode === 'params' ? null : viewColour({ palette: s.palette, reagent: s.reagent, low: s.low, high: s.high, custom: shownCustom, grade: shownGrade }, val)),
+    }) : null;
     if (hide) {
       history.pushState({ rduiHidden: true }, '');
       document.documentElement.requestFullscreen?.().catch(() => {});

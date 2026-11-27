@@ -167,6 +167,9 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'probe', label: 'Probe', key: '7', hint: 'drag a rectangle to measure it · right-click a probe removes it' },
 ];
 
+/** A touch screen with no mouse: a phone or tablet. */
+export const onPhone = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
+
 export function defaultSettings(): Settings {
   return {
     tool: 'seed',
@@ -180,7 +183,7 @@ export function defaultSettings(): Settings {
     seedPaint: {},
     running: true,
     stepsPerFrame: 10,
-    gpuShare: 0.75,
+    gpuShare: onPhone() ? 1 : 0.75, // (a phone's GPU is the sim's: held back it's slow)
     ruleSpeed: true,
     menuNewest: true,
     wallsReflect: true,

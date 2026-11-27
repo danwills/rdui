@@ -3,7 +3,7 @@
 import { COLORMAP_NAMES, COLORMAP_RGB } from './colormaps';
 import type { CustomChannel } from './sim';
 
-type RGB = [number, number, number];
+export type RGB = [number, number, number];
 export interface PaletteEntry { id: number; name: string; title: string; group: string }
 
 const BUILT_IN: [number, string, string][] = [
@@ -67,4 +67,26 @@ export function paletteCss(id: number, custom: CustomChannel[] = []): string {
   }
   const stops = Array.from({ length: 17 }, (_, i) => css(paletteAt(id, i / 16) ?? [0, 0, 0]));
   return `linear-gradient(to right, ${stops.join(', ')})`;
+}
+
+/** A cell's colour as the main view shows it (reagent mode, tint aside), from its reagents' values; null for the fleck
+ *  palettes (and the params views), which it doesn't follow. */
+export function viewColour(
+  v: { palette: number; reagent: number; low: number; high: number; custom: CustomChannel[]; grade: number[] },
+  val: (r: number) => number,
+): RGB | null {
+  const norm = (x: number, lo: number, hi: number) => Math.min(1, Math.max(0, (x - lo) / Math.max(hi - lo, 1e-9)));
+  if (v.palette === 7) {
+    let c: RGB = [0, 0, 0];
+    v.custom.forEach((ch, r) => {
+      if (!ch.on) return;
+      const t = norm(val(r), ch.low, ch.high) ** Math.max(ch.power, 1e-3);
+      c = c.map((x, k) => x + t * ch.color[k]) as RGB;
+    });
+    const [contrast, saturation, gamma] = v.grade;
+    c = c.map((x) => (Math.min(1, Math.max(0, x)) ** Math.max(gamma, 1e-3) - 0.5) * contrast + 0.5) as RGB;
+    const luma = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    return c.map((x) => Math.min(1, Math.max(0, luma + (x - luma) * saturation))) as RGB;
+  }
+  return paletteAt(v.palette, norm(val(v.reagent), v.low, v.high));
 }
