@@ -2,7 +2,7 @@
  * Live analysis beside the sim (the split view): the field read back a few times a second
  * (its middle 512² at most) and shown as
  * - a phase plot (as Ready has): each dot a cell, at its values of three reagents (a turning cloud; drag to turn
- *   it) or two (flat); the same cells each time, gliding from one reading to the next, so the field's states are
+ *   it), or for two the third axis how many cells share the state (log, as a histogram's height); the same cells each time, gliding from one reading to the next, so the field's states are
  *   seen flowing through the space; tap to step to the next reagents;
  * - each reagent's histogram, over a range that follows the field (smoothed 1st-99th percentiles);
  * - the shown reagent's mean and spread over time.
@@ -91,6 +91,21 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
         const [lo, hi] = spans[k], v = state[c * S4 + r];
         dots[i * 3 + k] = Number.isFinite(v) ? ((v - lo) / (hi - lo)) * 2 - 1 : NaN;
       }));
+      // fewer than three reagents: the next axis is how many dots share each state (log), the rest 0
+      if (axes!.length < 3) {
+        const B = 32, count = new Float32Array(B * B), k = axes!.length;
+        const bin = (i: number) => {
+          const x = Math.floor((dots[i * 3] + 1) / 2 * B), y = k > 1 ? Math.floor((dots[i * 3 + 1] + 1) / 2 * B) : 0;
+          return x >= 0 && x < B && y >= 0 && y < B ? y * B + x : -1;
+        };
+        for (let i = 0; i < cells!.length; i++) { const c = bin(i); if (c >= 0) count[c]++; }
+        const top = Math.log1p(Math.max(...count)) || 1;
+        for (let i = 0; i < cells!.length; i++) {
+          const c = bin(i);
+          dots[i * 3 + k] = c >= 0 ? (2 * Math.log1p(count[c])) / top - 1 : NaN;
+          for (let m = k + 1; m < 3; m++) dots[i * 3 + m] = 0;
+        }
+      }
       from = to && to.length === dots.length ? eased() : dots;
       to = dots;
       readT = performance.now();
@@ -161,14 +176,13 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
   }
 
   function drawPhase(b: { x: number; y: number; w: number; h: number }) {
-    const pts = eased(), A = axes!, flat = A.length < 3;
+    const pts = eased(), A = axes!;
     const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toPrecision(2));
     // world: each axis -1..1 (a cube, or for two reagents a square seen face on)
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-    const sc = flat ? Math.min(b.w, b.h - 28) / 2.4 : Math.min(b.w, b.h - 20) / 3.7;
+    const sc = Math.min(b.w, b.h - 20) / 3.7;
     const ox = b.x + b.w / 2, oy = b.y + 14 + (b.h - 14) / 2;
     const proj = (x: number, y: number, z: number): [number, number] => {
-      if (flat) return [ox + x * sc, oy - y * sc];
       // turned about the upright (z) axis, then tilted towards the viewer
       const X = x * cy - y * sy, Y = x * sy + y * cy;
       return [ox + X * sc, oy + (Y * sp - z * cp) * sc];
@@ -177,10 +191,8 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
     g.strokeStyle = 'rgba(140,160,190,0.35)';
     g.lineWidth = 1;
     g.beginPath();
-    const edges: [number[], number[]][] = flat
-      ? [[[-1, -1, 0], [1, -1, 0]], [[1, -1, 0], [1, 1, 0]], [[1, 1, 0], [-1, 1, 0]], [[-1, 1, 0], [-1, -1, 0]]]
-      : [];
-    if (!flat) for (const u of [-1, 1]) for (const v of [-1, 1]) {
+    const edges: [number[], number[]][] = [];
+    for (const u of [-1, 1]) for (const v of [-1, 1]) {
       edges.push([[-1, u, v], [1, u, v]], [[u, -1, v], [u, 1, v]], [[u, v, -1], [u, v, 1]]);
     }
     for (const [p, q] of edges) {
@@ -189,14 +201,14 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
       g.lineTo(c[0], c[1]);
     }
     g.stroke();
-    // the dots, added up (where many cells share a state it glows), coloured by the third axis (flat: one colour)
+    // the dots, added up (where many cells share a state it glows), coloured by the third axis
     g.globalCompositeOperation = 'lighter';
     const d = Math.max(1.2, Math.min(2.2, sc / 90));
     for (let i = 0; i < pts.length; i += 3) {
-      const x = pts[i], y = pts[i + 1], z = flat ? 0 : pts[i + 2];
+      const x = pts[i], y = pts[i + 1], z = pts[i + 2];
       if (!(Math.abs(x) <= 1.05 && Math.abs(y) <= 1.05 && Math.abs(z) <= 1.05)) continue;
       const [px, py] = proj(x, y, z);
-      g.fillStyle = flat ? 'rgba(102,200,255,0.35)' : colour(0.15 + 0.85 * (z + 1) / 2).replace('rgb', 'rgba').replace(')', ',0.4)');
+      g.fillStyle = colour(0.15 + 0.85 * (z + 1) / 2).replace('rgb', 'rgba').replace(')', ',0.4)');
       g.fillRect(px - d / 2, py - d / 2, d, d);
     }
     g.globalCompositeOperation = 'source-over';
@@ -207,11 +219,11 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
     };
     const ends = [[1.12, -1, -1], [-1, 1.12, -1], [-1, -1, 1.12]];
     A.forEach((r, k) => {
-      const e = flat ? (k ? [-1.05, 1.08, 0] : [1.02, -1.08, 0]) : ends[k];
-      lab(proj(e[0], e[1], e[2]), `${names[r]} ${fmt(spans[k][0])}…${fmt(spans[k][1])}`);
+      lab(proj(ends[k][0], ends[k][1], ends[k][2]), `${names[r]} ${fmt(spans[k][0])}…${fmt(spans[k][1])}`);
     });
+    if (A.length < 3) lab(proj(ends[A.length][0], ends[A.length][1], ends[A.length][2]), 'how many (log)');
     g.fillStyle = 'rgba(255,255,255,0.6)';
-    g.fillText(`phase plot: ${A.map((r) => names[r]).join(' × ')} (each dot a cell) · ${flat ? '' : 'drag to turn, '}tap for the next reagents`, b.x + 6, b.y + 4);
+    g.fillText(`phase plot: ${A.map((r) => names[r]).join(' × ')} (each dot a cell) · drag to turn, tap for the next reagents`, b.x + 6, b.y + 4);
   }
 
   function drawStrips(b: { x: number; y: number; w: number; h: number }) {
@@ -256,7 +268,7 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
   }
 
   function frame() {
-    if (spinning && axes && axes.length >= 3) yaw += 0.004;
+    if (spinning) yaw += 0.004;
     draw();
     raf = requestAnimationFrame(frame);
   }
