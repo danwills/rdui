@@ -324,11 +324,14 @@ section > h2 { display: none; }
 .tip[hidden] { display: none; }
 
 /* brush strength: 0–1 slider, ×multiplier (its sign), total (lit when negative) */
-#panel .row.strength { grid-template-columns: 76px 1fr auto 52px; }
-#panel .row.strength .mult { grid-column: auto; width: auto; min-width: 0; font-size: 11px; padding: 1px 2px; }
-.row.strength .num { width: 52px; justify-self: end; }
+#panel .row.strength { grid-template-columns: 76px 1fr 72px; }
+#panel .row.strength-mult { grid-template-columns: 76px auto 1fr; }
+#panel .row.strength-mult .mult { grid-column: auto; width: auto; min-width: 0; }
+#panel .row.strength-mult .check { justify-self: end; }
+.row.strength-mult.negative > span, .row.strength-mult.negative .check { color: #ff9a6a; }
+.row.strength .num { width: 70px; justify-self: end; }
 button.mini.on { opacity: 1; color: #ff9a6a; border-color: var(--line); }
-.row.strength.negative > span, .row.strength.negative .num, .row.strength.negative .mult { color: #ff9a6a; }
+.row.strength.negative > span, .row.strength.negative .num { color: #ff9a6a; }
 .row.strength.negative input[type=range] { accent-color: #ff9a6a; }
 
 /* the field blew up (Inf/NaN): offer a restart or a pause */

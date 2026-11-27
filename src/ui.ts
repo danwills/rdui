@@ -542,18 +542,19 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   }
 
   /**
-   * Brush strength: a 0–1 slider times a multiplier (×10 down to ×1e-7, Smoke living at ~1e-7, or the same negated:
-   * negative pushes away from the target, seeding the opposite way, erase exaggerating, smooth sharpening), so the
-   * sign stays out of the way; the box shows and takes the total, from -1 to 1 (10 for Push).
+   * Brush strength: a 0–1 slider times a multiplier on the row below (×10 down to ×1e-7, Smoke living at ~1e-7) with
+   * a Negative tick there (pushes away from the target: seeds the opposite way, erase exaggerates, smooth sharpens),
+   * so the sign stays out of the way; the box shows and takes the total, from -1 to 1 (10 for Push).
    */
   function strengthRow() {
     const POW = [1, 0, -1, -2, -3, -4, -5, -6, -7];
-    const MULTS = [...POW.map((e) => 10 ** e), ...POW.map((e) => -(10 ** e))];
-    const label = (m: number) => `×${m < 0 ? '−' : ''}${Math.abs(m) >= 0.01 ? String(+Math.abs(m).toFixed(2)) : `1e${Math.round(Math.log10(Math.abs(m)))}`}`;
+    const MULTS = POW.map((e) => 10 ** e);
+    const label = (m: number) => `×${m >= 0.01 ? String(+m.toFixed(2)) : `1e${Math.round(Math.log10(m))}`}`;
     const input = el('input', { type: 'range', min: '0', max: '1', step: '0.001' });
     const num = el('input', { type: 'text', class: 'num', inputmode: 'decimal' });
-    const mult = el('select', { class: 'mult', title: 'the multiplier the slider is taken times: its size, and its sign (negative pushes away from the target: seeds the opposite way, erase exaggerates, smooth sharpens)' },
+    const mult = el('select', { class: 'mult', title: 'the multiplier the strength slider is taken times (down to ×1e-7, for fields with tiny values like Smoke\'s)' },
       ...MULTS.map((m, k) => el('option', { value: String(k) }, label(m))));
+    const neg = el('input', { type: 'checkbox' });
     // Push's strength goes past 1 (to 10: 0.6 px a step at Momentum Bubbles' speed; past a cell a step the carrying goes unstable), multiplying its speed (see sim.ts); the other tools' is a blend, 1 at most
     const most = () => (s.tool === 'push' ? 10 : 1);
     let m = 1;
@@ -575,8 +576,12 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     input.addEventListener('input', () => put(Number(input.value) * m, false));
     mult.addEventListener('change', () => {
       const base = Math.min(1, Math.abs(s.strength / m));
-      m = MULTS[Number(mult.value)];
+      m = Math.sign(m) * MULTS[Number(mult.value)];
       put(base * m, false);
+    });
+    neg.addEventListener('change', () => {
+      m = -m;
+      put(-s.strength, false);
     });
     num.addEventListener('change', () => {
       const v = Number(num.value);
@@ -589,14 +594,18 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       // (set elsewhere, e.g. a tool's own brush or a ladder: refit if the slider can't show it)
       fit(s.strength, true);
       input.value = String(Math.min(1, Math.abs(s.strength / m)));
-      mult.value = String(MULTS.findIndex((x) => Math.abs(x - m) < Math.abs(m) * 1e-6));
+      mult.value = String(MULTS.findIndex((x) => Math.abs(x - Math.abs(m)) < Math.abs(m) * 1e-6));
+      neg.checked = m < 0;
       if (document.activeElement !== num) num.value = fmt(s.strength);
       row.classList.toggle('negative', s.strength < 0 || m < 0);
+      multRow.classList.toggle('negative', m < 0);
     });
-    const row = el('label', { class: 'row strength', title: SETTING_HINTS.strength ?? 'strength' }, el('span', {}, 'Strength'), input, mult, num);
+    const row = el('label', { class: 'row strength', title: SETTING_HINTS.strength ?? 'strength' }, el('span', {}, 'Strength'), input, num);
+    const multRow = el('div', { class: 'row strength-mult' }, el('span', {}, 'Multiplier'), mult,
+      el('label', { class: 'check mini-check', title: 'negative strength: pushes away from the target (seeds the opposite way, erase exaggerates, smooth sharpens; Push shoves the other way)' }, neg, 'Negative'));
     ladder(row, { get: () => s.strength, set: put, range: [0, 1], get clamp(): [number, number] { return [-most(), most()]; }, reset: () => { m = 1; put(defaultSettings().strength); } });
     resetTip(row);
-    return row;
+    return el('div', {}, row, multRow);
   }
 
   function select(label: string, key: keyof Settings, options: () => [number | string, string][], onChange?: () => void) {
