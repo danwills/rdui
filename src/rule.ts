@@ -8051,6 +8051,8 @@ export const SAND_DUNES_FADING: RuleDef = {
   rest: [...SAND_DUNES_GUSTY_LONG.rest, 0],
   seed: [...SAND_DUNES_GUSTY_LONG.seed, 0],
   seedNoise: [...SAND_DUNES_GUSTY_LONG.seedNoise, 0],
+  // (the shading alone, as the other dunes: age is for the rule, not the view)
+  view: { ...SAND_VIEW(11), stepsPerFrame: 8 },
   formula: windDunesFormula(true, true, true),
 };
 
