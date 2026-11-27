@@ -32,6 +32,8 @@ export interface Settings {
   stepsPerFrame: number;
   /** The most of the GPU's time the sim takes (0–1): above it, fewer steps run, leaving the rest for the desktop. */
   gpuShare: number;
+  /** The frame rate AFAP aims for. */
+  afapFps: number;
   /** Whether loading a rule or scene sets steps/frame (untick to keep your own). */
   ruleSpeed: boolean;
   /** The Rule menu lists each family's rules (and each rule's scenes) newest first; unticked, oldest first, as it was. */
@@ -127,7 +129,7 @@ export interface Actions {
   setBackground(values: Record<string, number>): void;
   /** Hide/show the panel (the sim alone, centred, fullscreen). */
   toggleUI(mode?: 'whole' | 'fill' | 'split'): void;
-  /** As fast as possible: time a step on the GPU and set steps/frame to what keeps about 30 fps; resolves to the steps set. */
+  /** As fast as possible: time a step on the GPU and set steps/frame to what keeps about s.afapFps; resolves to the steps set. */
   afap(): Promise<number>;
   /** Apply s.featureSize to the running sim. */
   setFeatureSize(): void;
@@ -186,6 +188,7 @@ export function defaultSettings(): Settings {
     running: true,
     stepsPerFrame: 10,
     gpuShare: onPhone() ? 1 : 0.75, // (a phone's GPU is the sim's: held back it's slow)
+    afapFps: 12,
     ruleSpeed: true,
     menuNewest: true,
     wallsReflect: true,
@@ -512,7 +515,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     });
     const row = el('label', { class: 'row steps', title: SETTING_HINTS.stepsPerFrame ?? 'steps/frame' }, el('span', {}, titleCase('steps/frame')), input, mult, num);
     middleReset(row, () => { const v = reset(); fit(v); put(v); });
-    // AFAP: as many steps as keep about 30 frames a second (timed on this device, for this rule and size)
+    // AFAP: as many steps as keep about the chosen frames a second (timed on this device, for this rule and size)
     const afap = button('AFAP', async () => {
       afap.disabled = true;
       afap.textContent = 'timing…';
@@ -524,8 +527,11 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
         afap.disabled = false;
         afap.textContent = 'AFAP';
       }
-    }, 'as fast as possible: times a step on this device and sets steps/frame to as many as keep about 30 frames a second, and the GPU share to 98% (the field runs on a little while it times)', true);
-    return el('div', { class: 'steps-box' }, row, el('div', { class: 'buttons' }, afap));
+    }, 'as fast as possible: times a step on this device and sets steps/frame to as many as keep about the frame rate beside it, and the GPU share to 98% (the field runs on a little while it times)', true);
+    const fps = el('select', { class: 'afap-fps', title: 'the frame rate AFAP aims for' }, ...[6, 12, 24, 30, 60].map((f) => el('option', { value: String(f) }, `${f} fps`)));
+    fps.addEventListener('change', () => (s.afapFps = Number(fps.value)));
+    syncers.push(() => (fps.value = String(s.afapFps)));
+    return el('div', { class: 'steps-box' }, row, el('div', { class: 'buttons' }, afap, fps));
   }
 
   function checkbox(label: string, key: 'ruleSpeed' | 'menuNewest' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'showStats' | 'customWander' | 'customTrueColours', title: string, then?: () => void) {

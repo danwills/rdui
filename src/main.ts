@@ -194,7 +194,7 @@ async function init() {
   let gpuBusy = false, busyMs = 0, busyT = performance.now(), throttle = 1, gpuUse = 0;
   /** As fast as possible: time k steps alone on the GPU (submitted and waited for, the best of two), doubling k till 2k
    *  steps clearly take longer than k (so a submit's fixed cost, and waiting behind other work, drop out of the
-   *  difference); steps/frame set to as many as fill about 30 ms of a frame, for about 30 fps, and the GPU share to
+   *  difference); steps/frame set to as many as fill 90% of a frame at s.afapFps, and the GPU share to
    *  98%. They're real steps: the field runs on a little. */
   async function afap() {
     const cycle = rule.stepCycle ?? 1;
@@ -215,7 +215,7 @@ async function init() {
       t2 = await time(2 * k);
     }
     const perStep = Math.max(1e-5, (t2 - t) / k);
-    s.stepsPerFrame = Math.min(5000, Math.max(cycle, Math.round(30 / perStep / cycle) * cycle));
+    s.stepsPerFrame = Math.min(5000, Math.max(cycle, Math.round((900 / s.afapFps) / perStep / cycle) * cycle));
     s.gpuShare = 0.98;
     ui.sync();
     return s.stepsPerFrame;
