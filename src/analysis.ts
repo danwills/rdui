@@ -1,28 +1,34 @@
 /**
  * Live analysis beside the sim (the split view): the field read back a few times a second
  * (its middle 512² at most) and shown as
- * - a 3D histogram: the joint histogram of two reagents as a height field (log counts),
- *   slowly turning; drag to turn it, tap to step to the next pair of reagents;
+ * - a phase plot (as Ready has): each dot a cell, at its values of three reagents (a turning cloud; drag to turn
+ *   it) or two (flat); the same cells each time, gliding from one reading to the next, so the field's states are
+ *   seen flowing through the space; tap to step to the next reagents;
  * - each reagent's histogram, over a range that follows the field (smoothed 1st-99th percentiles);
  * - the shown reagent's mean and spread over time.
  */
 import type { Simulation } from './sim';
 
-const BINS = 40, HBINS = 64, HISTORY = 240, READ_MS = 300;
+const DOTS = 16000, HBINS = 64, HISTORY = 240, READ_MS = 300;
 
 export interface AnalysisSource {
   sim(): Simulation;
   reagents(): string[];
-  /** The reagent the main view shows (the 3D histogram's first axis to start with). */
+  /** The reagent the main view shows (the phase plot's first axis to start with). */
   shown(): number;
 }
 
 export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
   const g = canvas.getContext('2d')!;
   let raf = 0, timer = 0, busy = false, stopped = false;
-  let pair: [number, number] | null = null;
-  let yaw = 0.7, pitch = 0.55, spinning = true;
-  let joint: Float32Array | null = null; // BINS², log counts normalised to 0..1
+  let axes: number[] | null = null; // the phase plot's reagents: three (or two, for a two-reagent rule)
+  let yaw = 0.7, pitch = 0.45, spinning = true;
+  // the dots: the same cells each reading (picked once per region size), each at -1..1 on each axis, the last
+  // reading (from) and this one (to), eased between over a reading's time
+  let cells: Uint32Array | null = null, cellsFor = '';
+  let from: Float32Array | null = null, to: Float32Array | null = null, readT = 0;
+  // the phase plot's axes span all the dots (rare states are what it's for), smoothed so they don't jump
+  let spans: [number, number][] = [];
   let hists: Float32Array[] = [];
   let ranges: [number, number][] = [];
   const history: { mean: number; sd: number }[] = [];
@@ -38,10 +44,7 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
       const { state } = await sim.readRegion((sim.width - w) >> 1, (sim.height - h) >> 1, w, h);
       if (stopped) return;
       const S4 = sim.layout.S * 4, n = w * h;
-      if (!pair || pair[0] >= R.length || pair[1] >= R.length) {
-        const a = Math.min(src.shown(), R.length - 1);
-        pair = [a, R.length > 1 ? (a + 1) % R.length : a];
-      }
+      if (!axes || axes.some((r) => r >= R.length)) axes = axesFrom(Math.min(src.shown(), R.length - 1), R.length);
       // ranges: smoothed percentiles from a strided sample
       const stride = Math.max(1, Math.floor(n / 20000));
       const next: [number, number][] = R.map((_, r) => {
@@ -67,16 +70,30 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
         const m = Math.max(...hs) || 1;
         return hs.map((c) => Math.sqrt(c / m));
       });
-      // joint histogram of the pair
-      const [ra, rb] = pair, [alo, ahi] = ranges[ra], [blo, bhi] = ranges[rb];
-      const j = new Float32Array(BINS * BINS);
-      for (let i = 0; i < n; i++) {
-        const x = Math.floor(((state[i * S4 + ra] - alo) / (ahi - alo)) * BINS);
-        const y = Math.floor(((state[i * S4 + rb] - blo) / (bhi - blo)) * BINS);
-        if (x >= 0 && x < BINS && y >= 0 && y < BINS) j[y * BINS + x]++;
+      // the dots: each picked cell's place on each axis, by the (smoothed) ranges
+      if (cellsFor !== `${w}x${h}`) {
+        let seed = 12345;
+        cells = Uint32Array.from({ length: Math.min(DOTS, n) }, () => ((seed = (seed * 1664525 + 1013904223) >>> 0) % n));
+        cellsFor = `${w}x${h}`;
+        from = to = null;
       }
-      const top = Math.log1p(Math.max(...j)) || 1;
-      joint = j.map((c) => Math.log1p(c) / top);
+      const dots = new Float32Array(cells!.length * 3);
+      const span = axes!.map((r): [number, number] => {
+        let lo = Infinity, hi = -Infinity;
+        for (const c of cells!) { const v = state[c * S4 + r]; if (Number.isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+        if (!(hi - lo > 1e-9 * Math.max(1, Math.abs(hi)))) [lo, hi] = [lo - 0.5, hi + 0.5];
+        const pad = (hi - lo) * 0.04;
+        return [lo - pad, hi + pad];
+      });
+      // (out at once to take in a new extreme, back in gently)
+      spans = span.map((sp, k) => (spans[k] ? [Math.min(sp[0], spans[k][0] * 0.8 + sp[0] * 0.2), Math.max(sp[1], spans[k][1] * 0.8 + sp[1] * 0.2)] : sp));
+      cells!.forEach((c, i) => axes!.forEach((r, k) => {
+        const [lo, hi] = spans[k], v = state[c * S4 + r];
+        dots[i * 3 + k] = Number.isFinite(v) ? ((v - lo) / (hi - lo)) * 2 - 1 : NaN;
+      }));
+      from = to && to.length === dots.length ? eased() : dots;
+      to = dots;
+      readT = performance.now();
       // mean and spread of the shown reagent
       const r0 = Math.min(src.shown(), R.length - 1);
       let sum = 0, sq = 0, cnt = 0;
@@ -95,6 +112,18 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
     } finally {
       busy = false;
     }
+  }
+
+  /** Three reagents from `a` on (two if that's all there are). */
+  function axesFrom(a: number, count: number) {
+    return count >= 3 ? [a, (a + 1) % count, (a + 2) % count] : count === 2 ? [a, 1 - a] : [a];
+  }
+  /** The dots where they are now: from the last reading towards this one. */
+  function eased() {
+    if (!from || !to) return to!;
+    const u = Math.min(1, (performance.now() - readT) / READ_MS), out = new Float32Array(to.length);
+    for (let i = 0; i < to.length; i++) out[i] = from[i] + (to[i] - from[i]) * u;
+    return out;
   }
 
   function colour(t: number) {
@@ -118,73 +147,71 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
     g.fillRect(0, 0, W, H);
     g.font = '10px ui-monospace, monospace';
     g.textBaseline = 'top';
-    if (!joint || !pair) {
+    if (!to || !axes) {
       g.fillStyle = '#888';
       g.fillText('reading the field…', 8, 8);
       return;
     }
-    // layout: the 3D histogram on the larger side, the strips beside or below it
+    // layout: the phase plot on the larger side, the strips beside or below it
     const wide = W > H * 1.3;
     const box = wide ? { x: 0, y: 0, w: W * 0.6, h: H } : { x: 0, y: 0, w: W, h: H * 0.62 };
     const strips = wide ? { x: W * 0.6, y: 0, w: W * 0.4, h: H } : { x: 0, y: H * 0.62, w: W, h: H * 0.38 };
-    draw3d(box);
+    drawPhase(box);
     drawStrips(strips);
   }
 
-  function draw3d(b: { x: number; y: number; w: number; h: number }) {
-    const j = joint!, [ra, rb] = pair!;
+  function drawPhase(b: { x: number; y: number; w: number; h: number }) {
+    const pts = eased(), A = axes!, flat = A.length < 3;
+    const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toPrecision(2));
+    // world: each axis -1..1 (a cube, or for two reagents a square seen face on)
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
-    // the floor's diagonal (2√2) plus the height must fit the box whichever way it's turned
-    const sc = Math.min(b.w / 3.1, b.h / (2.9 * Math.sin(pitch) + 1.2 * Math.cos(pitch) + 0.3));
-    const ox = b.x + b.w / 2, oy = b.y + b.h * 0.5 + sc * (1.1 * Math.cos(pitch) - 0.05) / 2;
-    // world: x, y in [-1, 1] (the two reagents), z = height in [0, 1.1]
-    const proj = (x: number, y: number, z: number): [number, number, number] => {
+    const sc = flat ? Math.min(b.w, b.h - 28) / 2.4 : Math.min(b.w, b.h - 20) / 3.7;
+    const ox = b.x + b.w / 2, oy = b.y + 14 + (b.h - 14) / 2;
+    const proj = (x: number, y: number, z: number): [number, number] => {
+      if (flat) return [ox + x * sc, oy - y * sc];
+      // turned about the upright (z) axis, then tilted towards the viewer
       const X = x * cy - y * sy, Y = x * sy + y * cy;
-      return [ox + X * sc, oy + (Y * sp - z * cp) * sc, Y * cp + z * sp];
+      return [ox + X * sc, oy + (Y * sp - z * cp) * sc];
     };
-    const at = (i: number, k: number) => j[k * BINS + i] * 1.1;
-    const P = (i: number, k: number) => proj((i / (BINS - 1)) * 2 - 1, (k / (BINS - 1)) * 2 - 1, at(i, k));
-    // floor frame
+    // the frame: the square, or the cube's edges
     g.strokeStyle = 'rgba(140,160,190,0.35)';
     g.lineWidth = 1;
     g.beginPath();
-    for (const [x0, y0, x1, y1] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]]) {
-      const a = proj(x0, y0, 0), c = proj(x1, y1, 0);
+    const edges: [number[], number[]][] = flat
+      ? [[[-1, -1, 0], [1, -1, 0]], [[1, -1, 0], [1, 1, 0]], [[1, 1, 0], [-1, 1, 0]], [[-1, 1, 0], [-1, -1, 0]]]
+      : [];
+    if (!flat) for (const u of [-1, 1]) for (const v of [-1, 1]) {
+      edges.push([[-1, u, v], [1, u, v]], [[u, -1, v], [u, 1, v]], [[u, v, -1], [u, v, 1]]);
+    }
+    for (const [p, q] of edges) {
+      const a = proj(p[0], p[1], p[2]), c = proj(q[0], q[1], q[2]);
       g.moveTo(a[0], a[1]);
       g.lineTo(c[0], c[1]);
     }
     g.stroke();
-    // the surface as quads, painted back to front
-    const quads: { d: number; pts: [number, number][]; v: number }[] = [];
-    for (let k = 0; k < BINS - 1; k++) for (let i = 0; i < BINS - 1; i++) {
-      const v = (j[k * BINS + i] + j[k * BINS + i + 1] + j[(k + 1) * BINS + i] + j[(k + 1) * BINS + i + 1]) / 4;
-      if (v <= 0.001) continue;
-      const a = P(i, k), c = P(i + 1, k), d = P(i + 1, k + 1), e = P(i, k + 1);
-      quads.push({ d: a[2] + c[2] + d[2] + e[2], pts: [[a[0], a[1]], [c[0], c[1]], [d[0], d[1]], [e[0], e[1]]], v });
+    // the dots, added up (where many cells share a state it glows), coloured by the third axis (flat: one colour)
+    g.globalCompositeOperation = 'lighter';
+    const d = Math.max(1.2, Math.min(2.2, sc / 90));
+    for (let i = 0; i < pts.length; i += 3) {
+      const x = pts[i], y = pts[i + 1], z = flat ? 0 : pts[i + 2];
+      if (!(Math.abs(x) <= 1.05 && Math.abs(y) <= 1.05 && Math.abs(z) <= 1.05)) continue;
+      const [px, py] = proj(x, y, z);
+      g.fillStyle = flat ? 'rgba(102,200,255,0.35)' : colour(0.15 + 0.85 * (z + 1) / 2).replace('rgb', 'rgba').replace(')', ',0.4)');
+      g.fillRect(px - d / 2, py - d / 2, d, d);
     }
-    quads.sort((p, q) => q.d - p.d);
-    for (const q of quads) {
-      g.fillStyle = colour(q.v);
-      g.strokeStyle = 'rgba(0,0,0,0.35)';
-      g.beginPath();
-      g.moveTo(q.pts[0][0], q.pts[0][1]);
-      for (let m = 1; m < 4; m++) g.lineTo(q.pts[m][0], q.pts[m][1]);
-      g.closePath();
-      g.fill();
-      g.stroke();
-    }
-    // axis labels at the floor's edges
-    const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toPrecision(2));
-    const lab = (x: number, y: number, s: string) => {
-      const p = proj(x, y, 0);
-      g.fillStyle = 'rgba(255,255,255,0.75)';
+    g.globalCompositeOperation = 'source-over';
+    // the axes: each reagent's name at its far end, its range from the near corner
+    const lab = (p: [number, number], s: string) => {
+      g.fillStyle = 'rgba(255,255,255,0.8)';
       g.fillText(s, p[0] + 3, p[1] + 2);
     };
-    lab(1.1, -1, `${names[ra]} →`);
-    lab(-1, 1.1, `${names[rb]} →`);
-    lab(-1, -1, `${fmt(ranges[ra][0])},${fmt(ranges[rb][0])}`);
+    const ends = [[1.12, -1, -1], [-1, 1.12, -1], [-1, -1, 1.12]];
+    A.forEach((r, k) => {
+      const e = flat ? (k ? [-1.05, 1.08, 0] : [1.02, -1.08, 0]) : ends[k];
+      lab(proj(e[0], e[1], e[2]), `${names[r]} ${fmt(spans[k][0])}…${fmt(spans[k][1])}`);
+    });
     g.fillStyle = 'rgba(255,255,255,0.6)';
-    g.fillText(`3D histogram: ${names[ra]} × ${names[rb]} (log counts) · drag to turn, tap for the next pair`, b.x + 6, b.y + 4);
+    g.fillText(`phase plot: ${A.map((r) => names[r]).join(' × ')} (each dot a cell) · ${flat ? '' : 'drag to turn, '}tap for the next reagents`, b.x + 6, b.y + 4);
   }
 
   function drawStrips(b: { x: number; y: number; w: number; h: number }) {
@@ -195,7 +222,7 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
       const y = b.y + gap + r * (rh + gap), x = b.x + 6, w = b.w - 12;
       g.fillStyle = '#151820';
       g.fillRect(x, y, w, rh);
-      g.fillStyle = r === pair![0] || r === pair![1] ? '#66d9ff' : '#7f8aa0';
+      g.fillStyle = axes!.includes(r) ? '#66d9ff' : '#7f8aa0';
       const bw = w / HBINS;
       for (let i = 0; i < HBINS; i++) g.fillRect(x + i * bw, y + rh * (1 - hs[i]), Math.max(1, bw - 0.5), rh * hs[i]);
       g.fillStyle = 'rgba(255,255,255,0.7)';
@@ -229,12 +256,12 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
   }
 
   function frame() {
-    if (spinning) yaw += 0.004;
+    if (spinning && axes && axes.length >= 3) yaw += 0.004;
     draw();
     raf = requestAnimationFrame(frame);
   }
 
-  // drag turns the 3D histogram; a tap steps to the next pair of reagents
+  // drag turns the phase plot; a tap steps to the next reagents
   let drag: { x: number; y: number; moved: boolean } | null = null;
   const down = (e: PointerEvent) => {
     canvas.setPointerCapture(e.pointerId);
@@ -252,15 +279,11 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
     drag.y = e.clientY;
   };
   const up = () => {
-    if (drag && !drag.moved && pair && names.length > 1) {
-      // all ordered pairs of different reagents in turn
-      let [a, b] = pair;
-      b = (b + 1) % names.length;
-      if (b === a) {
-        a = (a + 1) % names.length;
-        b = (a + 1) % names.length;
-      }
-      pair = [a, b];
+    if (drag && !drag.moved && axes && names.length > 1) {
+      // the next three in turn (or, for two, the other way round)
+      axes = axesFrom((axes[0] + 1) % names.length, names.length);
+      from = to = null;
+      spans = [];
       void sample();
     }
     drag = null;
@@ -274,9 +297,11 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
   timer = window.setInterval(() => void sample(), READ_MS);
   raf = requestAnimationFrame(frame);
   return {
-    /** The rule changed: start the pair and history again. */
+    /** The rule changed: start the axes, dots and history again. */
     reset() {
-      pair = null;
+      axes = null;
+      from = to = null;
+      spans = [];
       ranges = [];
       history.length = 0;
     },
