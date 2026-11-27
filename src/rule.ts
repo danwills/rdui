@@ -374,7 +374,7 @@ export function compileRule(rule: RuleDef): CompiledRule {
   const memSlot = mem ? layout.paramNames.indexOf(mem.param) : -1;
   const known = new Set<string>([
     ...R, ...R.map((r) => `delta_${r}`), ...R.flatMap((r) => [...STENCIL_OPS, 'kernel', 'wave_cos', 'wave_sin', 'heat1', 'heat2', 'kse', 'flow_x', 'flow_y', 'poisson', 'advect', 'advect_cubic', 'sample'].map((op) => `${op}_${r}`)),
-    ...rule.params.map((p) => p.name), 'timestep', 'time',
+    ...rule.params.map((p) => p.name), 'timestep', 'time', 'cell_dx',
   ]);
   const { code, used } = translateFormula(rule.formula, known);
 
@@ -521,6 +521,7 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     memSlot > 0 ? slotRef('params', `${cell} * ${P}u`, memSlot) : `g[${(rule.params.findIndex((p) => p.name === mem!.param)) >> 2}].${COMP[rule.params.findIndex((p) => p.name === mem!.param) & 3]}`;
 
   add(`  let rd_dx = ${dxExpr} * info.cell;`);
+  if (used.has('cell_dx')) add('  let v_cell_dx = rd_dx;'); // (a formula's own stencils: dx at the feature size)
   if (lapSlots.size && spectral) {
     for (const k of lapSlots) add(`  let L${k} = lapK[sb + ${k}u];`);
   } else if (lapSlots.size) {
@@ -7981,7 +7982,145 @@ export const SAND_DUNES_GUSTY_LONG: RuleDef = {
   initial: broadGusts(SAND_DUNES_GUSTY.initial!),
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE, SCHRODINGER_SMOKE_PAIRS, SCHRODINGER_SMOKE_SWARM, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, SAND_RIPPLES, SAND_DUNES, SAND_DUNES_DEEPER, SAND_RIPPLES_WIND, SAND_RIPPLES_LONG, SAND_DUNES_WIND, SAND_DUNES_GUSTY, SAND_DUNES_GUSTY_LONG, SCHRODINGER_SMOKE_LEAPFROG_SWARM];
+// --- Complex Ginzburg–Landau
+
+/** The 9-point Laplacian of a reagent written out, for a rule whose FFT is busy (cell_dx: dx at the feature size). */
+const cglLap = (X: string) => `(4.0*(north_${X} + south_${X} + east_${X} + west_${X}) + north_east_${X} + north_west_${X} + south_east_${X} + south_west_${X} - 20.0*${X})/(6.0*cell_dx*cell_dx)`;
+/** The phase as 0–1 round the wheel and the size, for the view. */
+const CGL_SHOW = `delta_phase = (atan2(im, re)/6.2831853 + 0.5 - phase)/timestep;
+delta_amp = (sqrt(re*re + im*im) - amp)/timestep;`;
+const CGL_HINTS: Record<string, string> = {
+  timestep: 'Time per step: stepped directly, so keep it under about 0.3/(1 + b²) or the finest ripples blow up',
+  dx: 'Cell size: smaller makes every feature more cells across (and needs a smaller timestep)',
+  b: 'Dispersion: how much spreading also turns the phase (0: plain diffusion). With c it decides the state: 1 + b·c below 0 and plane waves break up (Benjamin–Feir)',
+  c: 'Nonlinear frequency: how much faster a weaker oscillation turns (0: all turn alike). Sets how tightly spirals wind',
+};
+
+/**
+ * The complex Ginzburg–Landau equation, A_t = A + (1 + ib)∇²A − (1 + ic)|A|²A, A = re + i·im: every cell an
+ * oscillator that grows to size 1, its frequency shifted by c with its size, coupled to its neighbours by complex
+ * diffusion. Stepped directly (Euler), as Ready does.
+ */
+function cgl(o: { name: string; description: string; b: number; c: number; initial: Overlay[]; timestep?: number; stepsPerFrame?: number }): RuleDef {
+  return {
+    name: o.name,
+    description: o.description,
+    reagents: ['re', 'im', 'phase', 'amp'],
+    params: [
+      { name: 'timestep', value: o.timestep ?? 0.05, min: 0.001, max: 0.3 },
+      { name: 'dx', value: 1, min: 0.25, max: 4 },
+      { name: 'b', value: o.b, min: -4, max: 4 },
+      { name: 'c', value: o.c, min: -4, max: 4 },
+    ],
+    paramHints: CGL_HINTS,
+    paintable: ['b', 'c'],
+    explore: ['b', 'c'],
+    formula: `float lr = laplacian_re;
+float li = laplacian_im;
+float A2 = re*re + im*im;
+delta_re = re + lr - b*li - A2*(re - c*im);
+delta_im = im + li + b*lr - A2*(im + c*re);
+${CGL_SHOW}`,
+    size: { width: 256, height: 256 },
+    rest: [0, 0, 0.5, 0],
+    seed: [1, 0, null, null],
+    seedNoise: [0.5, 0.5, 0, 0],
+    initial: o.initial,
+    // the phase round a cyclic map: a vortex is where every colour meets
+    view: { reagent: 'phase', low: 0, high: 1, palette: 145, stepsPerFrame: o.stepsPerFrame ?? 20 },
+  };
+}
+/** A faint noise in re and im everywhere: the oscillators start at random phases, and defects form where they disagree. */
+const cglNoise = (amp: number): Overlay[] => (['re', 'im'] as const).map((chem) => ({ chem, op: 'overwrite', fill: { type: 'white_noise', low: -amp, high: amp }, shape: { type: 'everywhere' } }));
+/** All in step (A = 1), faintly roughened: a plane state with no defects, to see whether it holds. */
+const cglUniform = (amp: number): Overlay[] => [
+  { chem: 're', op: 'overwrite', fill: { type: 'smooth_noise', low: 1 - amp, high: 1 + amp, size: 24 }, shape: { type: 'everywhere' } },
+  { chem: 'im', op: 'overwrite', fill: { type: 'smooth_noise', low: -amp, high: amp, size: 24 }, shape: { type: 'everywhere' } },
+];
+
+export const CGL_SPIRALS = cgl({
+  name: 'Complex Ginzburg–Landau: spirals',
+  description: 'Every cell an oscillator, all started at random phases. Where neighbours disagree the phase winds round a point (a defect, '
+    + 'where the size drops to 0: every colour meets there), and each defect becomes a spiral, sending out waves. The spirals grow until '
+    + 'they meet along shock lines and settle into a patchwork. b = 0, c = 1: 1 + b·c well above 0, so the waves are stable. '
+    + 'Seed paints a disc in step; try c = 0 (no spirals: defects just pair off and vanish) or higher c (tighter spirals).',
+  b: 0, c: 1, initial: cglNoise(0.02),
+});
+export const CGL_DEFECT_TURBULENCE = cgl({
+  name: 'Complex Ginzburg–Landau: defect turbulence',
+  description: 'Past the Benjamin–Feir line (1 + b·c < 0, here b = 2, c = −1.2): a plane wave is unstable, spirals break up as they '
+    + 'form, and defects are born in pairs and die in pairs for ever, a never-settling sea of them. Raise c toward −0.5 to calm it '
+    + '(through phase turbulence), or paint calmer b, c in a patch with the Params tool.',
+  b: 2, c: -1.2, initial: cglNoise(0.02), timestep: 0.04,
+});
+export const CGL_PHASE_TURBULENCE = cgl({
+  name: 'Complex Ginzburg–Landau: phase turbulence',
+  description: 'Just past the Benjamin–Feir line (b = 2, c = −0.7: 1 + b·c = −0.4), started all in step: the phase wrinkles and '
+    + 'churns for ever but never winds round a point, so no defects form and the size stays near 1 (a turbulence of the phase alone). '
+    + 'Lower c past about −0.85 and defects break in. View amp to see how little the size moves.',
+  b: 2, c: -0.7, initial: cglUniform(0.25), timestep: 0.04,
+});
+export const CGL_FROZEN = cgl({
+  name: 'Complex Ginzburg–Landau: frozen spirals',
+  description: 'Spirals that wind so tightly (b = 0, c = 1.8) that their waves barely reach their neighbours: once they have met, '
+    + 'the defects stop moving and the patchwork freezes into a "vortex glass", each cell of it a spiral turning in place.',
+  b: 0, c: 1.8, initial: cglNoise(0.02),
+});
+
+/**
+ * Between the Schrödinger (Gross–Pitaevskii) equation and Ginzburg–Landau: iA_t = −½∇²A + g(|A|² − 1)A, a superfluid whose
+ * vortices last and drift round each other, plus loss·(A + ∇²A − |A|²A), the growth, smoothing and saturation that make
+ * it CGL (with b = 1/(2·loss), c = g/loss). The free step exact (FFT), the rest directly.
+ */
+export const CGL_FROM_SCHRODINGER: RuleDef = {
+  name: 'Schrödinger to Ginzburg–Landau',
+  description: 'One slider, loss, from a superfluid to an oscillating medium. At loss 0 this is the Gross–Pitaevskii equation (as '
+    + 'Schrödinger\'s Smoke, with sound): its vortices (where every colour meets) never fade, and drift round and past each other, '
+    + 'pairs gliding. Turn loss up and the field gains growth, smoothing and saturation: the vortices become spirals sending out '
+    + 'waves, and opposite ones that meet annihilate. At loss 1 it is Ginzburg–Landau with b = 0.5, c = g.',
+  reagents: ['re', 'im', 'phase', 'amp'],
+  laplacian: 'spectral',
+  params: [
+    { name: 'timestep', value: 0.05, min: 0.001, max: 0.2 },
+    { name: 'dx', value: 0.5, min: 0.25, max: 2 },
+    { name: 'loss', value: 0, min: 0, max: 1 },
+    { name: 'g', value: 1, min: 0, max: 4 },
+  ],
+  paramHints: {
+    timestep: 'Time per step: the free step is exact, the loss is stepped directly (keep loss·timestep under about 0.1·dx²)',
+    dx: 'Cell size: smaller makes every vortex core more cells across',
+    loss: 'From 0, a superfluid (vortices drift for ever), to 1, Ginzburg–Landau (vortices become spirals): growth, smoothing and saturation',
+    g: 'Interaction: how strongly the size is held at 1 (vortex cores narrower, sound faster); in CGL terms c = g/loss',
+  },
+  paintable: ['loss'],
+  explore: ['loss', 'g'],
+  formula: `// the free step, e^{i∇²dt/2}, exact
+float P = wave_cos_re + wave_sin_im;
+float Q = wave_cos_im - wave_sin_re;
+// the loss: growth, smoothing and saturation, loss·(A + ∇²A − |A|²A)
+float A2 = re*re + im*im;
+P += timestep*loss*(re + ${cglLap('re')} - A2*re);
+Q += timestep*loss*(im + ${cglLap('im')} - A2*im);
+// the interaction, a turn by −g(|A|² − 1)·dt
+float ph = -g*(P*P + Q*Q - 1.0)*timestep;
+float P2 = P*cos(ph) - Q*sin(ph);
+float Q2 = P*sin(ph) + Q*cos(ph);
+delta_re = (P2 - re)/timestep;
+delta_im = (Q2 - im)/timestep;
+${CGL_SHOW}`,
+  size: { width: 256, height: 256 },
+  rest: [1, 0, 0.5, 1],
+  seed: [1, 0, null, null],
+  seedNoise: [0, 0, 0, 0],
+  initial: (['cos', 'sin'] as const).map((part, k): Overlay => ({
+    chem: k ? 'im' : 're', op: 'overwrite', shape: { type: 'everywhere' },
+    // two pairs gliding toward each other, and a few lone vortices of each sign
+    fill: { type: 'vortices', amp: 1, core: 3, part, list: [[0.2, 0.42, 1], [0.2, 0.58, -1], [0.8, 0.45, -1], [0.8, 0.55, 1], [0.5, 0.2, 1], [0.35, 0.8, -1], [0.65, 0.82, 1], [0.5, 0.65, -1]] },
+  })),
+  view: { reagent: 'phase', low: 0, high: 1, palette: 145, stepsPerFrame: 20 },
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE, SCHRODINGER_SMOKE_PAIRS, SCHRODINGER_SMOKE_SWARM, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, SAND_RIPPLES, SAND_DUNES, SAND_DUNES_DEEPER, SAND_RIPPLES_WIND, SAND_RIPPLES_LONG, SAND_DUNES_WIND, SAND_DUNES_GUSTY, SAND_DUNES_GUSTY_LONG, SCHRODINGER_SMOKE_LEAPFROG_SWARM, CGL_SPIRALS, CGL_DEFECT_TURBULENCE, CGL_PHASE_TURBULENCE, CGL_FROZEN, CGL_FROM_SCHRODINGER];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -7998,6 +8137,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
   ['Lightning', [LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6]],
+  ['Complex Ginzburg–Landau', [CGL_SPIRALS, CGL_FROZEN, CGL_PHASE_TURBULENCE, CGL_DEFECT_TURBULENCE, CGL_FROM_SCHRODINGER]],
   ['Mud cracks', [MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12]],
 ];
 
