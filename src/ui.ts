@@ -1076,12 +1076,15 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const TAB_KEY = 'rdui.panelTab';
   const sections = [...root.querySelectorAll<HTMLElement>(':scope > section')];
   const names = sections.map((sec) => sec.querySelector('h2')?.textContent ?? '');
-  let current = names[0];
+  let current = names.includes('Rule') ? 'Rule' : names[0];
   try { const t = localStorage.getItem(TAB_KEY); if (t && names.includes(t)) current = t; } catch { /* no storage */ }
   // (short labels, so they fit one row on a phone)
   const SHORT: Record<string, string> = { Simulation: 'Sim', Stamps: 'Stamp', Probes: 'Probe', Record: 'Rec' };
   const tabButtons = names.map((n) => button(SHORT[n] ?? n, () => showTab(n), `show ${n}`));
-  const tabBar = el('nav', { class: 'tabs' }, ...tabButtons);
+  // the tabs in this order (the sections' own order otherwise), the first shown until another is chosen
+  const ORDER = ['Rule', 'View', 'Simulation', 'Tool', 'Record', 'Stamps', 'Probes'];
+  const rank = (n: string) => (ORDER.includes(n) ? ORDER.indexOf(n) : ORDER.length);
+  const tabBar = el('nav', { class: 'tabs' }, ...tabButtons.map((b, i) => ({ b, i })).sort((p, q) => rank(names[p.i]) - rank(names[q.i]) || p.i - q.i).map(({ b }) => b));
   // the header and the tabs stay at the top as the panel scrolls
   const header = root.querySelector<HTMLElement>(':scope > header');
   if (header) {
