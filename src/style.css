@@ -192,6 +192,11 @@ footer { border-top: 1px solid var(--line); padding-top: 8px; }
   #app { flex-direction: column; }
   #stage { flex: 0 0 auto; height: min(100vw, 62vh); }
   #panel { width: 100%; flex: 1; min-height: 0; border-left: 0; border-top: 1px solid var(--line); }
+  /* the header on one line (the subtitle cut short rather than wrapping), the tabs spread along one row */
+  #panel header { align-items: center; }
+  #panel header .sub:not(.build) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 1 auto; }
+  #panel .tabs { flex-wrap: nowrap; }
+  #panel .tabs button { flex: 1 1 auto; padding: 3px 4px; min-width: 0; }
 }
 
 /* hidden UI: just the sim, centred (or, filling, covering the stage and cropped); Back or Esc brings the panel back */
@@ -279,7 +284,10 @@ header button.narrow span { display: inline-block; transform: scaleX(0.5); margi
 .explore-spark { width: 72px; height: 18px; display: block; }
 .explore-over { right: auto; bottom: auto; }
 .custom-tools { display: flex; align-items: center; gap: 6px; }
-.tabs { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0; margin-bottom: 4px; background: var(--panel, var(--bg)); border-bottom: 1px solid var(--line); }
+/* the header and tabs, kept at the top of the scrolling panel (over its top padding too, so nothing shows above) */
+.panel-top { position: sticky; top: -12px; z-index: 5; margin: -12px -14px 4px; padding: 12px 14px 0; background: var(--panel, var(--bg)); border-bottom: 1px solid var(--line); }
+.panel-top header { margin-bottom: 2px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0 6px; }
 .tabs button { padding: 3px 8px; font-size: 12px; }
 .tabs button.active { border-color: var(--accent); color: var(--accent); }
 section > h2 { display: none; }

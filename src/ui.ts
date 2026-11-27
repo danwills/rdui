@@ -1078,9 +1078,18 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   const names = sections.map((sec) => sec.querySelector('h2')?.textContent ?? '');
   let current = names[0];
   try { const t = localStorage.getItem(TAB_KEY); if (t && names.includes(t)) current = t; } catch { /* no storage */ }
-  const tabButtons = names.map((n) => button(n, () => showTab(n), `show ${n}`));
+  // (short labels, so they fit one row on a phone)
+  const SHORT: Record<string, string> = { Simulation: 'Sim', Stamps: 'Stamp', Probes: 'Probe', Record: 'Rec' };
+  const tabButtons = names.map((n) => button(SHORT[n] ?? n, () => showTab(n), `show ${n}`));
   const tabBar = el('nav', { class: 'tabs' }, ...tabButtons);
-  root.querySelector(':scope > header')?.after(tabBar);
+  // the header and the tabs stay at the top as the panel scrolls
+  const header = root.querySelector<HTMLElement>(':scope > header');
+  if (header) {
+    const top = el('div', { class: 'panel-top' });
+    header.before(top);
+    top.append(header, tabBar);
+  }
+  else root.prepend(tabBar);
   function showTab(n: string) {
     current = n;
     try { localStorage.setItem(TAB_KEY, n); } catch { /* no storage */ }
