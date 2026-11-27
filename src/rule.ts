@@ -885,7 +885,7 @@ delta_b = D * D_b * laplacian_b + a*b*b - (F + k)*b;`,
     { chem: 'a', op: 'overwrite', fill: { type: 'constant', value: 0.5 }, shape: { type: 'spots', count: 12, minSize: 3, maxSize: 8, seed: 1 } },
     { chem: 'b', op: 'overwrite', fill: { type: 'white_noise', low: 0.25, high: 0.35 }, shape: { type: 'spots', count: 12, minSize: 3, maxSize: 8, seed: 1 } },
   ],
-  view: { reagent: 'b', low: 0, high: 0.4 },
+  view: { reagent: 'b', low: 0, high: 0.4, customGamma: 1 }, // (exponent 1: Dan's pick, the spots far clearer)
 };
 
 /** Dan Wills' Gray-Scott with History and Wave, "moreLifelike" parameters, from Ready. */
@@ -7814,7 +7814,7 @@ export const SAND_DUNES: RuleDef = {
     { chem: 'r', op: 'overwrite', fill: { type: 'white_noise', low: -0.5, high: 0.5 }, shape: { type: 'everywhere' } },
     { chem: 'q', op: 'overwrite', fill: { type: 'constant', value: 0.05 }, shape: { type: 'everywhere' } },
     { chem: 'tau', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'everywhere' } },
-    { chem: 'g', op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 48, octaves: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'g', op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 48, octaves: 1, sizeParam: 'gust_size', sizeYParam: 'gust_size_y' }, shape: { type: 'everywhere' } },
     { chem: 'n', op: 'overwrite', fill: { type: 'white_noise', low: 0, high: 1 }, shape: { type: 'everywhere' } },
   ],
   view: { ...SAND_VIEW(8), stepsPerFrame: 8 },
@@ -7881,7 +7881,7 @@ hm = hmn;
 clock = clock + 1.0;`;
 }
 
-function windDunesFormula(deeper: boolean, speed: boolean) {
+function windDunesFormula(deeper: boolean, speed: boolean, fade = false) {
   const shadow = Array.from({ length: 12 }, (_, n) => `top = max(top, sample_H(${-2 * (n + 1)}.0*wx, ${-2 * (n + 1)}.0*wy) - ${2 * (n + 1)}.0/shadow);`).join('\n');
   const aval = (nb: string) => `${nb} - H - clamp(${nb} - H, -repose, repose)`;
   return `${WIND_HEAD}${speed ? `// the wind's strength, from the slow noise ws (drifting by with the weather)
@@ -7915,7 +7915,26 @@ float dr = land - flux + ${windCreep('r')};
 float rn = r + min(taun, 2.0)*dr + s_east*(east_r - r) + s_west*(west_r - r) + s_north*(north_r - r) + s_south*(south_r - r);
 rn *= 1.0 - 0.004*(1.0 - smoothstep(0.0, 0.5, taun));
 rn += ripple_seed*(sample_n(0.618*clock, 0.382*clock) - 0.5)*smoothstep(0.0, 0.3, taun);
-`}${SAND_SHADE(true)}H = Hn;
+`}${fade ? `// --- dunes that fade: the sand's age, carried with it (mixed by mass as the dune flux moves it), counts up while
+// it stands in relief above or below the local level Hb (a ring of samples fade_reach out); past its lifetime (dune_life,
+// varied smoothly from place to place) the sand is levelled toward Hb, so the dune melts into a flat; once flat its age
+// winds back down, so dunes can grow there again
+float Hb = 0.0;
+${Array.from({ length: 8 }, (_, k) => `Hb += sample_H(${Math.cos((k * Math.PI) / 4).toFixed(4)}*fade_reach, ${Math.sin((k * Math.PI) / 4).toFixed(4)}*fade_reach);`).join('\n')}
+Hb = 0.125*Hb;
+float stay = max(H - q, 0.0);
+float came = max(qup, 0.0);
+float age_n = (age*stay + sample_age(-wx, -wy)*came)/max(stay + came, 1e-4);
+float rel = abs(H - Hb);
+float standing = smoothstep(0.5*fade_relief, fade_relief, rel);
+float life = dune_life*(0.5 + g);
+float old = smoothstep(life, 1.25*life, age_n);
+// (and in a calm, whatever its age: the dunes the calm passes over melt, and ripples take the flat)
+float calm = 1.0 - smoothstep(calm_wind - 0.2, calm_wind + 0.2, ws_here);
+Hn += (fade_rate*old + calm_level*calm)*(Hb - H);
+age_n += standing - (1.0 - standing)*0.001*age_n;
+age = age_n;
+` : ''}${SAND_SHADE(true)}H = Hn;
 q = qn;
 tau = taun;
 r = rn;
@@ -7995,6 +8014,39 @@ export const SAND_DUNES_GUSTY_LONG: RuleDef = {
   description: 'Sand dunes (ever deeper, gusty) with long-crested ripples: strong creep along the crests and gentle, broad gusts.',
   params: longCrests(SAND_DUNES_GUSTY.params),
   initial: broadGusts(SAND_DUNES_GUSTY.initial!),
+};
+
+/**
+ * Gusty, long ripples with dunes that come and go: each dune's sand carries an age (see windDunesFormula's fade), and
+ * past its lifetime the dune is levelled into a flat, which takes ripples until dunes grow there again.
+ */
+export const SAND_DUNES_FADING: RuleDef = {
+  ...SAND_DUNES_GUSTY_LONG,
+  name: 'Sand dunes (fading, gusty, long ripples)',
+  description: 'Sand dunes (ever deeper, gusty, long ripples) whose dunes come and go: a dune grows and travels for a while, '
+    + 'then melts into a flat, so there are always wide flats for the ripples, till dunes grow there again.',
+  reagents: [...DUNE_WIND_REAGENTS, 'age'],
+  params: [...SAND_DUNES_GUSTY_LONG.params,
+    { name: 'dune_life', value: 3000, min: 1000, max: 60000 },
+    { name: 'fade_rate', value: 0.01, min: 0, max: 0.02 },
+    { name: 'fade_reach', value: 48, min: 8, max: 128 },
+    { name: 'fade_relief', value: 3, min: 0.1, max: 10 },
+    { name: 'calm_level', value: 0.02, min: 0, max: 0.05 },
+    { name: 'calm_wind', value: 1, min: 0, max: 1.5 },
+  ],
+  paramHints: {
+    ...SAND_DUNES_GUSTY_LONG.paramHints,
+    dune_life: 'Steps a dune\'s sand stands in relief before it starts to melt (half to one and a half times this, from place to place)',
+    fade_rate: 'How fast an old dune melts into a flat, per step',
+    fade_reach: 'How far round (cells) the local level is taken that an old dune melts down (or up) to',
+    fade_relief: 'Height above or below the local level that counts as standing in a dune (ageing); flatter sand grows young again',
+    calm_level: 'How fast dunes melt into flats where the wind drops, whatever their age (the calms drift by with the weather)',
+    calm_wind: 'The wind\'s strength (1 on average) below which the dunes melt: higher, wider calms and more flats',
+  },
+  rest: [...SAND_DUNES_GUSTY_LONG.rest, 0],
+  seed: [...SAND_DUNES_GUSTY_LONG.seed, 0],
+  seedNoise: [...SAND_DUNES_GUSTY_LONG.seedNoise, 0],
+  formula: windDunesFormula(true, true, true),
 };
 
 // --- Complex Ginzburg–Landau
@@ -8135,7 +8187,7 @@ ${CGL_SHOW}`,
   view: { reagent: 'phase', low: 0, high: 1, palette: 145, stepsPerFrame: 20 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE, SCHRODINGER_SMOKE_PAIRS, SCHRODINGER_SMOKE_SWARM, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, SAND_RIPPLES, SAND_DUNES, SAND_DUNES_DEEPER, SAND_RIPPLES_WIND, SAND_RIPPLES_LONG, SAND_DUNES_WIND, SAND_DUNES_GUSTY, SAND_DUNES_GUSTY_LONG, SCHRODINGER_SMOKE_LEAPFROG_SWARM, CGL_SPIRALS, CGL_DEFECT_TURBULENCE, CGL_PHASE_TURBULENCE, CGL_FROZEN, CGL_FROM_SCHRODINGER];
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE, SCHRODINGER_SMOKE_PAIRS, SCHRODINGER_SMOKE_SWARM, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, SAND_RIPPLES, SAND_DUNES, SAND_DUNES_DEEPER, SAND_RIPPLES_WIND, SAND_RIPPLES_LONG, SAND_DUNES_WIND, SAND_DUNES_GUSTY, SAND_DUNES_GUSTY_LONG, SCHRODINGER_SMOKE_LEAPFROG_SWARM, CGL_SPIRALS, CGL_DEFECT_TURBULENCE, CGL_PHASE_TURBULENCE, CGL_FROZEN, CGL_FROM_SCHRODINGER, SAND_DUNES_FADING];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -8147,7 +8199,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Waves & solitons', [SATURABLE_NLS, KLEIN_GORDON, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS]],
   ['Kuramoto–Sivashinsky', [KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, FLAME_WAVES, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, KSE_OCTAVES, KSE_OCTAVES_256, KSE_FRONTS]],
   ['Fluids', [STABLE_FLUIDS, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, STABLE_SMOKE, SCHRODINGER_SMOKE, SCHRODINGER_SMOKE_PAIRS, SCHRODINGER_SMOKE_SWARM, SCHRODINGER_SMOKE_LEAPFROG_SWARM]],
-  ['Sand', [SAND_RIPPLES, SAND_RIPPLES_WIND, SAND_RIPPLES_LONG, SAND_DUNES, SAND_DUNES_WIND, SAND_DUNES_DEEPER, SAND_DUNES_GUSTY, SAND_DUNES_GUSTY_LONG]],
+  ['Sand', [SAND_RIPPLES, SAND_RIPPLES_WIND, SAND_RIPPLES_LONG, SAND_DUNES, SAND_DUNES_WIND, SAND_DUNES_DEEPER, SAND_DUNES_GUSTY, SAND_DUNES_GUSTY_LONG, SAND_DUNES_FADING]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
   ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
