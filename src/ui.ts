@@ -127,6 +127,8 @@ export interface Actions {
   setBackground(values: Record<string, number>): void;
   /** Hide/show the panel (the sim alone, centred, fullscreen). */
   toggleUI(mode?: 'whole' | 'fill' | 'split'): void;
+  /** As fast as possible: time a step on the GPU and set steps/frame to what keeps about 30 fps; resolves to the steps set. */
+  afap(): Promise<number>;
   /** Apply s.featureSize to the running sim. */
   setFeatureSize(): void;
   /** Fleck palettes: set the fleck range from the field's values. */
@@ -510,7 +512,20 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     });
     const row = el('label', { class: 'row steps', title: SETTING_HINTS.stepsPerFrame ?? 'steps/frame' }, el('span', {}, titleCase('steps/frame')), input, mult, num);
     middleReset(row, () => { const v = reset(); fit(v); put(v); });
-    return row;
+    // AFAP: as many steps as keep about 30 frames a second (timed on this device, for this rule and size)
+    const afap = button('AFAP', async () => {
+      afap.disabled = true;
+      afap.textContent = 'timing…';
+      try {
+        const v = await actions.afap();
+        fit(v);
+        sync();
+      } finally {
+        afap.disabled = false;
+        afap.textContent = 'AFAP';
+      }
+    }, 'as fast as possible: times a step on this device and sets steps/frame to as many as keep about 30 frames a second, and the GPU share to 98% (the field runs on a little while it times)', true);
+    return el('div', { class: 'steps-box' }, row, el('div', { class: 'buttons' }, afap));
   }
 
   function checkbox(label: string, key: 'ruleSpeed' | 'menuNewest' | 'wallsReflect' | 'wallsAbsorb' | 'wallsTrap' | 'wallsFeed' | 'showWalls' | 'showStats' | 'customWander' | 'customTrueColours', title: string, then?: () => void) {

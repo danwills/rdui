@@ -192,6 +192,34 @@ async function init() {
   // sharing the GPU: one frame's work in flight at a time, and the steps scaled by `throttle` so the GPU is busy with
   // ours (submit to done, which counts others' work queued ahead too) for at most gpuShare of the time
   let gpuBusy = false, busyMs = 0, busyT = performance.now(), throttle = 1, gpuUse = 0;
+  /** As fast as possible: time k steps alone on the GPU (submitted and waited for, the best of two), doubling k till 2k
+   *  steps clearly take longer than k (so a submit's fixed cost, and waiting behind other work, drop out of the
+   *  difference); steps/frame set to as many as fill about 30 ms of a frame, for about 30 fps, and the GPU share to
+   *  98%. They're real steps: the field runs on a little. */
+  async function afap() {
+    const cycle = rule.stepCycle ?? 1;
+    const once = async (k: number) => {
+      const enc = device.createCommandEncoder();
+      sim.step(enc, k);
+      const t0 = performance.now();
+      device.queue.submit([enc.finish()]);
+      await device.queue.onSubmittedWorkDone();
+      return performance.now() - t0;
+    };
+    const time = async (k: number) => Math.min(await once(k), await once(k));
+    await once(cycle); // (warm up)
+    let k = cycle, t = await time(k), t2 = await time(2 * k);
+    while ((t2 < 1.5 * t || t2 < 20) && k < 4096) {
+      k *= 2;
+      t = t2;
+      t2 = await time(2 * k);
+    }
+    const perStep = Math.max(1e-5, (t2 - t) / k);
+    s.stepsPerFrame = Math.min(5000, Math.max(cycle, Math.round(30 / perStep / cycle) * cycle));
+    s.gpuShare = 0.98;
+    ui.sync();
+    return s.stepsPerFrame;
+  }
   // no steps while a scene is being set up: its stamps go down one GPU read at a time, and solitons meant to
   // meet in phase must all start on the same step (one frame apart is ~30° of phase for a standard soliton)
   let settingUp = false;
@@ -989,6 +1017,7 @@ async function init() {
       sim.setCellScale(cellScale);
     },
     toggleUI: (mode?: 'whole' | 'fill' | 'split') => toggleUI(mode),
+    afap,
     togglePaintable: (name) => {
       const paintable = rule.paintable.includes(name) ? rule.paintable.filter((n) => n !== name) : [...rule.paintable, name];
       if (paintable.length > 7) {
