@@ -1192,7 +1192,8 @@ async function init() {
     Math.min(Math.max(y, 0), sim.height),
   ];
 
-  let drag: { x: number; y: number; alt: boolean } | null = null;
+  // (x0, y0: where it started, and launched: whether its vortex pair has gone, for a wavefunction fluid's Push)
+  let drag: { x: number; y: number; alt: boolean; x0: number; y0: number; launched?: boolean } | null = null;
   let rectDrag: { x0: number; y0: number; x1: number; y1: number } | null = null;
   /** A line or circle being dragged out (brushShape), painted on release. */
   let shapeDrag: { kind: 'line' | 'circle'; x0: number; y0: number; x1: number; y1: number; alt: boolean } | null = null;
@@ -1243,7 +1244,7 @@ async function init() {
       shapeDrag = { kind: s.brushShape, x0: x, y0: y, x1: x, y1: y, alt };
       return;
     }
-    drag = { x, y, alt };
+    drag = { x, y, alt, x0: x, y0: y };
     strokes.push(...toBrush(x, y, x, y, alt));
   });
   canvas.addEventListener('pointermove', (e) => {
@@ -1259,6 +1260,14 @@ async function init() {
       return;
     }
     if (!drag) return;
+    if (s.tool === 'push' && !rule.momentum && !rule.stir && rule.vortexPush) {
+      // one vortex pair a drag, launched from where it started once it's gone a brush's radius (the way it went)
+      if (!drag.launched && !drag.alt && Math.hypot(x - drag.x0, y - drag.y0) >= Math.max(3, s.radius / cellScale)) {
+        strokes.push(...toBrush(drag.x0, drag.y0, x, y, false));
+        drag.launched = true;
+      }
+      return;
+    }
     strokes.push(...toBrush(drag.x, drag.y, x, y, drag.alt));
     drag.x = x;
     drag.y = y;
@@ -1335,7 +1344,7 @@ async function init() {
       case 'wall': mode = alt ? BrushMode.Unwall : BrushMode.Wall; break;
       case 'unwall': mode = alt ? BrushMode.Wall : BrushMode.Unwall; break;
       case 'smooth': mode = BrushMode.Smooth; break;
-      case 'push': mode = rule.momentum ? BrushMode.Push : BrushMode.Seed; break;
+      case 'push': mode = rule.momentum ? BrushMode.Push : rule.stir ? BrushMode.Stir : rule.vortexPush ? BrushMode.Pair : BrushMode.Seed; break;
       default: mode = alt ? BrushMode.Erase : BrushMode.Seed; break;
     }
     // wave media: the Wall tool draws reflecting or absorbing walls into the rule's wall distance fields
@@ -1361,7 +1370,7 @@ async function init() {
       paint: paintValues(),
       seed: rule.reagents.map((r, i) => { const sp = s.seedPaint[r]; return sp ? (sp.on ? sp.value : null) : rule.seed[i] ?? null; }),
       ...(mode === BrushMode.Wall ? { base: s.wallsFeed || fft ? 2 : 1 } : {}),
-      ...(mode === BrushMode.Smooth || mode === BrushMode.Push ? { clear: alt } : {}),
+      ...(mode === BrushMode.Smooth || mode === BrushMode.Push || mode === BrushMode.Stir ? { clear: alt } : {}),
     }];
   }
 

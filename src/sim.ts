@@ -35,6 +35,10 @@ export const BrushMode = {
   Smooth: 7,
   /** Set the rule's momentum to mass × speed along the stroke (clear: brake it to 0): see RuleDef.momentum. */
   Push: 8,
+  /** A vorticity fluid: add the spin of a flow along the stroke (clear: still it): see RuleDef.stir. */
+  Stir: 9,
+  /** A wavefunction fluid: wind a vortex pair into ψ1 (a = b, its centre; seed[0], its two vortices): see RuleDef.vortexPush. */
+  Pair: 10,
 } as const;
 export type BrushMode = (typeof BrushMode)[keyof typeof BrushMode];
 
@@ -410,6 +414,34 @@ export class Simulation {
       f[B_SEED + 2] = ix(mo.x); f[B_SEED + 3] = ix(mo.y); f[B_SEED + 4] = ix(mo.mass); f[B_SEED + 5] = ix(mo.size);
       // a click (no direction) leaves the momentum be, unless braking
       if (!b.clear && len < 1e-6) return;
+    }
+    if (b.mode === BrushMode.Stir) {
+      // the spin reagent and the velocity along the stroke (y up), as Push's
+      const st = rule.stir;
+      if (!st) return;
+      const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
+      const sp = st.speed * Math.sign(b.strength) * Math.max(1, Math.abs(b.strength));
+      f[6] = Math.min(1, Math.abs(b.strength));
+      if (!b.clear && len < 1e-6) return;
+      const v = b.clear || len < 1e-6 ? [0, 0] : [(sp * dx) / len, (-sp * dy) / len];
+      f[B_SEED] = v[0]; f[B_SEED + 1] = v[1]; f[B_SEED + 2] = rule.reagents.indexOf(st.omega);
+      // each segment its share of the stroke: a drag's short segments overlap by about 2r/len, so summed they shove
+      // as one long one would, however finely the pointer's moves cut it
+      f[B_SEED + 3] = len / (len + 2 * b.radius);
+    }
+    if (b.mode === BrushMode.Pair) {
+      // a pair as wide as the brush across the stroke, at its start, + on the heading's left (as the vortices fill)
+      const vp = rule.vortexPush;
+      const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
+      if (!vp || len < 1e-6) return;
+      const flip = b.strength < 0 ? -1 : 1;
+      const w = Math.max(2 * vp.core, Math.min(2 * b.radius, Math.min(this.width, this.height) / 10));
+      const nx = (-dy / len) * (w / 2) * flip, ny = (dx / len) * (w / 2) * flip;
+      f[0] = f[2] = b.ax; f[1] = f[3] = b.ay;
+      f[4] = 4 * w; // the window: winding fades out from 2 to 4 widths away, where the pair's phase is small
+      f[B_SEED] = b.ax + nx; f[B_SEED + 1] = b.ay + ny; f[B_SEED + 2] = b.ax - nx; f[B_SEED + 3] = b.ay - ny;
+      f[B_SEED + 4] = rule.reagents.indexOf(vp.re); f[B_SEED + 5] = rule.reagents.indexOf(vp.im);
+      f[B_SEED + 6] = vp.core; f[B_SEED + 7] = w;
     }
     if (b.mode === BrushMode.Smooth) {
       // which param slots to blur: all but the wall flag and a membrane's compartment ids

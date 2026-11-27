@@ -191,6 +191,17 @@ export interface RuleDef {
    */
   momentum?: { x: string; y: string; mass?: string; speed: number; /** a reagent holding the momentum's size, set with it */ size?: string };
   /**
+   * A vorticity fluid's spin reagent, for the Push tool without a momentum: a drag adds the spin of a flow along the
+   * stroke at `speed` (cells per time), so the fluid itself is shoved, nothing painted in (right-drag stills it).
+   */
+  stir?: { omega: string; speed: number };
+  /**
+   * A wavefunction fluid's (Schrödinger's Smoke) vortex part ψ1, as its real and imaginary reagents, for the Push tool:
+   * its flow is the phase's gradient, so only vortices can move it, and a drag launches a vortex pair along the drag
+   * (as wide as the brush, cores `core` cells), from where it started.
+   */
+  vortexPush?: { re: string; im: string; core: number };
+  /**
    * A parameter (not paintable) setting how far the single neighbours (north_a …) reach: each becomes the mean of a
    * box of cells that far away, so a hand-written stencil acts on features that many times larger (1 = the cells next door).
    */
@@ -7187,6 +7198,7 @@ delta_dye = (advect_cubic_dye(ux, uy) - dye)/timestep - dye_fade*dye;`,
     ...Array.from({ length: 8 }, (_, i): Overlay => ({ chem: 'dye', op: 'overwrite', fill: { type: 'constant', value: 1 }, shape: { type: 'rectangle', x0: 0, y0: i / 8, x1: 1, y1: i / 8 + 1 / 16 } })),
   ],
   view: { reagent: 'dye', low: 0, high: 1, tint: 'omega', stepsPerFrame: 2 },
+  stir: { omega: 'omega', speed: 1 },
 };
 
 /**
@@ -7494,6 +7506,7 @@ export const SCHRODINGER_SMOKE: RuleDef = {
     ...[0.55, 0.8].map((x): Overlay => ({ chem: 'dye', op: 'overwrite', fill: { type: 'constant', value: 0.6 }, shape: { type: 'rectangle', x0: x, y0: 0.2, x1: x + 0.03, y1: 0.8 } })),
   ],
   view: { reagent: 'dye', low: 0, high: 1, tint: 'core', stepsPerFrame: 6 },
+  vortexPush: { re: 'a1', im: 'b1', core: 3 },
 };
 
 /**

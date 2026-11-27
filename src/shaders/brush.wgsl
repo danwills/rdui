@@ -35,6 +35,8 @@ const MODE_UNWALL: u32 = 4u;
 const MODE_SET_PARAM: u32 = 5u;
 const MODE_SDF: u32 = 6u;
 const MODE_PUSH: u32 = 8u; // seed[0].xy: velocity; seed[0].z, w, seed[1].x, y: the momentum's x, y, mass and size reagents (-1: none)
+const MODE_STIR: u32 = 9u; // seed[0].xy: velocity; seed[0].z: the spin reagent; seed[0].w: the segment's share of the stroke
+const MODE_PAIR: u32 = 10u; // seed[0]: the + and − vortices (cells); seed[1]: ψ1's re and im reagents, core, pair width
 const SDF_REACH: f32 = 24.0; // an SDF stroke also writes distances this far outside its edge
 
 @group(0) @binding(0) var<uniform> brush: Brush;
@@ -62,6 +64,20 @@ fn wrapDist(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
     }
   }
   return d;
+}
+
+// the nearest copy of an offset on the wrapping field
+fn wrapOff(v: vec2<f32>) -> vec2<f32> {
+  let wh = vec2<f32>(f32(size.width), f32(size.height));
+  return v - wh * round(v / wh);
+}
+
+// the offset from the stroke's nearest point (on the wrapping field), for a gradient across it
+fn segOff(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> vec2<f32> {
+  let pa = wrapOff(p - a);
+  let ba = b - a;
+  let h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0);
+  return pa - ba * h;
 }
 
 fn hash(p: vec2<f32>) -> f32 {
@@ -185,6 +201,41 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
           let rs = u32(brush.seed[1].y);
           state[sb + (rs >> 2u)][rs & 3u] = mix(state[sb + (rs >> 2u)][rs & 3u], mass * length(v), k);
         }
+      }
+    }
+    case MODE_STIR: {
+      // the spin of a flow v·w along the stroke, w a smooth bump across it (0.5 + 0.5·cos(π·d/r)): ω = curl(v·w)
+      // = v_y·∂w/∂x − v_x·∂w/∂y (y up, rows down), a shear on each side; right-drag (clear) stills it instead
+      if (!wall) {
+        let ro = u32(brush.seed[0].z);
+        let cur = state[sb + (ro >> 2u)][ro & 3u];
+        if (brush.clear > 0.5) {
+          state[sb + (ro >> 2u)][ro & 3u] = mix(cur, 0.0, k);
+        } else {
+          let v = brush.seed[0].xy;
+          let off = segOff(cell, brush.a, brush.b);
+          let dw = -0.5 * 3.14159265 / brush.radius * sin(3.14159265 * min(d / brush.radius, 1.0));
+          let g = off / max(d, 1e-6);
+          state[sb + (ro >> 2u)][ro & 3u] = cur + abs(brush.strength) * brush.seed[0].w * dw * (v.y * g.x + v.x * g.y);
+        }
+      }
+    }
+    case MODE_PAIR: {
+      // ψ1 times a vortex pair's winding (each tanh(r/core)·e^{±iθ}), faded to 1 from 2 to 4 pair widths out
+      if (!wall) {
+        let dp = wrapOff(cell - brush.seed[0].xy);
+        let dm = wrapOff(cell - brush.seed[0].zw);
+        let core = brush.seed[1].z;
+        let th = atan2(dp.y, dp.x) - atan2(dm.y, dm.x);
+        let m = tanh(length(dp) / core) * tanh(length(dm) / core);
+        let win = 1.0 - smoothstep(0.5, 1.0, d / brush.radius);
+        let z = mix(vec2<f32>(1.0, 0.0), m * vec2<f32>(cos(th), sin(th)), win);
+        let ra = u32(brush.seed[1].x);
+        let ia = u32(brush.seed[1].y);
+        let re = state[sb + (ra >> 2u)][ra & 3u];
+        let im = state[sb + (ia >> 2u)][ia & 3u];
+        state[sb + (ra >> 2u)][ra & 3u] = re * z.x - im * z.y;
+        state[sb + (ia >> 2u)][ia & 3u] = re * z.y + im * z.x;
       }
     }
     default: {}
