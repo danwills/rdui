@@ -7856,7 +7856,7 @@ land += ${rate ? `sample_${rate}(${at})*` : ''}flux*max(0.0, 1.0 - abs(hp - ${k}
 }
 
 const WIND_HEAD = `// the local wind: its direction from the slow noise wd (drifting by), wind_turn either way of east
-float wa = wind_turn*(2.0*sample_wd(-wind_drift*clock, 0.0) - 1.0);
+float wa = wind_swing*sin(6.2832*clock/wind_period) + wind_turn*(2.0*sample_wd(-wind_drift*clock, 0.0) - 1.0);
 float wx = cos(wa);
 float wy = sin(wa);
 float land = 0.0;
@@ -7951,9 +7951,13 @@ clock = clock + 1.0;`;
 const WIND_PARAMS: ParamSpec[] = [
   { name: 'wind_turn', value: 0.6, min: 0, max: 1.5 },
   { name: 'wind_drift', value: 0.01, min: 0, max: 0.2 },
+  { name: 'wind_swing', value: 0, min: 0, max: 3.1416 },
+  { name: 'wind_period', value: 30000, min: 2000, max: 200000 },
 ];
 const WIND_HINTS: Record<string, string> = {
   wind_turn: 'How far the wind veers either way of east, from place to place (radians)',
+  wind_swing: 'How far the whole wind swings round, either way of east, over a long cycle (radians: 1.57 swings it to north and south; 0, it stays about east)',
+  wind_period: 'Steps the wind takes to swing round and back (wind_swing)',
   wind_drift: 'Cells per step the wind\'s pattern drifts by, so the wind at any spot slowly veers',
   wind_vary: 'How much the wind\'s strength varies from place to place: in the calms the dunes stall and ripples take over',
 };
@@ -8027,6 +8031,27 @@ export const SAND_DUNES_GUSTY_LONG: RuleDef = {
  * Gusty, long ripples with dunes that come and go: each dune's sand carries an age (see windDunesFormula's fade), and
  * past its lifetime the dune is levelled into a flat, which takes ripples until dunes grow there again.
  */
+/**
+ * The fading dunes' view: the custom palette in sand colours, every reagent that shows the sand mixed in (age, the
+ * clock and the wind's noises off): the sun's shading in tan, the dunes' height warming their bodies to ochre (its
+ * range following the field, as they grow and melt), the ripples in pale cream, the saltation q lighting the windward
+ * slopes and crests, a faint dusty rose where the gusts blow (g), and a soft blue sky light everywhere (the clock,
+ * its range set far below it), so the shadowed sides are bluish and never black.
+ */
+const SAND_FADING_VIEW: RuleDef['view'] = (() => {
+  const off = { on: false, low: 0, high: 1, power: 1, color: [0.5, 0.5, 0.5] as [number, number, number] };
+  const ch = (color: [number, number, number], power = 1, auto = false) => ({ on: true, low: 0, high: 1, power, color, ...(auto ? { auto } : {}) });
+  // DUNE_WIND_REAGENTS and age: shade H r q tau g n wd ws clock age
+  return {
+    reagent: 'shade', low: 0, high: 1, palette: 7, stepsPerFrame: 8,
+    custom: [ch([0.56, 0.44, 0.3]), ch([0.22, 0.15, 0.08], 1, true), ch([0.13, 0.11, 0.09], 1, true), ch([0.1, 0.07, 0.04], 1.5, true),
+      off, ch([0.05, 0.04, 0.05], 1.5), off, off, off,
+      // (the clock, its range far below it so it's always full: a soft blue sky light, so the shadowed sides are bluish, never black)
+      { on: true, low: -2e9, high: -1.9e9, power: 1, color: [0.14, 0.17, 0.27] }, off],
+    customContrast: 1.05, customSaturation: 1, customGamma: 1,
+  };
+})();
+
 export const SAND_DUNES_FADING: RuleDef = {
   ...SAND_DUNES_GUSTY_LONG,
   name: 'Sand dunes (fading, gusty, long ripples)',
@@ -8055,8 +8080,7 @@ export const SAND_DUNES_FADING: RuleDef = {
   rest: [...SAND_DUNES_GUSTY_LONG.rest, 0],
   seed: [...SAND_DUNES_GUSTY_LONG.seed, 0],
   seedNoise: [...SAND_DUNES_GUSTY_LONG.seedNoise, 0],
-  // (the shading alone, as the other dunes: age is for the rule, not the view)
-  view: { ...SAND_VIEW(11), stepsPerFrame: 8 },
+  view: SAND_FADING_VIEW,
   formula: windDunesFormula(true, true, true),
 };
 

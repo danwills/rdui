@@ -722,7 +722,9 @@ async function init() {
       // a reset) keeps its colours
       if (ruleId !== customFor) {
         s.custom = rule.view.custom ? structuredClone(rule.view.custom) : defaultCustom(rule.reagents, rule.view.customOff, rule.view.customAuto);
-        if (!rule.view.custom) { startSettling(); customAutoRandomise = true; }
+        // (a rule's own colours stay: no random pick once the ranges are fitted)
+        customAutoRandomise = !rule.view.custom;
+        if (!rule.view.custom) startSettling();
         s.customContrast = rule.view.customContrast ?? 1.2;
         s.customSaturation = rule.view.customSaturation ?? 1;
         s.customGamma = rule.view.customGamma ?? 2;
