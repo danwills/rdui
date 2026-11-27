@@ -1,7 +1,54 @@
 # rdui
 
-A UI and contraption-building/exploring tool — and eventually a GUI framework — whose
-interfaces are made of live reaction-diffusion simulations.
+**A playground for living patterns, in your browser.** Spots that grow and split, waves that spiral,
+smoke that curls, sand that ripples, bubbles that rise like a lava lamp: each one a simple rule
+run on every pixel at once on your GPU. Paint into them with your finger or mouse, push them
+around, wall them in, change the rules as they run and watch what happens.
+
+### ▶ [Open rdui](https://rdui.rdui.workers.dev) · [See clips](https://danwills.github.io/rdui/)
+
+It needs a browser with WebGPU: recent Chrome or Edge on desktop or Android works best. It also
+installs as an app on a phone.
+
+<table>
+<tr>
+<td><img src="docs/clips/01-gray-scott-growing.jpg" width="256" alt="Gray-Scott spots growing and dividing"></td>
+<td><img src="docs/clips/19-lava-lamp-swirl.jpg" width="256" alt="Phase-field bubbles rising and sinking like a lava lamp"></td>
+<td><img src="docs/readme/cgl-spirals.jpg" width="256" alt="Spiral waves in the complex Ginzburg–Landau equation"></td>
+</tr>
+<tr>
+<td align="center">Gray-Scott: spots that grow and divide</td>
+<td align="center">Lava lamp: bubbles rising warm, sinking cool</td>
+<td align="center">Ginzburg–Landau: a sea of spiral waves</td>
+</tr>
+<tr>
+<td><img src="docs/clips/21-smoke-ribbons.jpg" width="256" alt="Curling smoke ribbons"></td>
+<td><img src="docs/clips/10-glider-lamp.jpg" width="256" alt="A glider running into a lamp"></td>
+<td><img src="docs/clips/20-bubbles-foam-b.jpg" width="256" alt="Bubbles pressed into a foam"></td>
+</tr>
+<tr>
+<td align="center">Smoke: curling ribbons</td>
+<td align="center">A glider meets a lamp</td>
+<td align="center">Foam</td>
+</tr>
+</table>
+
+### Things to try
+
+- **Pick a rule** from the Rule tab: over a hundred, in families (Gray-Scott, bubbles, fluids,
+  sand, lightning, mud cracks, Ginzburg–Landau…), many with ready-made scenes.
+- **Paint** with the Tool tab: Seed adds chemistry, Erase removes it, Wall builds barriers.
+  Push shoves fluids along like a paddle.
+- **🎲 for new colours**, and the View tab for palettes, including one that blends every reagent.
+- **Explore…** shows nine variants of the rule side by side: tap one to make it the new centre,
+  and wander through the rule's space.
+- **◧ split view**: the sim beside a live phase plot of its states (drag to turn, pinch to zoom),
+  histograms and stats.
+- **Record** a clip, or save every reagent as EXR frames.
+
+Under the hood, rdui is a step towards a UI and contraption-building/exploring tool (and, one
+day, a GUI framework) whose interfaces are made of live reaction-diffusion simulations. The rest
+of this page is for people who want to run it locally or write their own rules.
 
 ## Running
 
