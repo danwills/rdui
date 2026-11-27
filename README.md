@@ -1,6 +1,6 @@
 # rdui
 
-**A playground for living patterns, in your browser.** Spots that grow and split, waves that spiral,
+**A playground for reaction-diffusion patterns, in your browser.** Spots that grow and split, waves that spiral,
 smoke that curls, sand that ripples, bubbles that rise like a lava lamp: each one a simple rule
 run on every pixel at once on your GPU. Paint into them with your finger or mouse, push them
 around, wall them in, change the rules as they run and watch what happens.
