@@ -117,13 +117,13 @@ export function recordSection(env: RecordEnv) {
     i.addEventListener('keydown', (e) => e.stopPropagation());
     return i;
   };
-  const secs = num('10', 0.1, 'length of the video, in seconds');
+  const secs = num('30', 0.1, 'length of the video, in seconds');
   const fps = num('30', 1, 'video frames per second');
   const steps = num('', 1, 'sim steps between video frames (empty: the sim\'s steps/frame)');
   const scale = el('select', {}, ...[[0.5, '½'], [1, '1×'], [2, '2×'], [4, '4×']].map(([v, t]) => el('option', { value: String(v) }, String(t))));
   scale.value = '1';
   const quality = el('select', {}, ...[[0.1, 'light'], [0.25, 'good'], [0.6, 'high']].map(([v, t]) => el('option', { value: String(v) }, String(t))));
-  quality.value = '0.25';
+  quality.value = '0.6';
   const exr = el('select', { title: 'also save every reagent, each frame, as its own image sequence of the raw values (OpenEXR, one channel Y, no palette): into a folder you pick, or as a zip where the browser can\'t write folders' },
     ...[['float', 'float 32'], ['half', 'half 16']].map(([v, t]) => el('option', { value: v }, t)));
   const exrBox = el('input', { type: 'checkbox' });
@@ -150,7 +150,7 @@ export function recordSection(env: RecordEnv) {
   let running = false, stop = false;
   const go = button('● Record', () => (running ? (stop = true) : void record()), 'step the sim and record it: the main sim pauses meanwhile, and the video downloads when done');
   const opts = (): RecordOptions => ({
-    seconds: Math.max(0.1, Number(secs.value) || 10),
+    seconds: Math.max(0.1, Number(secs.value) || 30),
     fps: Math.max(1, Math.round(Number(fps.value) || 30)),
     stepsPerFrame: Math.max(1, Math.round(Number(steps.value) || env.stepsPerFrame())),
     scale: Number(scale.value),
