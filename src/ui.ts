@@ -441,7 +441,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
    * on past the right end keeps going up the same scale (to `limit`), and the box
    * takes any value typed.
    */
-  function logSlider(label: string, key: 'stepsPerFrame' | 'radius', max: number, limit: number, reset: () => number) {
+  function logSlider(label: string, key: 'radius', max: number, limit: number, reset: () => number) {
     const input = el('input', { type: 'range', min: '0', max: '1', step: 'any' });
     const num = el('input', { type: 'text', class: 'num', inputmode: 'numeric' });
     const L = Math.log(max);
@@ -470,6 +470,46 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     });
     const row = el('label', { class: 'row log', title: SETTING_HINTS[key] ?? label }, el('span', {}, titleCase(label)), input, num);
     middleReset(row, () => put(reset()));
+    return row;
+  }
+
+  /**
+   * Steps per frame as a plain 1–64 slider and a multiplier (×1 … ×128); the box shows (and takes) the total, which
+   * is what's kept. A total from elsewhere (a rule's speed, typed) picks the smallest multiplier that fits it.
+   */
+  function stepsSlider(reset: () => number) {
+    const MULTS = [1, 2, 4, 8, 16, 32, 64, 128], LIMIT = 5000;
+    const input = el('input', { type: 'range', min: '1', max: '64', step: '1' });
+    const num = el('input', { type: 'text', class: 'num', inputmode: 'numeric' });
+    const mult = el('select', { class: 'mult', title: 'times this many: for rules that need thousands of steps a frame' }, ...MULTS.map((m) => el('option', { value: String(m) }, `×${m}`)));
+    let m = 1;
+    const fit = (total: number) => (m = MULTS.find((k) => total / k <= 64 && Number.isInteger(total / k)) ?? MULTS.find((k) => total / k <= 64) ?? 128);
+    const put = (v: number) => {
+      s.stepsPerFrame = Math.min(LIMIT, Math.max(1, Math.round(v)));
+      sync();
+    };
+    input.addEventListener('input', () => put(Number(input.value) * m));
+    mult.addEventListener('change', () => {
+      const base = Math.max(1, Math.round(s.stepsPerFrame / m));
+      m = Number(mult.value);
+      put(base * m);
+    });
+    num.addEventListener('change', () => {
+      const v = Number(num.value);
+      if (Number.isFinite(v)) { fit(Math.round(v)); put(v); }
+      sync();
+    });
+    num.addEventListener('keydown', (e) => e.stopPropagation());
+    num.addEventListener('focus', () => num.select()); // typing replaces the value
+    syncers.push(() => {
+      // (a total this multiplier can't make: the one that can)
+      if (s.stepsPerFrame / m > 64 || s.stepsPerFrame < m || !Number.isInteger(s.stepsPerFrame / m)) fit(s.stepsPerFrame);
+      input.value = String(Math.round(s.stepsPerFrame / m));
+      mult.value = String(m);
+      if (document.activeElement !== num) num.value = String(s.stepsPerFrame);
+    });
+    const row = el('label', { class: 'row steps', title: SETTING_HINTS.stepsPerFrame ?? 'steps/frame' }, el('span', {}, titleCase('steps/frame')), input, mult, num);
+    middleReset(row, () => { const v = reset(); fit(v); put(v); });
     return row;
   }
 
@@ -1045,7 +1085,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       checkbox('newest first', 'menuNewest', 'list each family\'s rules, and each rule\'s scenes, newest first (untick for oldest first)', fillRules), ruleBody),
     section('Simulation',
       el('div', { class: 'buttons' }, runBtn, button('Step', actions.stepOnce, '.'), button('Restart', actions.restart, 'start the rule or scene over from scratch: its own parameters, opening, paint and stamps (Reset keeps your parameters)'), button('Clear chem', actions.clearChemistry, 'C')),
-      logSlider('steps/frame', 'stepsPerFrame', 64, 5000, () => rc.rule().view.stepsPerFrame ?? defaultSettings().stepsPerFrame), // the rule's own speed, else the app's
+      stepsSlider(() => rc.rule().view.stepsPerFrame ?? defaultSettings().stepsPerFrame), // the rule's own speed, else the app's
       slider('GPU share', 'gpuShare', 0.1, 1, 0.05, 2),
       checkbox('rules set steps/frame', 'ruleSpeed', 'untick to keep your own steps/frame when you load a rule or scene (e.g. to watch a fast one start slowly)'),
       select('grid', 'gridSize', () => [[128, '128²'], [256, '256²'], [512, '512²'], [1024, '1024²'], [2048, '2048²']], () => actions.resize(s.gridSize)).row,
