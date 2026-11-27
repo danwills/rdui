@@ -52,6 +52,12 @@ export function paramHint(rule: RuleDef, spec: ParamSpec): string {
 /** The value a wall distance field holds far from any wall (cells): "at least this far". */
 export const FAR = 64;
 
+/**
+ * A noise fill's range and scale. sizeY: its features' size down the screen, if not `size` (stretched or squashed);
+ * sizeParam / sizeYParam: take size / sizeY from those parameters' values instead (so a slider sets them, at Restart).
+ */
+export interface NoiseFill { low: number; high: number; size?: number; sizeY?: number; sizeParam?: string; sizeYParam?: string; octaves?: number; roughness?: number }
+
 export type Fill =
   | { type: 'constant'; value: number }
   | { type: 'white_noise'; low: number; high: number }
@@ -60,9 +66,9 @@ export type Fill =
    * about `size` cells across (default 32), with `octaves` (default 4) finer layers on top, each `roughness` (default
    * 0.5) as strong as the one before: low-frequency but still rough.
    */
-  | { type: 'smooth_noise'; low: number; high: number; size?: number; octaves?: number; roughness?: number }
+  | { type: 'smooth_noise' } & NoiseFill
   /** gradient (Perlin) noise: as smooth_noise, but without value noise's grid-aligned look */
-  | { type: 'gradient_noise'; low: number; high: number; size?: number; octaves?: number; roughness?: number }
+  | { type: 'gradient_noise' } & NoiseFill
   /**
    * On a circle: value · ½(1 − tanh((d − r)/edge)), a flat top with a smooth rim `edge` cells wide (default 2). Elsewhere: value.
    * With wrap, distances wrap round the field's edges as the simulation does, so a bump near an edge carries on
@@ -679,7 +685,7 @@ function shapeCells(shape: Shape, w: number, h: number, salt: number): number[] 
 function scaleOverlay(o: Overlay, cell: number): Overlay {
   const f = o.fill, sh = o.shape;
   const fill: Fill = f.type === 'packet' ? { ...f, sigma: f.sigma / cell, kx: (f.kx ?? 0) * cell, ky: (f.ky ?? 0) * cell }
-    : f.type === 'bump' ? { ...f, edge: (f.edge ?? 2) / cell } : f.type === 'smooth_noise' || f.type === 'gradient_noise' ? { ...f, size: (f.size ?? 32) / cell } : f.type === 'vortices' ? { ...f, core: f.core / cell } : f;
+    : f.type === 'bump' ? { ...f, edge: (f.edge ?? 2) / cell } : f.type === 'smooth_noise' || f.type === 'gradient_noise' ? { ...f, size: (f.size ?? 32) / cell, sizeY: (f.sizeY ?? f.size ?? 32) / cell } : f.type === 'vortices' ? { ...f, core: f.core / cell } : f;
   const shape: Shape = sh.type === 'spots' ? { ...sh, minSize: Math.max(1, Math.round(sh.minSize / cell)), maxSize: Math.max(1, Math.round(sh.maxSize / cell)) } : sh;
   return { ...o, fill, shape };
 }
@@ -690,6 +696,10 @@ function scaleOverlay(o: Overlay, cell: number): Overlay {
  * widths and wavenumbers, bump rims) are scaled so the field looks the same.
  */
 export function initialField(rule: RuleDef, w: number, h: number, globals: Record<string, number>, base: 'zero' | 'rest' = 'zero', cell = 1) {
+  // noise sizes set by parameters: their values now
+  const sized = (f: Fill): Fill => (f.type === 'smooth_noise' || f.type === 'gradient_noise') && (f.sizeParam || f.sizeYParam)
+    ? { ...f, size: globals[f.sizeParam ?? ''] ?? f.size, sizeY: globals[f.sizeYParam ?? ''] ?? f.sizeY } : f;
+  if (rule.initial.some((o) => sized(o.fill) !== o.fill)) rule = { ...rule, initial: rule.initial.map((o) => ({ ...o, fill: sized(o.fill) })) };
   if (cell !== 1) rule = { ...rule, initial: rule.initial.map((o) => scaleOverlay(o, cell)) };
   const { S, P, paramNames } = layoutOf(rule);
   const state = new Float32Array(w * h * S * 4);
@@ -745,12 +755,12 @@ export function initialField(rule: RuleDef, w: number, h: number, globals: Recor
  * The gradient_noise fill over the whole w×h field: Perlin noise (random unit gradients on wrapping lattices, quintic
  * easing), octaves summed, stretched from its own lowest to highest to low–high (its spread is less than value noise's).
  */
-function gradientNoise(fill: { low: number; high: number; size?: number; octaves?: number; roughness?: number }, w: number, h: number) {
+function gradientNoise(fill: NoiseFill, w: number, h: number) {
   const out = new Float32Array(w * h);
   const fade = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
-  let amp = 1, size = Math.max(1, fill.size ?? 32);
-  for (let o = 0; o < (fill.octaves ?? 4); o++, amp *= fill.roughness ?? 0.5, size /= 2) {
-    const nx = Math.max(1, Math.round(w / size)), ny = Math.max(1, Math.round(h / size));
+  let amp = 1, size = Math.max(1, fill.size ?? 32), sizeY = Math.max(1, fill.sizeY ?? fill.size ?? 32);
+  for (let o = 0; o < (fill.octaves ?? 4); o++, amp *= fill.roughness ?? 0.5, size /= 2, sizeY /= 2) {
+    const nx = Math.max(1, Math.round(w / size)), ny = Math.max(1, Math.round(h / sizeY));
     const ang = Float32Array.from({ length: nx * ny }, () => Math.random() * 2 * Math.PI);
     const dot = (i: number, j: number, dx: number, dy: number) => {
       const a = ang[(((j % ny) + ny) % ny) * nx + (((i % nx) + nx) % nx)];
@@ -771,12 +781,12 @@ function gradientNoise(fill: { low: number; high: number; size?: number; octaves
 }
 
 /** The smooth_noise fill over the whole w×h field: value noise on wrapping lattices, octaves summed, mapped to low–high. */
-function smoothNoise(fill: { low: number; high: number; size?: number; octaves?: number; roughness?: number }, w: number, h: number) {
+function smoothNoise(fill: NoiseFill, w: number, h: number) {
   const out = new Float32Array(w * h);
   const fade = (t: number) => t * t * (3 - 2 * t);
-  let amp = 1, total = 0, size = Math.max(1, fill.size ?? 32);
-  for (let o = 0; o < (fill.octaves ?? 4); o++, amp *= fill.roughness ?? 0.5, size /= 2) {
-    const nx = Math.max(1, Math.round(w / size)), ny = Math.max(1, Math.round(h / size));
+  let amp = 1, total = 0, size = Math.max(1, fill.size ?? 32), sizeY = Math.max(1, fill.sizeY ?? fill.size ?? 32);
+  for (let o = 0; o < (fill.octaves ?? 4); o++, amp *= fill.roughness ?? 0.5, size /= 2, sizeY /= 2) {
+    const nx = Math.max(1, Math.round(w / size)), ny = Math.max(1, Math.round(h / sizeY));
     const lat = Float32Array.from({ length: nx * ny }, () => Math.random());
     const at = (i: number, j: number) => lat[(j % ny) * nx + (i % nx)];
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
@@ -7656,6 +7666,8 @@ export const SAND_RIPPLES: RuleDef = {
     { name: 'creep_along', value: 0.25, min: 0, max: 1 },
     { name: 'gust', value: 0.5, min: 0, max: 1 },
     { name: 'gust_speed', value: 0.13, min: 0, max: 1 },
+    { name: 'gust_size', value: 48, min: 8, max: 512 },
+    { name: 'gust_size_y', value: 48, min: 8, max: 512 },
     { name: 'sun', value: 0.35, min: 0.05, max: 1.5 },
     { name: 'relief', value: 0.12, min: 0, max: 1 },
   ],
@@ -7667,6 +7679,8 @@ export const SAND_RIPPLES: RuleDef = {
     creep_along: 'Creep along the crests, times creep (less: shorter crests, more forks)',
     gust: 'How much the hop varies in gust patches (more: more forks)',
     gust_speed: 'Cells per step the gust patches drift downwind',
+    gust_size: 'How wide the gust patches are, across the screen (cells; at Restart)',
+    gust_size_y: 'How tall the gust patches are, down the screen (cells; at Restart): smaller breaks the crests up more often along their length',
     sun: 'The sun\'s height above the horizon (radians), downwind: low shows the ripples best',
     relief: 'How steep the ripples look in the light (the view only)',
   },
@@ -7688,7 +7702,7 @@ clock = clock + 1.0;`,
   seedNoise: [0, 0, 0, 0],
   initial: [
     { chem: 'h', op: 'overwrite', fill: { type: 'white_noise', low: -0.5, high: 0.5 }, shape: { type: 'everywhere' } },
-    { chem: 'g', op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 48, octaves: 1 }, shape: { type: 'everywhere' } },
+    { chem: 'g', op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 48, octaves: 1, sizeParam: 'gust_size', sizeYParam: 'gust_size_y' }, shape: { type: 'everywhere' } },
   ],
   view: SAND_VIEW(4),
 };
@@ -7919,8 +7933,8 @@ const WIND_HINTS: Record<string, string> = {
 };
 const windFill = (chem: string): Overlay => ({ chem, op: 'overwrite', fill: { type: 'gradient_noise', low: 0, high: 1, size: 320, octaves: 1 }, shape: { type: 'everywhere' } });
 // long crests: much more creep along the crests, gentler and broader gusts
-const longCrests = (params: ParamSpec[]) => params.map((p) => (p.name === 'creep_along' ? { ...p, value: 2.5, max: 4 } : p.name === 'gust' ? { ...p, value: 0.15 } : p));
-const broadGusts = (initial: Overlay[]) => initial.map((o) => (o.chem === 'g' ? { ...o, fill: { type: 'gradient_noise', low: 0, high: 1, size: 160, octaves: 1 } } as Overlay : o));
+const longCrests = (params: ParamSpec[]) => params.map((p) => (p.name === 'creep_along' ? { ...p, value: 2.5, max: 4 } : p.name === 'gust' ? { ...p, value: 0.15 } : p.name === 'gust_size' || p.name === 'gust_size_y' ? { ...p, value: 160 } : p));
+const broadGusts = (initial: Overlay[]) => initial.map((o) => (o.chem === 'g' ? { ...o, fill: { type: 'gradient_noise', low: 0, high: 1, size: 160, octaves: 1, sizeParam: 'gust_size', sizeYParam: 'gust_size_y' } } as Overlay : o));
 
 export const SAND_RIPPLES_WIND: RuleDef = {
   ...SAND_RIPPLES,
@@ -7941,7 +7955,8 @@ export const SAND_RIPPLES_LONG: RuleDef = {
   ...SAND_RIPPLES_WIND,
   name: 'Sand ripples (long crests)',
   description: 'Sand ripples under a turning wind, with long crests running across it: strong creep along the crests and gentle, broad gusts, so they fork far less.',
-  params: longCrests(SAND_RIPPLES_WIND.params),
+  // (hop 8.5: Dan's pick)
+  params: longCrests(SAND_RIPPLES_WIND.params).map((p) => (p.name === 'hop' ? { ...p, value: 8.5 } : p)),
   initial: broadGusts(SAND_RIPPLES_WIND.initial!),
 };
 
