@@ -200,7 +200,6 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
 
   function drawPhase(b: { x: number; y: number; w: number; h: number }) {
     const pts = eased(), A = axes!;
-    const fmt = (v: number) => (Math.abs(v) >= 100 ? v.toFixed(0) : Math.abs(v) >= 1 ? v.toFixed(2) : v.toPrecision(2));
     // world: each axis -1..1 (a cube, or for two reagents a square seen face on)
     const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
     const sc = (Math.min(b.w, b.h - 20) / 3.7) * zoom;
@@ -242,19 +241,19 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
       }
     }
     g.globalCompositeOperation = 'source-over';
-    // the axes: each reagent's name at its far end, its range from the near corner
+    // the axes: each reagent's name at its far end
     const lab = (p: [number, number], s: string) => {
       g.fillStyle = 'rgba(255,255,255,0.8)';
       g.fillText(s, p[0] + 3, p[1] + 2);
     };
     const ends = [[1.12, -1, -1], [-1, 1.12, -1], [-1, -1, 1.12]];
     A.forEach((r, k) => {
-      lab(proj(ends[k][0], ends[k][1], ends[k][2]), `${names[r]} ${fmt(spans[k][0])}…${fmt(spans[k][1])}`);
+      lab(proj(ends[k][0], ends[k][1], ends[k][2]), names[r]);
     });
     if (A.length < 3) lab(proj(ends[A.length][0], ends[A.length][1], ends[A.length][2]), 'how many (log)');
     g.restore();
     g.fillStyle = 'rgba(255,255,255,0.6)';
-    g.fillText(`phase plot: ${A.map((r) => names[r]).join(' × ')} (each dot a cell) · drag to turn, pinch or wheel to zoom, tap for the next reagents`, b.x + 6, b.y + 4);
+    g.fillText('drag to turn · pinch or wheel to zoom · tap for the next reagents', b.x + 6, b.y + 4);
   }
 
   function drawStrips(b: { x: number; y: number; w: number; h: number }) {
@@ -269,7 +268,7 @@ export function startAnalysis(canvas: HTMLCanvasElement, src: AnalysisSource) {
       const bw = w / HBINS;
       for (let i = 0; i < HBINS; i++) g.fillRect(x + i * bw, y + rh * (1 - hs[i]), Math.max(1, bw - 0.5), rh * hs[i]);
       g.fillStyle = 'rgba(255,255,255,0.7)';
-      g.fillText(`${names[r]}  ${fmt(ranges[r][0])} … ${fmt(ranges[r][1])}`, x + 3, y + 2);
+      g.fillText(names[r], x + 3, y + 2);
     });
     // history of the shown reagent: mean (line) and ± spread (band)
     const y = b.y + gap + R * (rh + gap), x = b.x + 6, w = b.w - 12;

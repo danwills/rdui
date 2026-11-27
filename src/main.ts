@@ -717,16 +717,17 @@ async function init() {
     return true;
   }
 
-  async function loadScene(id: string, sc: Scene) {
+  async function loadScene(id: string, sc: Scene, size?: { width: number; height: number }) {
     settingUp = true;
     try {
-      await setUpScene(id, sc);
+      await setUpScene(id, sc, size);
     } finally {
       settingUp = false;
     }
   }
 
-  async function setUpScene(id: string, sc: Scene) {
+  /** Set up a scene, at its own size or (unless it's laid out cell by cell) at `want`, its layout scaled to fit. */
+  async function setUpScene(id: string, sc: Scene, want?: { width: number; height: number }) {
     let r: RuleDef;
     let imp: Awaited<ReturnType<typeof loadBundled>> | null = null;
     if (sc.rule.startsWith('builtin:')) r = clone(BUILTIN_RULES[Number(sc.rule.slice(8))]);
@@ -740,17 +741,24 @@ async function init() {
       r = { ...r, paintable: [...sc.paintable, ...base.paintable.filter((n) => base.params.find((p) => p.name === n)?.distance && !sc.paintable!.includes(n))] };
     }
     if (sc.initial) r = { ...r, initial: sc.initial };
-    const size = sc.size ? { width: sc.size, height: sc.size } : r.size;
+    const own = sc.size ? { width: sc.size, height: sc.size } : r.size;
+    // (the size its layout is in: its own, else the default grid's)
+    const laid = own ?? { width: 512, height: 512 };
     // stamps and eaters sit at exact cells (and a soliton stamp is a set number of cells across), so such
-    // a scene runs at its own size whatever the resolution
+    // a scene runs at its own size whatever the resolution or grid
     const exact = !!(sc.stamps?.length || sc.sdf?.length);
-    const warn = [...(imp?.warnings ?? []), ...(exact && s.resScale !== 1 ? ['This scene runs at full resolution: it is laid out cell by cell.'] : [])];
+    const resized = !!want && (want.width !== laid.width || want.height !== laid.height);
+    const size = want && !exact ? want : own;
+    const warn = [...(imp?.warnings ?? []), ...(exact && (s.resScale !== 1 || resized) ? [`This scene runs at its own size (${laid.width}², full resolution): it is laid out cell by cell.`] : [])];
     const ok = await applyRule(r, { field: 'initial', id, globals: { ...defaultGlobals(r), ...sc.globals }, size, image: imp?.image, warnings: warn, exact });
     if (!ok) return;
+    // the scene's layout (in its own size's cells) scaled to the cells the sim has (another grid size, or resolution)
+    const kx = sim.width / laid.width, ky = sim.height / laid.height, kr = Math.sqrt(kx * ky);
+    const box = ([x, y, w, h]: number[]) => [Math.round(x * kx), Math.round(y * ky), Math.max(1, Math.round(w * kx)), Math.max(1, Math.round(h * ky))];
     if (sc.start === 'rest') sim.clearChemistry();
     // Each rect changes only the params it lists, so rects can be layered.
     for (const p of sc.paint ?? []) {
-      const [x, y, w, h] = p.rect;
+      const [x, y, w, h] = box(p.rect);
       const { params } = await sim.readRegion(x, y, w, h);
       const P4 = sim.layout.P * 4;
       for (const [n, v] of Object.entries(p.values)) {
@@ -763,7 +771,7 @@ async function init() {
       }
       sim.writeRegion(x, y, w, h, params);
     }
-    for (const [x, y, w, h] of sc.walls ?? []) {
+    for (const [x, y, w, h] of (sc.walls ?? []).map(box)) {
       sim.brush({ ax: x, ay: y + h / 2, bx: x + w, by: y + h / 2, radius: h / 2, mode: BrushMode.Wall, strength: 1, hardness: 1, paint: paintValues() });
     }
     for (const w of sc.sdf ?? []) {
@@ -773,7 +781,7 @@ async function init() {
         continue;
       }
       if (w.field === 'trap_d' && !w.cut) trapsDrawn = true;
-      sim.brush({ ax: w.x, ay: w.y, bx: w.x2 ?? w.x, by: w.y2 ?? w.y, radius: w.r, mode: BrushMode.Sdf, strength: 1, hardness: 1, paint: paintValues(), slot, clear: false, base: w.cut ? -1 : 1 });
+      sim.brush({ ax: w.x * kx, ay: w.y * ky, bx: (w.x2 ?? w.x) * kx, by: (w.y2 ?? w.y) * ky, radius: w.r * kr, mode: BrushMode.Sdf, strength: 1, hardness: 1, paint: paintValues(), slot, clear: false, base: w.cut ? -1 : 1 });
     }
     for (const p of sc.stamps ?? []) {
       const base = stamps.get(p.stamp) ?? STARTER_STAMPS.find((st) => st.id === p.stamp);
@@ -784,10 +792,10 @@ async function init() {
       let st = transformStamp(base, { rot: p.rot ?? 0, flip: p.flip ?? false });
       if (p.boost) st = boostStamp(st, p.boost.phase ?? 0, p.boost.kx, p.boost.ky, st.id, st.name);
       const f = remapField(st, st.w * st.h);
-      const [ox, oy] = stampOrigin(st, p.x, p.y);
+      const [ox, oy] = stampOrigin(st, Math.round(p.x * kx), Math.round(p.y * ky));
       await compositeStamp(ox, oy, st.w, st.h, f.state, p.params ? f.params : undefined);
     }
-    probes.load(sc.probes ?? []);
+    probes.load((sc.probes ?? []).map((q) => { const [x, y, w, h] = box([q.x, q.y, q.w, q.h]); return { ...q, x, y, w, h }; }));
     probePanel.render();
     const v = sc.view ?? {};
     if (v.reagent) s.reagent = Math.max(0, rule.reagents.indexOf(v.reagent));
@@ -802,6 +810,9 @@ async function init() {
   }
 
   async function selectRule(id: string) {
+    // a rule with just one scene opens as that scene (most only start properly as their scene sets them up)
+    const only = id.startsWith('builtin:') ? SCENES.filter((x) => x.scene.rule === id) : [];
+    if (only.length === 1) id = `scene:${only[0].id}`;
     try {
       if (id.startsWith('scene:')) {
         const sc = SCENES.find((x) => x.id === id.slice(6));
@@ -924,7 +935,7 @@ async function init() {
       sim.load(f.state, f.params);
     },
     // a scene is loaded again (its stamps, walls and probes too); anything else restarts from the rule's pattern
-    resize: (size) => (/^(scene|saved):/.test(ruleId) ? selectRule(ruleId) : applyRule(rule, { field: 'initial', size: { width: size, height: size }, keepView: true })),
+    resize: (size) => (ruleId.startsWith('scene:') ? loadScene(ruleId, SCENES.find((x) => x.id === ruleId.slice(6))!.scene, { width: size, height: size }) : ruleId.startsWith('saved:') ? selectRule(ruleId) : applyRule(rule, { field: 'initial', size: { width: size, height: size }, keepView: true })),
     stepOnce: () => {
       s.running = false;
       pendingSteps++;
