@@ -1075,17 +1075,32 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       '1–7 tools · [ ] radius · space run/pause · . step · F fill · R reset · C clear · V cycle reagent · T cycle tint · H hide panel · right-click alt action · Esc cancel · hold the middle button on a slider (or long-press it) for a value ladder: up/down picks the step, left/right drags')),
   );
 
+  // the stamps at the end of the Rule tab (they go with a rule's reagents), the probes at the end of the Tool tab
+  // (drawn with the Probe tool, read while using any)
+  const byTitle = (t: string) => [...root.querySelectorAll<HTMLElement>(':scope > section')].find((sec) => sec.querySelector(':scope > h2')?.textContent === t);
+  for (const [part, into] of [['Stamps', 'Rule'], ['Probes', 'Tool']]) {
+    const sec = byTitle(part), host = byTitle(into);
+    if (!sec || !host) continue;
+    sec.querySelector(':scope > h2')!.remove();
+    host.append(el('div', { class: 'subsection' }, el('h3', {}, part), ...sec.childNodes));
+    sec.remove();
+  }
+
   // the sections as tabs under the header: one at a time, the last one chosen remembered
   const TAB_KEY = 'rdui.panelTab';
   const sections = [...root.querySelectorAll<HTMLElement>(':scope > section')];
   const names = sections.map((sec) => sec.querySelector('h2')?.textContent ?? '');
   let current = names.includes('Rule') ? 'Rule' : names[0];
-  try { const t = localStorage.getItem(TAB_KEY); if (t && names.includes(t)) current = t; } catch { /* no storage */ }
+  try {
+    // (the tabs the stamps and probes had: theirs now)
+    const t = ({ Stamps: 'Rule', Probes: 'Tool' } as Record<string, string>)[localStorage.getItem(TAB_KEY) ?? ''] ?? localStorage.getItem(TAB_KEY);
+    if (t && names.includes(t)) current = t;
+  } catch { /* no storage */ }
   // (short labels, so they fit one row on a phone)
-  const SHORT: Record<string, string> = { Simulation: 'Sim', Stamps: 'Stamp', Probes: 'Probe', Record: 'Rec' };
+  const SHORT: Record<string, string> = { Simulation: 'Sim', Record: 'Rec' };
   const tabButtons = names.map((n) => button(SHORT[n] ?? n, () => showTab(n), `show ${n}`));
   // the tabs in this order (the sections' own order otherwise), the first shown until another is chosen
-  const ORDER = ['Rule', 'View', 'Simulation', 'Tool', 'Record', 'Stamps', 'Probes'];
+  const ORDER = ['Rule', 'View', 'Simulation', 'Tool', 'Record'];
   const rank = (n: string) => (ORDER.includes(n) ? ORDER.indexOf(n) : ORDER.length);
   const tabBar = el('nav', { class: 'tabs' }, ...tabButtons.map((b, i) => ({ b, i })).sort((p, q) => rank(names[p.i]) - rank(names[q.i]) || p.i - q.i).map(({ b }) => b));
   // the header and the tabs stay at the top as the panel scrolls
