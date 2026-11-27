@@ -159,3 +159,55 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
   }
 }
+
+// --- Doze (the Push tool on sand): the sand under the stroke is carried along it, like a bulldozer's blade: a flow u,
+// this pass's share of the stroke (under a cell) times a smooth bump across the capsule, moves the height reagent
+// (seed[0].x, and seed[0].y if not -1, the ripples riding on it) by upwind fluxes, so no sand is made or lost and
+// what's shoved piles up ahead where the flow stops. Reads the copy (stateSrc), so cells see each other's old values.
+// seed[0].zw: the flow this pass (cells, rows down).
+
+fn dozeFlow(p: vec2<f32>) -> vec2<f32> {
+  let d = wrapDist(p, brush.a, brush.b);
+  let w = select(0.0, 0.5 + 0.5 * cos(3.14159265 * d / brush.radius), d < brush.radius);
+  return brush.seed[0].zw * w * abs(brush.strength);
+}
+
+fn dozeAt(x: i32, y: i32, r: u32) -> f32 {
+  let W = i32(size.width);
+  let H = i32(size.height);
+  let j = u32(((y + H) % H) * W + (x + W) % W);
+  return stateSrc[j * S + (r >> 2u)][r & 3u];
+}
+
+// the flux through the face between cell c and its neighbour c + o (o one cell along x or y), upwind
+fn dozeFlux(cx: i32, cy: i32, o: vec2<i32>, r: u32) -> f32 {
+  let pc = vec2<f32>(f32(cx) + 0.5, f32(cy) + 0.5);
+  let po = pc + vec2<f32>(o);
+  let u = dot(0.5 * (dozeFlow(pc) + dozeFlow(po)), vec2<f32>(o));
+  return select(u * dozeAt(cx + o.x, cy + o.y, r), u * dozeAt(cx, cy, r), u > 0.0);
+}
+
+@compute @workgroup_size(8, 8)
+fn doze(@builtin(global_invocation_id) gid: vec3<u32>) {
+  if (gid.x >= size.width || gid.y >= size.height) {
+    return;
+  }
+  let cell = vec2<f32>(f32(gid.x) + 0.5, f32(gid.y) + 0.5);
+  // (cells a little outside the capsule take what's pushed out of it)
+  if (wrapDist(cell, brush.a, brush.b) > brush.radius + 1.5) {
+    return;
+  }
+  let i = gid.y * size.width + gid.x;
+  let cx = i32(gid.x);
+  let cy = i32(gid.y);
+  for (var k = 0; k < 2; k++) {
+    let rf = select(brush.seed[0].x, brush.seed[0].y, k == 1);
+    if (rf < 0.0) {
+      continue;
+    }
+    let r = u32(rf);
+    let out = dozeFlux(cx, cy, vec2<i32>(1, 0), r) - dozeFlux(cx - 1, cy, vec2<i32>(1, 0), r)
+      + dozeFlux(cx, cy, vec2<i32>(0, 1), r) - dozeFlux(cx, cy - 1, vec2<i32>(0, 1), r);
+    state[i * S + (r >> 2u)][r & 3u] = dozeAt(cx, cy, r) - out;
+  }
+}

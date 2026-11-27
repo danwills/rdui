@@ -165,7 +165,7 @@ export const TOOLS: { id: Tool; label: string; key: string; hint: string }[] = [
   { id: 'wall', label: 'Wall', key: '4', hint: 'no-flux barrier · right-drag removes' },
   { id: 'unwall', label: 'Unwall', key: '8', hint: 'remove walls (e.g. open a door)' },
   { id: 'smooth', label: 'Smooth', key: '9', hint: 'round off walls and blur painted params · right-drag blurs the pattern too · walls thinner than about a sixth of the brush go · strength 0.5 is one full pass a dab, up to 8 at 1' },
-  { id: 'push', label: 'Push', key: '0', hint: 'drag across a bubble to send it that way (its momentum set to its content × the rule\'s speed); in a fluid, drag to shove the fluid itself that way (Schrödinger\'s Smoke too, shedding vortices off the brush\'s sides; the line shape launches one vortex pair as wide as the brush instead) · right-drag brakes it · strength up to 1: how far each dab goes; above 1 (up to 10): that many times the speed; negative: the other way · rules with momentum, and fluids, only' },
+  { id: 'push', label: 'Push', key: '0', hint: 'drag across a bubble to send it that way (its momentum set to its content × the rule\'s speed); in a fluid, drag to shove the fluid itself that way (Schrödinger\'s Smoke too, shedding vortices off the brush\'s sides; the line shape launches one vortex pair as wide as the brush instead); on sand, drag to bulldoze it along, piling up ahead · right-drag brakes it · strength up to 1: how far each dab goes; above 1 (up to 10): that many times the speed; negative: the other way · rules with momentum, fluids and sand only' },
   { id: 'capture', label: 'Capture', key: '5', hint: 'drag a rectangle to capture it as a stamp' },
   { id: 'stamp', label: 'Stamp', key: '6', hint: 'click to place the selected stamp · Q/E rotate · X mirror' },
   { id: 'probe', label: 'Probe', key: '7', hint: 'drag a rectangle to measure it · right-click a probe removes it' },
@@ -712,7 +712,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     }, `${t.hint} (${t.key})`);
     syncers.push(() => b.classList.toggle('active', s.tool === t.id));
     // Push only for rules with momentum, and fluids
-    if (t.id === 'push') syncers.push(() => { const r = rc.rule(); b.style.display = r.momentum || r.stir || r.vortexPush ? '' : 'none'; });
+    if (t.id === 'push') syncers.push(() => { const r = rc.rule(); b.style.display = r.momentum || r.stir || r.vortexPush || r.doze ? '' : 'none'; });
     toolRow.append(b);
   }
   syncers.push(() => (toolHint.textContent = TOOLS.find((t) => t.id === s.tool)!.hint));

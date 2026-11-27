@@ -1440,7 +1440,7 @@ async function init() {
       case 'unwall': mode = alt ? BrushMode.Wall : BrushMode.Unwall; break;
       case 'smooth': mode = BrushMode.Smooth; break;
       // (a wavefunction fluid: a drag shoves it, a line launches a vortex pair along it)
-      case 'push': mode = rule.momentum ? BrushMode.Push : rule.stir ? BrushMode.Stir : rule.vortexPush ? (s.brushShape === 'line' ? BrushMode.Pair : BrushMode.Jet) : BrushMode.Seed; break;
+      case 'push': mode = rule.momentum ? BrushMode.Push : rule.stir ? BrushMode.Stir : rule.vortexPush ? (s.brushShape === 'line' ? BrushMode.Pair : BrushMode.Jet) : rule.doze ? BrushMode.Doze : BrushMode.Seed; break;
       default: mode = alt ? BrushMode.Erase : BrushMode.Seed; break;
     }
     // wave media: the Wall tool draws reflecting or absorbing walls into the rule's wall distance fields

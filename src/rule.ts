@@ -212,6 +212,8 @@ export interface RuleDef {
    * (as wide as the brush, cores `core` cells), from where it started.
    */
   vortexPush?: { re: string; im: string; core: number; speed?: number; max?: number };
+  /** Sand: the Push tool shoves the `height` reagent (and `also`, the ripples riding on it) along the drag, mass kept. */
+  doze?: { height: string; also?: string };
   /**
    * A parameter (not paintable) setting how far the single neighbours (north_a …) reach: each becomes the mean of a
    * box of cells that far away, so a hand-written stencil acts on features that many times larger (1 = the cells next door).
@@ -7685,6 +7687,7 @@ export const SAND_RIPPLES: RuleDef = {
     relief: 'How steep the ripples look in the light (the view only)',
   },
   paintable: ['flux', 'hop'],
+  doze: { height: 'h' },
   formula: `// the sand landing here this step: from each of the cells 2–11 upwind, its flux if its hop comes down here
 float land = 0.0;
 float hp = 0.0;
@@ -7804,6 +7807,7 @@ export const SAND_DUNES: RuleDef = {
     dune_relief: 'How steep the dunes look in the light (the view only)',
   },
   paintable: ['dune_flux', 'flux'],
+  doze: { height: 'H', also: 'r' },
   formula: dunesFormula(),
   rest: [0.6, 0, 0, 0.05, 1, 0.5, 0.5, 0],
   seed: [null, 0, 0, null, null, null, null, null],

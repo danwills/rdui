@@ -43,6 +43,8 @@ export const BrushMode = {
   /** A wavefunction fluid: bend ψ1's phase under the brush toward a flow along the stroke (seed[0].xy), from its phase
    *  at the stroke's end, so a drag shoves the fluid like a paddle (vortices shed off its sides); see RuleDef.vortexPush. */
   Jet: 11,
+  /** Sand: carry the height (and the ripples on it) along the stroke, mass kept, piling up ahead: see RuleDef.doze. */
+  Doze: 12,
 } as const;
 export type BrushMode = (typeof BrushMode)[keyof typeof BrushMode];
 
@@ -415,6 +417,11 @@ export class Simulation {
         this.smoothStroke(filled, b.strength);
         continue;
       }
+      if (b.mode === BrushMode.Doze) {
+        flush();
+        this.dozeStroke(filled, b);
+        continue;
+      }
       const f = new Float32Array(filled);
       // the box: the stroke and its radius (and an SDF's reach past it), on the wrapping field; all of it if that's wider
       const reach = f[4] + (b.mode === BrushMode.Sdf ? SDF_REACH : 0) + 1;
@@ -519,6 +526,13 @@ export class Simulation {
       f[B_SEED] = v[0]; f[B_SEED + 1] = v[1];
       f[B_SEED + 2] = rule.reagents.indexOf(vp.re); f[B_SEED + 3] = rule.reagents.indexOf(vp.im);
     }
+    if (b.mode === BrushMode.Doze) {
+      // the height reagent and the ripples on it (-1: none); the flow per pass is set by dozeStroke
+      const dz = rule.doze;
+      if (!dz || Math.hypot(b.bx - b.ax, b.by - b.ay) < 1e-6) return null;
+      f[6] = Math.max(-1, Math.min(1, b.strength));
+      f[B_SEED] = rule.reagents.indexOf(dz.height); f[B_SEED + 1] = dz.also ? rule.reagents.indexOf(dz.also) : -1;
+    }
     if (b.mode === BrushMode.Smooth) {
       // which param slots to blur: all but the wall flag and a membrane's compartment ids
       const names = this.layout.paramNames;
@@ -547,6 +561,42 @@ export class Simulation {
     }
     this.device.queue.submit([enc.finish()]);
   }
+
+  /** A Doze stroke: the stroke's length cut into passes of under a cell's flow each, every pass reading a fresh copy. */
+  private dozeStroke(buf: ArrayBuffer, b: BrushStroke) {
+    const f = new Float32Array(buf);
+    const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
+    const passes = Math.min(64, Math.ceil(len / 0.8));
+    f[B_SEED + 2] = dx / passes; f[B_SEED + 3] = dy / passes;
+    this.device.queue.writeBuffer(this.brushUniform, 0, buf);
+    const src = this.smoothBuffers();
+    this.dozePipeline ??= this.device.createComputePipeline({
+      layout: 'auto',
+      compute: { module: this.device.createShaderModule({ code: smoothWGSL, label: 'doze' }), entryPoint: 'doze', constants: { S: this.layout.S, P: this.layout.P } },
+    });
+    const pl = this.dozePipeline;
+    this.dozeGroups ??= [0, 1].map((cur) => this.device.createBindGroup({
+      layout: pl.getBindGroupLayout(0),
+      entries: [
+        { binding: 0, resource: { buffer: this.brushUniform } },
+        { binding: 1, resource: { buffer: this.infoUniform } },
+        { binding: 3, resource: { buffer: this.state[cur] } },
+        { binding: 5, resource: { buffer: src.state } },
+      ],
+    }));
+    const enc = this.device.createCommandEncoder();
+    for (let n = 0; n < passes; n++) {
+      enc.copyBufferToBuffer(this.state[this.current], 0, src.state, 0, src.state.size);
+      const pass = enc.beginComputePass();
+      pass.setPipeline(pl);
+      pass.setBindGroup(0, this.dozeGroups[this.current]);
+      pass.dispatchWorkgroups(Math.ceil(this.width / WG), Math.ceil(this.height / WG));
+      pass.end();
+    }
+    this.device.queue.submit([enc.finish()]);
+  }
+  private dozePipeline?: GPUComputePipeline;
+  private dozeGroups?: GPUBindGroup[];
 
   private smoothBuffers() {
     if (!this.smoothSrc) {
