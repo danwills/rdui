@@ -542,23 +542,42 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
   }
 
   /**
-   * Brush strength: its size on a log slider from 1e-7 to 1 (Smoke lives at ~1e-7, so its brush must be that light),
-   * ± flips its sign (negative pushes away from the target: seed the opposite way, erase exaggerates, smooth sharpens),
-   * and the box takes any value from -1 to 1.
+   * Brush strength: a 0–1 slider times a multiplier (×10 down to ×1e-7, Smoke living at ~1e-7, or the same negated:
+   * negative pushes away from the target, seeding the opposite way, erase exaggerating, smooth sharpening), so the
+   * sign stays out of the way; the box shows and takes the total, from -1 to 1 (10 for Push).
    */
   function strengthRow() {
-    const MIN = -7;
-    const input = el('input', { type: 'range', min: String(MIN), max: '0', step: 'any' });
+    const POW = [1, 0, -1, -2, -3, -4, -5, -6, -7];
+    const MULTS = [...POW.map((e) => 10 ** e), ...POW.map((e) => -(10 ** e))];
+    const label = (m: number) => `×${m < 0 ? '−' : ''}${Math.abs(m) >= 0.01 ? String(+Math.abs(m).toFixed(2)) : `1e${Math.round(Math.log10(Math.abs(m)))}`}`;
+    const input = el('input', { type: 'range', min: '0', max: '1', step: '0.001' });
     const num = el('input', { type: 'text', class: 'num', inputmode: 'decimal' });
-    const flip = button('±', () => { s.strength = -s.strength; sync(); }, 'flip the sign: negative pushes away from the target (seeds the opposite way, erase exaggerates, smooth sharpens)');
-    flip.classList.add('mini');
+    const mult = el('select', { class: 'mult', title: 'the multiplier the slider is taken times: its size, and its sign (negative pushes away from the target: seeds the opposite way, erase exaggerates, smooth sharpens)' },
+      ...MULTS.map((m, k) => el('option', { value: String(k) }, label(m))));
     // Push's strength goes past 1 (to 10: 0.6 px a step at Momentum Bubbles' speed; past a cell a step the carrying goes unstable), multiplying its speed (see sim.ts); the other tools' is a blend, 1 at most
     const most = () => (s.tool === 'push' ? 10 : 1);
-    const put = (v: number) => {
+    let m = 1;
+    // the multiplier for a total: kept while the slider stays between 0.05 and 1 of it (and the sign agrees), else the
+    // smallest that holds the total (its sign)
+    const fit = (v: number, loose = false) => {
+      if (v === 0) return;
+      const r = v / m;
+      if (r > 0 && r <= 1 + 1e-9 && (loose || r >= 0.05)) return;
+      const sign = v < 0 ? -1 : 1, size = Math.abs(v);
+      const fits = POW.map((e) => 10 ** e).filter((x) => x >= size * (1 - 1e-9));
+      m = sign * (fits.length ? fits[fits.length - 1] : 10);
+    };
+    const put = (v: number, refit = true) => {
       s.strength = Math.max(-most(), Math.min(most(), v));
+      if (refit) fit(s.strength);
       sync();
     };
-    input.addEventListener('input', () => put((s.strength < 0 ? -1 : 1) * 10 ** Number(input.value)));
+    input.addEventListener('input', () => put(Number(input.value) * m, false));
+    mult.addEventListener('change', () => {
+      const base = Math.min(1, Math.abs(s.strength / m));
+      m = MULTS[Number(mult.value)];
+      put(base * m, false);
+    });
     num.addEventListener('change', () => {
       const v = Number(num.value);
       if (Number.isFinite(v)) put(v);
@@ -567,13 +586,15 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     num.addEventListener('keydown', (e) => e.stopPropagation());
     num.addEventListener('focus', () => num.select());
     syncers.push(() => {
-      input.value = String(Math.max(MIN, Math.log10(Math.abs(s.strength) || 10 ** MIN)));
+      // (set elsewhere, e.g. a tool's own brush or a ladder: refit if the slider can't show it)
+      fit(s.strength, true);
+      input.value = String(Math.min(1, Math.abs(s.strength / m)));
+      mult.value = String(MULTS.findIndex((x) => Math.abs(x - m) < Math.abs(m) * 1e-6));
       if (document.activeElement !== num) num.value = fmt(s.strength);
-      flip.classList.toggle('on', s.strength < 0);
-      row.classList.toggle('negative', s.strength < 0);
+      row.classList.toggle('negative', s.strength < 0 || m < 0);
     });
-    const row = el('label', { class: 'row strength', title: SETTING_HINTS.strength ?? 'strength' }, el('span', {}, 'Strength'), input, num, flip);
-    ladder(row, { get: () => s.strength, set: put, range: [0, 1], get clamp(): [number, number] { return [-most(), most()]; }, reset: () => put(defaultSettings().strength) });
+    const row = el('label', { class: 'row strength', title: SETTING_HINTS.strength ?? 'strength' }, el('span', {}, 'Strength'), input, mult, num);
+    ladder(row, { get: () => s.strength, set: put, range: [0, 1], get clamp(): [number, number] { return [-most(), most()]; }, reset: () => { m = 1; put(defaultSettings().strength); } });
     resetTip(row);
     return row;
   }
