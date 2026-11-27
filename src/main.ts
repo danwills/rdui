@@ -1210,9 +1210,9 @@ async function init() {
     Math.min(Math.max(y, 0), sim.height),
   ];
 
-  // (x0, y0: where it started, and launched: whether its vortex pair has gone, for a wavefunction fluid's Push)
+  // (x0, y0: where it started)
   // (pts: the path's last few points, which the spline runs through, drawn one point behind)
-  let drag: { x: number; y: number; alt: boolean; x0: number; y0: number; launched?: boolean; pts: [number, number, number][] } | null = null;
+  let drag: { x: number; y: number; alt: boolean; x0: number; y0: number; pts: [number, number, number][] } | null = null;
 
   /**
    * The piece of a centripetal Catmull-Rom spline from p1 to p2 (p0 before, p3 after), as brush strokes: as many
@@ -1240,7 +1240,7 @@ async function init() {
       const b = k === n ? p2 : at(k / n);
       // (in the sim's own time: cells per ms over sim time per ms; paused, the rule's own speed)
       const pushSpeed = speed !== undefined && simPerMs > 1e-6 ? speed / simPerMs : undefined;
-      out.push(...toBrush(a[0], a[1], b[0], b[1], alt).map((st) => (st.mode === BrushMode.Stir && pushSpeed !== undefined ? { ...st, pushSpeed } : st)));
+      out.push(...toBrush(a[0], a[1], b[0], b[1], alt).map((st) => ((st.mode === BrushMode.Stir || st.mode === BrushMode.Jet) && pushSpeed !== undefined ? { ...st, pushSpeed } : st)));
       a = b;
     }
     return out;
@@ -1331,21 +1331,13 @@ async function init() {
       return;
     }
     if (!drag) return;
-    if (s.tool === 'push' && !rule.momentum && !rule.stir && rule.vortexPush) {
-      // one vortex pair a drag, launched from where it started once it's gone a brush's radius (the way it went)
-      if (!drag.launched && !drag.alt && Math.hypot(x - drag.x0, y - drag.y0) >= Math.max(3, s.radius / cellScale)) {
-        strokes.push(...toBrush(drag.x0, drag.y0, x, y, false));
-        drag.launched = true;
-      }
-      return;
-    }
     // every sample the pointer took since the last event (phones take 120-240 a second; events come once a frame)
     const evs = e.getCoalescedEvents?.() ?? [];
     for (const ev of evs.length ? evs : [e]) dragTo(...toGrid(ev), ev.timeStamp);
   });
   canvas.addEventListener('pointerup', (e) => {
     if (drag && !drag.alt && s.tool === 'smooth') smoothNudge(e.clientX, e.clientY);
-    if (drag && !(s.tool === 'push' && !rule.momentum && !rule.stir && rule.vortexPush)) dragEnd();
+    if (drag) dragEnd();
     drag = null;
     if (shapeDrag) {
       const d = shapeDrag;
@@ -1416,7 +1408,8 @@ async function init() {
       case 'wall': mode = alt ? BrushMode.Unwall : BrushMode.Wall; break;
       case 'unwall': mode = alt ? BrushMode.Wall : BrushMode.Unwall; break;
       case 'smooth': mode = BrushMode.Smooth; break;
-      case 'push': mode = rule.momentum ? BrushMode.Push : rule.stir ? BrushMode.Stir : rule.vortexPush ? BrushMode.Pair : BrushMode.Seed; break;
+      // (a wavefunction fluid: a drag shoves it, a line launches a vortex pair along it)
+      case 'push': mode = rule.momentum ? BrushMode.Push : rule.stir ? BrushMode.Stir : rule.vortexPush ? (s.brushShape === 'line' ? BrushMode.Pair : BrushMode.Jet) : BrushMode.Seed; break;
       default: mode = alt ? BrushMode.Erase : BrushMode.Seed; break;
     }
     // wave media: the Wall tool draws reflecting or absorbing walls into the rule's wall distance fields
@@ -1582,7 +1575,7 @@ async function init() {
     pendingSteps = 0;
     sim.step(enc, n);
     stepsDone += n;
-    if (elapsed > 0 && elapsed < 250) simPerMs += ((n * (globals.timestep ?? 1)) / elapsed - simPerMs) * 0.1;
+    if (elapsed > 0 && elapsed < 250) simPerMs += ((n * (globals.timestep ?? 1)) / (rule.stepCycle ?? 1) / elapsed - simPerMs) * 0.1; // (a cycle of passes is one timestep)
     sim.render(enc, ctx.getCurrentTexture().createView(), canvas.width, canvas.height, viewOptions());
     device.queue.submit([enc.finish()]);
     gpuBusy = true;

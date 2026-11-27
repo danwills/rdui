@@ -40,6 +40,9 @@ export const BrushMode = {
   Stir: 9,
   /** A wavefunction fluid: wind a vortex pair into ψ1 (a = b, its centre; seed[0], its two vortices): see RuleDef.vortexPush. */
   Pair: 10,
+  /** A wavefunction fluid: bend ψ1's phase under the brush toward a flow along the stroke (seed[0].xy), from its phase
+   *  at the stroke's end, so a drag shoves the fluid like a paddle (vortices shed off its sides); see RuleDef.vortexPush. */
+  Jet: 11,
 } as const;
 export type BrushMode = (typeof BrushMode)[keyof typeof BrushMode];
 
@@ -501,6 +504,20 @@ export class Simulation {
       f[B_SEED] = b.ax + nx; f[B_SEED + 1] = b.ay + ny; f[B_SEED + 2] = b.ax - nx; f[B_SEED + 3] = b.ay - ny;
       f[B_SEED + 4] = rule.reagents.indexOf(vp.re); f[B_SEED + 5] = rule.reagents.indexOf(vp.im);
       f[B_SEED + 6] = vp.core; f[B_SEED + 7] = w;
+    }
+    if (b.mode === BrushMode.Jet) {
+      // ψ1's reagents and the flow along the stroke (y up): the drag's speed (up to the rule's most), or the rule's;
+      // a flow k is a phase gradient of k radians a cell, kept well under the grid's π
+      const vp = rule.vortexPush;
+      if (!vp) return null;
+      const dx = b.bx - b.ax, dy = b.by - b.ay, len = Math.hypot(dx, dy);
+      if (!b.clear && len < 1e-6) return null;
+      const base = b.pushSpeed !== undefined ? Math.min(b.pushSpeed, vp.max ?? 1) : vp.speed ?? 0.3;
+      const sp = Math.min(1.5, base * Math.max(1, Math.abs(b.strength))) * Math.sign(b.strength);
+      f[6] = Math.min(1, Math.abs(b.strength));
+      const v = b.clear || len < 1e-6 ? [0, 0] : [(sp * dx) / len, (-sp * dy) / len];
+      f[B_SEED] = v[0]; f[B_SEED + 1] = v[1];
+      f[B_SEED + 2] = rule.reagents.indexOf(vp.re); f[B_SEED + 3] = rule.reagents.indexOf(vp.im);
     }
     if (b.mode === BrushMode.Smooth) {
       // which param slots to blur: all but the wall flag and a membrane's compartment ids

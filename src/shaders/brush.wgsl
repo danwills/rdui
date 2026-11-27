@@ -39,6 +39,7 @@ const MODE_SDF: u32 = 6u;
 const MODE_PUSH: u32 = 8u; // seed[0].xy: velocity; seed[0].z, w, seed[1].x, y: the momentum's x, y, mass and size reagents (-1: none)
 const MODE_STIR: u32 = 9u; // seed[0].xy: velocity; seed[0].z: the spin reagent; seed[0].w: the segment's share of the stroke
 const MODE_PAIR: u32 = 10u; // seed[0]: the + and − vortices (cells); seed[1]: ψ1's re and im reagents, core, pair width
+const MODE_JET: u32 = 11u; // seed[0].xy: the flow (y up, radians a cell); seed[0].zw: ψ1's re and im reagents
 const SDF_REACH: f32 = 24.0; // an SDF stroke also writes distances this far outside its edge
 
 @group(0) @binding(0) var<uniform> brush: Brush;
@@ -243,6 +244,25 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
         let im = state[sb + (ia >> 2u)][ia & 3u];
         state[sb + (ra >> 2u)][ra & 3u] = re * z.x - im * z.y;
         state[sb + (ia >> 2u)][ia & 3u] = re * z.y + im * z.x;
+      }
+    }
+    case MODE_JET: {
+      // ψ1 eased toward the phase of a flow k from the stroke's end b: θ(b) + k·(p − b), at its own size. Inside it
+      // flows at k; where that phase is far from the field's (round the brush's sides) ψ1 dips through 0 and vortices
+      // form, which is what's left of the shove once the projection takes the rest. b's own cell is left as it is,
+      // so reading it as other cells change it is safe. Right-drag (k = 0) stills the flow there instead
+      if (!wall) {
+        let ra = u32(brush.seed[0].z);
+        let ia = u32(brush.seed[0].w);
+        let bc = vec2<i32>(floor(brush.b));
+        let bi = u32((bc.y % H + H) % H) * size.width + u32((bc.x % W + W) % W);
+        let th0 = atan2(state[bi * S + (ia >> 2u)][ia & 3u], state[bi * S + (ra >> 2u)][ra & 3u]);
+        let off = wrapOff(cell - (vec2<f32>(bc) + 0.5));
+        let th = th0 + brush.seed[0].x * off.x - brush.seed[0].y * off.y;
+        let cur = vec2<f32>(state[sb + (ra >> 2u)][ra & 3u], state[sb + (ia >> 2u)][ia & 3u]);
+        let z = mix(cur, length(cur) * vec2<f32>(cos(th), sin(th)), k);
+        state[sb + (ra >> 2u)][ra & 3u] = z.x;
+        state[sb + (ia >> 2u)][ia & 3u] = z.y;
       }
     }
     default: {}

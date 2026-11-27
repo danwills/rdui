@@ -205,7 +205,7 @@ export interface RuleDef {
    * its flow is the phase's gradient, so only vortices can move it, and a drag launches a vortex pair along the drag
    * (as wide as the brush, cores `core` cells), from where it started.
    */
-  vortexPush?: { re: string; im: string; core: number };
+  vortexPush?: { re: string; im: string; core: number; speed?: number; max?: number };
   /**
    * A parameter (not paintable) setting how far the single neighbours (north_a …) reach: each becomes the mean of a
    * box of cells that far away, so a hand-written stencil acts on features that many times larger (1 = the cells next door).
