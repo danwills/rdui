@@ -199,9 +199,11 @@ async function init() {
   const userRules = new UserRules();
   const savedScenes = new SavedScenes();
   await savedScenes.load();
+  /** The menu group of a bundled Ready pattern: Dan's orbits ones together. */
+  const patternGroup = (name: string) => (name.startsWith('orbits') ? 'Orbits' : 'Ready patterns');
   const familyOf = (ruleId: string) => {
     if (ruleId.startsWith('user:')) return 'My rules';
-    if (ruleId.startsWith('pattern:')) return 'Ready patterns';
+    if (ruleId.startsWith('pattern:')) return patternGroup(ruleId.slice(8));
     if (ruleId.startsWith('vti:')) return 'Ready collection';
     if (!ruleId.startsWith('builtin:')) return 'My rules';
     const r = BUILTIN_RULES[Number(ruleId.slice(8))];
@@ -211,7 +213,7 @@ async function init() {
   const ruleChoices = (): RuleChoice[] => [
     ...userRules.rules.map((u) => ({ id: `user:${u.id}`, label: u.rule.name, group: 'My rules' })),
     ...RULE_FAMILIES.flatMap(([fam, rs]) => rs.map((r) => ({ id: `builtin:${BUILTIN_RULES.indexOf(r)}`, label: r.name, group: fam }))),
-    ...BUNDLED_PATTERNS.map((p) => ({ id: `pattern:${p.name}`, label: p.name, group: 'Ready patterns' })),
+    ...BUNDLED_PATTERNS.map((p) => ({ id: `pattern:${p.name}`, label: p.name, group: patternGroup(p.name) })),
     // a preset from the collection (its browser opens with Collection…): only the one running
     ...(ruleId.startsWith('vti:') ? [{ id: ruleId, label: rule.name, group: 'Ready collection' }] : []),
     ...SCENES.map((sc) => ({ id: `scene:${sc.id}`, label: sc.scene.name, group: familyOf(sc.scene.rule), rule: sc.scene.rule })),
@@ -695,7 +697,7 @@ async function init() {
         if (!rule.view.custom) { startSettling(); customAutoRandomise = true; }
         s.customContrast = rule.view.customContrast ?? 1.2;
         s.customSaturation = rule.view.customSaturation ?? 1;
-        s.customGamma = rule.view.customGamma ?? 2.5;
+        s.customGamma = rule.view.customGamma ?? 2;
         s.customHeadroom = rule.view.customHeadroom ?? 0.25;
       }
       s.viewMode = rule.view.mode ?? 'reagent';

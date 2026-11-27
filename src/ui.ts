@@ -216,7 +216,7 @@ export function defaultSettings(): Settings {
     fleckGain: 1,
     customContrast: 1.2,
     customSaturation: 1,
-    customGamma: 2.5,
+    customGamma: 2,
     customHeadroom: 0.25,
     customFit: 3,
     customMemory: 20,
@@ -971,7 +971,7 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
     el('div', { class: 'checks' }, checkbox('wander', 'customWander', 'randomise the colours by themselves every so often (each blending in over blend)'),
       checkbox('true colours', 'customTrueColours', '🎲 picks colours as they\'ll show: the exponent pushes colours towards primaries (light blue comes out plain blue), and this undoes that for the colours 🎲 picks, so they come out lighter and softer (at each 🎲, for the exponent then)')),
     slider('every (s)', 'wanderEvery', 1, 60, 0.5, 1), slider('headroom', 'customHeadroom', 0, 2, 0.01, 2, undefined, () => rc.rule().view.customHeadroom ?? 0.25),
-      select('fit', 'customFit', () => [[1, 'v1: follow the field'], [2, 'v2: + memory'], [3, 'v3: + memory, floors']]).row, slider('memory (s)', 'customMemory', 0, 120, 0.5, 1), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2, undefined, () => rc.rule().view.customGamma ?? 2.5),
+      select('fit', 'customFit', () => [[1, 'v1: follow the field'], [2, 'v2: + memory'], [3, 'v3: + memory, floors']]).row, slider('memory (s)', 'customMemory', 0, 120, 0.5, 1), slider('exponent', 'customGamma', 0.2, 4, 0.01, 2, undefined, () => rc.rule().view.customGamma ?? 2),
       slider('contrast', 'customContrast', 0.5, 3, 0.01, 2, undefined, () => rc.rule().view.customContrast ?? 1.2),
       slider('saturation', 'customSaturation', 0, 3, 0.01, 2, undefined, () => rc.rule().view.customSaturation ?? 1));
   let customKey = '';
