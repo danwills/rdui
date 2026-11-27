@@ -1562,7 +1562,10 @@ async function init() {
       return { on: c.on || to.on, low: to.low, high: to.high, power: ease(c.power, to.power), color: c.color.map((x, i) => ease(c.on ? x : 0, col[i])) as [number, number, number] };
     }).map((c, r) => (!s.custom[r].on && Math.max(...c.color) < 1e-3 ? { ...c, on: false } : c));
     shownGrade = [s.customContrast, s.customSaturation, s.customGamma].map((x, i) => ease(shownGrade[i], x));
-    return { custom: shownCustom, customContrast: shownGrade[0], customSaturation: shownGrade[1], customGamma: shownGrade[2] };
+    // solo: only the soloed channels, at once and at their own colours (switched on or not); the blend carries on beneath
+    const solo = s.custom.some((c) => c.solo);
+    const custom = solo ? shownCustom.map((c, r) => { const to = s.custom[r]; return to.solo ? { on: true, low: to.low, high: to.high, power: to.power, color: to.color } : { ...c, on: false }; }) : shownCustom;
+    return { custom, customContrast: shownGrade[0], customSaturation: shownGrade[1], customGamma: shownGrade[2] };
   }
 
   let brushTool = s.tool; // the tool the brush settings belong to

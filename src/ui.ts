@@ -1036,6 +1036,8 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       slider('contrast', 'customContrast', 0.5, 3, 0.01, 2, undefined, () => rc.rule().view.customContrast ?? 1.2),
       slider('saturation', 'customSaturation', 0, 3, 0.01, 2, undefined, () => rc.rule().view.customSaturation ?? 1));
   let customKey = '';
+  // (shown while any reagent is soloed)
+  const soloOff = button('no solo', () => { s.custom.forEach((c) => delete c.solo); customRefresh(); }, 'untick every solo: back to all the reagents switched on');
   const toHex = (c: number[]) => '#' + c.map((v) => Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0')).join('');
   const fillCustom = () => {
     const names = rc.rule().reagents;
@@ -1059,19 +1061,22 @@ export function buildPanel(root: HTMLElement, s: Settings, actions: Actions, rc:
       const pw = valueRow('Power', () => ch().power, (v) => (ch().power = Math.max(0.05, v)), [0.1, 4], undefined, `${name}'s curve from low to high: above 1 shows only its peaks, below 1 lifts the faint parts`, () => 1);
       const auto = el('input', { type: 'checkbox' });
       auto.addEventListener('change', () => { ch().auto = auto.checked; });
-      refreshers.push(() => { on.checked = ch().on; auto.checked = !!ch().auto; colour.style.background = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
+      const solo = el('input', { type: 'checkbox' });
+      solo.addEventListener('change', () => { ch().solo = solo.checked; customRefresh(); });
+      refreshers.push(() => { on.checked = ch().on; auto.checked = !!ch().auto; solo.checked = !!ch().solo; colour.style.background = toHex(ch().color); lo.refresh(); hi.refresh(); pw.refresh(); });
       const fit = button('fit', () => actions.fitCustom(r), `fit ${name}'s low and high to the field (1st to 99th percentile)`);
       fit.classList.add('mini');
-      rows.push(el('div', { class: 'custom-channel' }, el('label', { class: 'check' }, on, name), el('span', { class: 'custom-tools' }, el('label', { class: 'check mini-check', title: `${name}'s low and high follow the field all the time, smoothly (1st to 99th percentile, eased over a second or so): for values that keep drifting` }, auto, 'Auto'), fit, colour)), lo.row, hi.row, pw.row);
+      rows.push(el('div', { class: 'custom-channel' }, el('label', { class: 'check' }, on, name), el('span', { class: 'custom-tools' }, el('label', { class: 'check mini-check', title: `show ${name} alone (with any other reagents soloed too, to compare them together), switched on or not; untick every solo to see them all again` }, solo, 'Solo'), el('label', { class: 'check mini-check', title: `${name}'s low and high follow the field all the time, smoothly (1st to 99th percentile, eased over a second or so): for values that keep drifting` }, auto, 'Auto'), fit, colour)), lo.row, hi.row, pw.row);
     });
     customBox.replaceChildren(
       el('div', { class: 'buttons' },
         button('🎲 randomise', actions.randomiseCustom, 'new colours and powers for the reagents switched on: hues spread round the wheel, powers from each reagent\'s spread in the field'),
         button('enable all', () => { s.custom.slice(0, names.length).forEach((c) => c && (c.on = true)); customRefresh(); }, 'switch every reagent on'),
+        soloOff,
         button('fit all', () => actions.fitCustom(), "set every reagent's low and high from the field: its 1st to 99th percentile")),
       gradeRows,
       ...rows);
-    customRefresh = () => refreshers.forEach((f) => f());
+    customRefresh = () => { refreshers.forEach((f) => f()); soloOff.style.display = s.custom.some((c) => c.solo) ? '' : 'none'; };
   };
   let customRefresh = () => {};
   syncers.push(() => {

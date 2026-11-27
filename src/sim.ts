@@ -82,7 +82,8 @@ export interface CellSample {
 }
 
 /** A custom palette channel; with auto, its low and high follow the field (the app's job; the shader ignores it). */
-export interface CustomChannel { on: boolean; low: number; high: number; power: number; color: [number, number, number]; auto?: boolean }
+/** `solo`: while any channel has it, only those show (on or not), to see a reagent's part, or a few together, alone. */
+export interface CustomChannel { on: boolean; low: number; high: number; power: number; color: [number, number, number]; auto?: boolean; solo?: boolean }
 
 /** The colour maps (colormaps.ts) as RGBA8 words, 256 per map, for the render shader; decoded once per device. */
 const colormapBuffers = new WeakMap<GPUDevice, GPUBuffer>();
