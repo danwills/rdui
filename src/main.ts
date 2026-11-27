@@ -1552,9 +1552,10 @@ async function init() {
       busyT = t;
     }
     const due = s.running ? Math.min(s.stepsPerFrame, s.stepsPerFrame * throttle * elapsed / (1000 / 60) + stepCarry) : 0;
-    const run = Math.floor(due);
+    // (whole cycles only, for a rule that takes turns at passes)
+    const cycle = rule.stepCycle ?? 1, run = Math.floor(due / cycle) * cycle;
     stepCarry = s.running ? due - run : 0;
-    const n = settingUp ? 0 : run + pendingSteps;
+    const n = settingUp ? 0 : run + pendingSteps * cycle;
     pendingSteps = 0;
     sim.step(enc, n);
     stepsDone += n;

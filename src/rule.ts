@@ -184,6 +184,11 @@ export interface RuleDef {
    */
   laplacian?: 'stencil' | 'spectral' | 'spectral-exact';
   /** The formula is a whole step (a map, as Ready kernel rules are), so it is never split into substeps at small feature sizes. */
+  /**
+   * Steps that make one whole update (a rule taking turns at passes, as Schrödinger's Smoke's three): each frame runs
+   * whole cycles only, so what's shown is never caught part-way through one.
+   */
+  stepCycle?: number;
   discrete?: boolean;
   /**
    * The reagents holding a momentum (x, y; y up, as the gradients) and, optionally, the mass it moves (velocity is
@@ -7443,12 +7448,13 @@ function schrodingerSmoke(): string {
   const comps = [['a1', 'b1'], ['a2', 'b2']];
   // a 9-point Laplacian, written out (the FFT takes the propagator and Poisson)
   const lap = (X: string) => `(4.0*(north_${X} + south_${X} + east_${X} + west_${X}) + north_east_${X} + north_west_${X} + south_east_${X} + south_west_${X} - 20.0*${X})/(6.0*dx*dx)`;
-  return `// which pass: A (0) Schrödinger step, B (1) divergence, C (2) projection
-float pass = fmod(floor(clock/timestep + 0.5), 3.0);
+  return `// which pass: A (0) Schrödinger step, B (1) divergence, C (2) projection. clock counts them itself, 0, 1, 2, 0 …,
+// snapped to a whole number each step, so changing the timestep (a slider dragged) can't throw them out of turn
+float pass = fmod(floor(clock + 0.5), 3.0);
 float isA = 1.0 - step(0.5, pass);
 float isC = step(1.5, pass);
 float isB = 1.0 - isA - isC;
-delta_clock = 1.0;
+delta_clock = (fmod(pass + 1.0, 3.0) - clock)/timestep;
 // A: the velocity of the projected ψ, Im(ψ̄∇ψ), carrying the dye; then the free step e^{iΔt/2} and back to unit size
 float uxn = ${comps.map(([a, b]) => `${a}*x_gradient_${b} - ${b}*x_gradient_${a}`).join(' + ')};
 float uyn = ${comps.map(([a, b]) => `${a}*y_gradient_${b} - ${b}*y_gradient_${a}`).join(' + ')};
@@ -7489,6 +7495,7 @@ export const SCHRODINGER_SMOKE: RuleDef = {
   },
   paintable: [],
   formula: schrodingerSmoke(),
+  stepCycle: 3,
   rest: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   seed: [null, null, null, null, 1, null, null, null, null, null],
   seedNoise: Array(10).fill(0),
