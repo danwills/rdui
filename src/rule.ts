@@ -8236,7 +8236,115 @@ ${CGL_SHOW}`,
   view: { reagent: 'phase', low: 0, high: 1, palette: 145, stepsPerFrame: 20 },
 };
 
-export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE, SCHRODINGER_SMOKE_PAIRS, SCHRODINGER_SMOKE_SWARM, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, SAND_RIPPLES, SAND_DUNES, SAND_DUNES_DEEPER, SAND_RIPPLES_WIND, SAND_RIPPLES_LONG, SAND_DUNES_WIND, SAND_DUNES_GUSTY, SAND_DUNES_GUSTY_LONG, SCHRODINGER_SMOKE_LEAPFROG_SWARM, CGL_SPIRALS, CGL_DEFECT_TURBULENCE, CGL_PHASE_TURBULENCE, CGL_FROZEN, CGL_FROM_SCHRODINGER, SAND_DUNES_FADING, SAND_DUNES_FADING_2];
+// --- Gap junction (wave signals for contraptions)
+
+/** A layout overlay: `chem` (a reagent or paintable) set to `value` in a disc (cells, on a 512 grid), or everywhere. */
+const gjSet = (chem: string, value: number, c?: [number, number, number], rect?: [number, number, number, number]): Overlay => ({
+  chem, op: 'overwrite', fill: { type: 'constant', value },
+  shape: rect ? { type: 'rectangle', x0: rect[0] / 512, y0: rect[1] / 512, x1: rect[2] / 512, y1: rect[3] / 512 }
+    : c ? { type: 'circle', cx: c[0] / 512, cy: c[1] / 512, r: c[2] / 512 } : { type: 'everywhere' },
+});
+
+/**
+ * Gap junction: a wave source outside a ring wall (a Gray-Scott worm, which soaks up the wave u, v) with a door in it,
+ * opened by a pulse that runs round the wall. The pulse (e, r: FitzHugh–Nagumo) lives only on a track along the ring;
+ * where it crosses the door it kills the door's blob, the wave gets in, and the ring's ends grow back over the door
+ * behind it. As lab/gap-pulse.ts, the pulse a little slower so the track stays smooth (D_e 0.2, ce 0.5): open ~440 of
+ * every ~2700 steps, the wave energy inside ~10⁴ × higher while open.
+ */
+export const GAP_JUNCTION: RuleDef = {
+  name: 'Gap junction (a wave door opened by a pulse)',
+  description: 'A wave source (left) sends ripples at a ring wall, a Gray-Scott worm that soaks them up. A door in the wall is '
+    + 'a blob of the worm\'s b; a pulse runs round the wall (red), and as it passes the door it kills the blob: the door opens, '
+    + 'the ripples pour in, and the ring\'s ends grow back over the door behind the pulse, shutting it. Paint e on the track to '
+    + 'start more pulses, b or k to make walls and doors, emit for more sources.',
+  reagents: ['a', 'b', 'u', 'v', 'e', 'r', 'clock'],
+  params: [
+    { name: 'timestep', value: 1, min: 0, max: 1.2 },
+    { name: 'D_a', value: 0.3, min: 0, max: 0.37 },
+    { name: 'D_b', value: 0.15, min: 0, max: 0.37 },
+    { name: 'F', value: 0.06, min: 0, max: 0.1 },
+    { name: 'k', value: 0.075, min: 0.03, max: 0.075 },
+    { name: 'D', value: 1, min: 0.05, max: 1.2 },
+    { name: 'c2', value: 0.3, min: 0, max: 0.45 },
+    { name: 'wall', value: 10, min: 0, max: 20 },
+    { name: 'sponge', value: 0.002, min: 0, max: 1 },
+    { name: 'emit', value: 0, min: 0, max: 2 },
+    { name: 'omega', value: 0.1047, min: 0.01, max: 1 },
+    { name: 'track', value: 0, min: 0, max: 1 },
+    { name: 'doorm', value: 0, min: 0, max: 1 },
+    { name: 'door_kill', value: 5, min: 0, max: 20 },
+    { name: 'D_e', value: 0.2, min: 0, max: 0.3 },
+    { name: 'ce', value: 0.5, min: 0, max: 0.7 },
+    { name: 'ea', value: 0.05, min: 0, max: 0.5 },
+    { name: 'eps', value: 0.0005, min: 0.0001, max: 0.01 },
+    { name: 'gr', value: 2.5, min: 0, max: 4.5 },
+  ],
+  paramHints: {
+    D: 'Scales both diffusion rates of a and b here',
+    c2: 'The wave\'s speed squared: higher, faster and longer ripples',
+    wall: 'How strongly b soaks up the wave: the worm is a wall',
+    sponge: 'Damping of the wave here: high at the edges, so nothing wraps round, a little everywhere so old echoes die',
+    emit: 'A wave source here: how hard it drives the wave',
+    omega: 'The source\'s frequency: lower, a longer period and wider-spaced ripples (60 steps at 0.105)',
+    track: 'Where the pulse can run: 1 along the wall',
+    doorm: 'Where the pulse opens the wall: 1 in the door',
+    door_kill: 'How hard the passing pulse kills the door\'s blob',
+    D_e: 'How fast the pulse spreads along the track (with ce, keep D_e·5.3 + 1.3·ce under 2, or the track breaks into speckles)',
+    ce: 'How fast the pulse\'s excitation is: lower, a slower, longer pulse (lower eps with it)',
+    ea: 'The pulse\'s threshold: higher, harder to set off',
+    eps: 'How fast the track recovers behind the pulse: lower, a longer pulse',
+    gr: 'How far the recovery goes back: keeps the track excitable rather than oscillating',
+  },
+  paintable: ['k', 'sponge', 'emit', 'track', 'doorm'],
+  formula: `delta_a = D * D_a * laplacian_a - a*b*b + F*(1.0 - a);
+// (the pulse kills the door implicitly, so it can be strong)
+delta_b = D * D_b * laplacian_b + a*b*b - (F + k)*b + (b/(1.0 + timestep*doorm*door_kill*max(e, 0.0)) - b)/timestep;
+// the pulse round the wall: excitable e with slow recovery r, only on the track (anything off it fades)
+delta_e = track*(D_e*laplacian_e + ce*(e*(1.0 - e)*(e - ea) - r)) - (1.0 - track)*e;
+delta_r = track*eps*(e - gr*r) - (1.0 - track)*r;
+// the wave, damped where there's b (the walls) and the sponge, implicitly; u leaks back to 0 at the sponge's rate too, so
+// the source's push can't drift the whole field off level
+delta_v = ((v + timestep*(c2*laplacian_u + emit*sin(omega*clock)))/(1.0 + timestep*(sponge + wall*b)) - v)/timestep;
+delta_u = (v + timestep*(c2*laplacian_u + emit*sin(omega*clock)))/(1.0 + timestep*(sponge + wall*b)) - sponge*u;
+delta_clock = 1.0;`,
+  rest: [1, 0, 0, 0, 0, 0, 0],
+  seed: [0.5, 0.25, null, null, 1, null, null],
+  seedNoise: [0, 0.25, 0, 0, 0, 0, 0],
+  size: { width: 512, height: 512 },
+  // on a 512 grid: ring centre (300, 256), radius 80, the door on its left at (220, 256), the source at (110, 256)
+  initial: [
+    gjSet('a', 1), gjSet('b', 0), gjSet('k', 0.075),
+    // the edge sponges, stepped down inwards, then the faint damping everywhere
+    gjSet('sponge', 0.3), gjSet('sponge', 0.1, undefined, [10, 10, 502, 502]), gjSet('sponge', 0.03, undefined, [20, 20, 492, 492]),
+    gjSet('sponge', 0.002, undefined, [30, 30, 482, 482]),
+    // the ring worm (a band 7 wide) and the door, a blob of b where the pulse can kill it
+    gjSet('k', 0.057, [300, 256, 83]), gjSet('a', 0.4, [300, 256, 83]), gjSet('b', 0.3, [300, 256, 83]),
+    gjSet('k', 0.075, [300, 256, 77]), gjSet('a', 1, [300, 256, 77]), gjSet('b', 0, [300, 256, 77]),
+    gjSet('k', 0.05, [220, 256, 10]), gjSet('a', 0.4, [220, 256, 10]), gjSet('b', 0.3, [220, 256, 10]), gjSet('doorm', 1, [220, 256, 10]),
+    // the track, wide enough to cover the door
+    gjSet('track', 1, [300, 256, 91]), gjSet('track', 0, [300, 256, 69]),
+    gjSet('emit', 0.3, [110, 256, 4]),
+    // the pulse, on the ring's right, set off one way (anticlockwise on screen): the quarter of the ring behind it, below,
+    // refractory
+    gjSet('e', 1, undefined, [369, 248, 391, 264]), gjSet('r', 0.25, undefined, [300, 264, 392, 350]),
+    gjSet('e', 0, [300, 256, 69]), gjSet('r', 0, [300, 256, 69]),
+  ],
+  view: (() => {
+    const off = { on: false, low: 0, high: 1, power: 1, color: [0.5, 0.5, 0.5] as [number, number, number] };
+    // a b u v e r clock: the walls pale, the wave's crests blue (u), the pulse red
+    return {
+      reagent: 'b', low: 0, high: 0.4, stepsPerFrame: 20,
+      custom: [off, { on: true, low: 0, high: 0.3, power: 1, color: [0.8, 0.8, 0.75] as [number, number, number] },
+        { on: true, low: 0, high: 0.4, power: 1, color: [0.2, 0.5, 1] as [number, number, number] },
+        off, { on: true, low: 0, high: 1, power: 1, color: [1, 0.35, 0.15] as [number, number, number] }, off, off],
+      // (no headroom: the wave's rest and the pulse's slightly negative tail stay black)
+      customContrast: 1, customSaturation: 1, customGamma: 1, customHeadroom: 0,
+    };
+  })(),
+};
+
+export const BUILTIN_RULES = [GRAY_SCOTT, GS_HISTORY_WAVE, GS_HW_MEMORY, PHYLLOTAXIS, OREGONATOR, KLEIN_GORDON, SWIFT_HOHENBERG_FB, NEURAL_FIELD, SATURABLE_NLS, GRAY_SCOTT_ZOOM, GS_FLECK, META_GS, WEATHER_GS, GS_LINEAGES, GS_SELECTION, GS_SPECIES, GS_NICHES, GS_HW_NICHES, GS_BUBBLES, PF_BUBBLES, PF_BUBBLES_1, PF_BUBBLES_3, PF_BUBBLES_4, PF_BUBBLES_5, PF_BUBBLES_6, PF_BUBBLES_7, PF_BUBBLES_8, PF_BUBBLES_9, PF_BUBBLES_10, PF_BUBBLES_11, PF_BUBBLES_12, PF_BUBBLES_13, SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_GS, SMOKE_HW, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MUD_CRACKS, MUD_CRACKS_2, MUD_CRACKS_3, MUD_CRACKS_4, MUD_CRACKS_5, MUD_CRACKS_6, MUD_CRACKS_7, MUD_CRACKS_8, MUD_CRACKS_9, MUD_CRACKS_10, MUD_CRACKS_11, MUD_CRACKS_12, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6, RIPPLES, RIPPLES_DAMPED, RIPPLES_LENS, RIPPLES_VISCOUS, KSE, KSE_TRIAD, FLAME_FRONT, FLAME_RINGS, KSE_OCTAVES, KSE_FRONTS, FLAME_WAVES, KSE_OCTAVES_256, FLAME_WAVES_2, FLAME_WAVES_3, FLAME_WAVES_4, FLAME_WAVES_5, STABLE_FLUIDS, STABLE_SMOKE, SCHRODINGER_SMOKE, SCHRODINGER_SMOKE_PAIRS, SCHRODINGER_SMOKE_SWARM, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, SAND_RIPPLES, SAND_DUNES, SAND_DUNES_DEEPER, SAND_RIPPLES_WIND, SAND_RIPPLES_LONG, SAND_DUNES_WIND, SAND_DUNES_GUSTY, SAND_DUNES_GUSTY_LONG, SCHRODINGER_SMOKE_LEAPFROG_SWARM, CGL_SPIRALS, CGL_DEFECT_TURBULENCE, CGL_PHASE_TURBULENCE, CGL_FROZEN, CGL_FROM_SCHRODINGER, SAND_DUNES_FADING, SAND_DUNES_FADING_2, GAP_JUNCTION];
 
 /** The Rules menu's families, in menu order (each built-in rule in one; scenes join their rule's family). */
 export const RULE_FAMILIES: [string, RuleDef[]][] = [
@@ -8250,7 +8358,7 @@ export const RULE_FAMILIES: [string, RuleDef[]][] = [
   ['Fluids', [STABLE_FLUIDS, FLUID_UPWIND, FLUID_LAX_WENDROFF, FLUID_LIMITED, FLUID_BILINEAR, STABLE_SMOKE, SCHRODINGER_SMOKE, SCHRODINGER_SMOKE_PAIRS, SCHRODINGER_SMOKE_SWARM, SCHRODINGER_SMOKE_LEAPFROG_SWARM]],
   ['Sand', [SAND_RIPPLES, SAND_RIPPLES_WIND, SAND_RIPPLES_LONG, SAND_DUNES, SAND_DUNES_WIND, SAND_DUNES_DEEPER, SAND_DUNES_GUSTY, SAND_DUNES_GUSTY_LONG, SAND_DUNES_FADING, SAND_DUNES_FADING_2]],
   ['Smoke', [SMOKE, SMOKE_SMOOTH, SMOKE_WIDE, SMOKE_HISTORY, SMOKE_HISTORY_WAVE, SMOKE_HISTORY_WAVE_2, SMOKE_GS, SMOKE_HW]],
-  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23]],
+  ['Contraptions', [MOMENTUM_BUBBLES, MOMENTUM_BUBBLES_2, MOMENTUM_BUBBLES_3, MOMENTUM_BUBBLES_4, MOMENTUM_BUBBLES_5, MOMENTUM_BUBBLES_6, MOMENTUM_BUBBLES_7, MOMENTUM_BUBBLES_8, MOMENTUM_BUBBLES_9, MOMENTUM_BUBBLES_10, MOMENTUM_BUBBLES_11, MOMENTUM_BUBBLES_12, MOMENTUM_BUBBLES_13, MOMENTUM_BUBBLES_14, MOMENTUM_BUBBLES_15, MOMENTUM_BUBBLES_16, MOMENTUM_BUBBLES_17, MOMENTUM_BUBBLES_18, MOMENTUM_BUBBLES_19, MOMENTUM_BUBBLES_20, MOMENTUM_BUBBLES_21, MOMENTUM_BUBBLES_22, MOMENTUM_BUBBLES_23, GAP_JUNCTION]],
   ['Other media', [OREGONATOR, NEURAL_FIELD, SWIFT_HOHENBERG_FB, PHYLLOTAXIS]],
   ['Lightning', [LIGHTNING_1, LIGHTNING_2, LIGHTNING_3, LIGHTNING_4, LIGHTNING_5, LIGHTNING_6]],
   ['Complex Ginzburg–Landau', [CGL_SPIRALS, CGL_FROZEN, CGL_PHASE_TURBULENCE, CGL_DEFECT_TURBULENCE, CGL_FROM_SCHRODINGER]],
