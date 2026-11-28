@@ -7938,7 +7938,9 @@ float life = dune_life*(0.5 + g);
 float old = smoothstep(life, 1.25*life, age_n);
 // (and in a calm, whatever its age: the dunes the calm passes over melt, and ripples take the flat)
 float calm = 1.0 - smoothstep(calm_wind - 0.2, calm_wind + 0.2, ws_here);
-Hn += (fade_rate*old + calm_level*calm)*(Hb - H);
+// (a blend from the new height, slides and all, so it can't stack on the slide's push: added to it, steep old sand
+// overshot cell to cell and blew up)
+Hn = mix(Hn, Hb, min(fade_rate*old + calm_level*calm, 1.0));
 age_n += standing - (1.0 - standing)*0.001*age_n;
 age = age_n;
 ` : ''}${SAND_SHADE(true)}H = Hn;
@@ -8089,9 +8091,11 @@ export const SAND_DUNES_FADING_2: RuleDef = {
   ...SAND_DUNES_FADING,
   name: 'Sand dunes (fading 2, gusty, long ripples)',
   description: 'Sand dunes (fading) at a balance Dan found: dunes that melt soon and fast (dune_life 80, fade_rate 0.8), thick dunes '
-    + 'with crisp erosion between flatter ground, and the ripples kept going on the flats (flat_ripples).',
+    + 'with crisp erosion between flatter ground, the ripples kept going on the flats (flat_ripples), and a wind that veers more and slowly swings round (wind_swing), so the dunes lie different ways over time.',
   params: SAND_DUNES_FADING.params.map((p) => (p.name === 'dune_life' ? { ...p, value: 80, min: 10 }
-    : p.name === 'fade_rate' ? { ...p, value: 0.8, max: 1 } : p.name === 'flat_ripples' ? { ...p, value: 0.6 } : p)),
+    : p.name === 'fade_rate' ? { ...p, value: 0.8, max: 1 } : p.name === 'flat_ripples' ? { ...p, value: 0.6 }
+      // (the wind veering more from place to place, and swinging round over the long run)
+      : p.name === 'wind_turn' ? { ...p, value: 0.9 } : p.name === 'wind_swing' ? { ...p, value: 1.2 } : p)),
 };
 
 // --- Complex Ginzburg–Landau
