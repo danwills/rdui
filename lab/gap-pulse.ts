@@ -16,16 +16,18 @@ const GS_PULSE_DOOR: R.RuleDef = {
   reagents: ['a', 'b', 'u', 'v', 'e', 'r', 'clock'],
   params: [...R.GRAY_SCOTT.params, { name: 'c2', value: 0.3, min: 0, max: 0.45 }, { name: 'wall', value: 5, min: 0, max: 20 },
     { name: 'sponge', value: 0, min: 0, max: 1 }, { name: 'track', value: 0, min: 0, max: 1 }, { name: 'doorm', value: 0, min: 0, max: 1 },
-    { name: 'emit', value: 0, min: 0, max: 2 }, { name: 'omega', value: 0.2094, min: 0, max: 1 },
+    { name: 'emit', value: 0, min: 0, max: 2 }, { name: 'pace', value: 0, min: 0, max: 0.5 }, { name: 'pace_eps', value: 0.001, min: 0, max: 0.01 }, { name: 'omega', value: 0.2094, min: 0, max: 1 },
     { name: 'D_e', value: 0.3, min: 0, max: 0.35 }, { name: 'ce', value: 0.5, min: 0, max: 1 }, { name: 'ea', value: 0.1, min: 0, max: 0.5 },
     { name: 'eps', value: 0.004, min: 0, max: 0.1 }, { name: 'gr', value: 2.5, min: 0, max: 4.5 }, { name: 'door_kill', value: 0.3, min: 0, max: 1 }],
-  paintable: ['k', 'sponge', 'track', 'doorm', 'emit'],
+  // pace: a current into e that makes a patch of track a pacemaker, firing by itself every so often
+  paintable: ['k', 'sponge', 'track', 'doorm', 'emit', 'pace'],
   formula: `delta_a = D * D_a * laplacian_a - a*b*b + F*(1.0 - a);
 // (the pulse kills the door implicitly, so it can be strong)
 delta_b = D * D_b * laplacian_b + a*b*b - (F + k)*b + (b/(1.0 + timestep*doorm*door_kill*max(e, 0.0)) - b)/timestep;
 // the pulse round the wall: excitable e with slow recovery r, only on the track
-delta_e = track*(D_e*laplacian_e + ce*(e*(1.0 - e)*(e - ea) - r));
-delta_r = track*eps*(e - gr*r);
+delta_e = track*(D_e*laplacian_e + ce*(e*(1.0 - e)*(e - ea) - r + pace));
+// (the pacemaker recovers at its own rate, pace_eps: slower, it fires less often)
+delta_r = track*mix(eps, pace_eps, step(1e-6, pace))*(e - gr*r);
 delta_v = ((v + timestep*(c2*laplacian_u + emit*sin(omega*clock)))/(1.0 + timestep*(sponge + wall*b)) - v)/timestep;
 delta_u = (v + timestep*(c2*laplacian_u + emit*sin(omega*clock)))/(1.0 + timestep*(sponge + wall*b));
 delta_clock = 1.0;`,
@@ -35,7 +37,7 @@ delta_clock = 1.0;`,
   view: { reagent: 'b', low: 0, high: 0.4 },
 };
 
-export default async function (cfg: { steps?: number; every?: number; video?: number; dk?: number; th?: number; emit?: number; pulse?: boolean; open?: boolean; g?: Record<string, number> }) {
+export default async function (cfg: { steps?: number; every?: number; video?: number; dk?: number; th?: number; emit?: number; pulse?: boolean; open?: boolean; pace?: number; paceR?: number; spiral?: number; g?: Record<string, number> }) {
   const N = 512, ringR = 80, hw = 3, th = cfg.th ?? 6, jr = 10, cx = 300, cy = N / 2, sx = 110;
   const l = await makeLab(GS_PULSE_DOOR, N, { ...cfg.g }, 'rest');
   const { state, params } = await l.sim.readRegion(0, 0, N, N);
@@ -52,13 +54,24 @@ export default async function (cfg: { steps?: number; every?: number; video?: nu
     // (open: a reference with the door held open, dead and empty)
     params[i * P4 + P('k')] = junc ? (cfg.open ? 0.075 : cfg.dk ?? 0.05) : band ? 0.057 : 0.075;
     params[i * P4 + P('doorm')] = junc ? 1 : 0;
-    const onTrack = Math.abs(rr - ringR) <= th;
+    // spiral: an excitable disc of radius `spiral` inside the ring, touching the track opposite the door, with a spiral
+    // started in it (a broken wave: excited along a line from the centre, refractory on one side). With the slow pulses
+    // (ce 0.2) a pulse is far longer than the disc and the spiral just breaks into two pulses: it doesn't work yet
+    const sr = cfg.spiral ?? 0, scx = cx + ringR - th - sr + 3, sdx = x + 0.5 - scx;
+    const inSpiral = sr > 0 && Math.hypot(sdx, dy) <= sr;
+    const onTrack = Math.abs(rr - ringR) <= th || inSpiral;
     params[i * P4 + P('track')] = onTrack ? 1 : 0;
     if (Math.hypot(x + 0.5 - sx, dy) <= 4) params[i * P4 + P('emit')] = cfg.emit ?? 0.3;
+    // the pacemaker: a patch of track opposite the door; its pulses go both ways round and meet at the door
+    if (cfg.pace && Math.hypot(x + 0.5 - (cx + ringR), dy) <= (cfg.paceR ?? 5)) params[i * P4 + P('pace')] = cfg.pace;
     const fill = cfg.open ? band && !junc : band || junc;
     state[i * S4 + ia] = fill ? 0.4 : 1;
     state[i * S4 + ib] = fill ? 0.3 : 0;
-    if (onTrack && (cfg.pulse ?? true) && dx > 0) {
+    if (inSpiral && sdx < 0 && sdx > -sr) {
+      if (dy >= 0 && dy < 3) state[i * S4 + ie] = 1;
+      if (dy < 0 && dy >= -12) state[i * S4 + ir] = 0.25;
+    }
+    if (onTrack && !inSpiral && (cfg.pulse ?? true) && dx > 0) {
       const ang = Math.atan2(dy, dx) * 180 / Math.PI; // 0 opposite the door
       if (ang > -6 && ang <= 6) state[i * S4 + ie] = 1;
       if (ang > 6 && ang <= 40) state[i * S4 + ir] = 0.25; // refractory behind (anticlockwise in y-down = negative angle ahead)
@@ -77,12 +90,16 @@ export default async function (cfg: { steps?: number; every?: number; video?: nu
     return e;
   };
   const steps = cfg.steps ?? 8000, every = cfg.every ?? 100;
-  let eSum = 0, eN = 0;
+  let eSum = 0, eN = 0, wasOpen = false;
+  const opens: number[] = [];
   for (let n = every; n <= steps; n += every) {
     await l.run(every);
     const { state: s } = await l.read();
     const db = disc(s, dX, cy, jr, ib), de = disc(s, dX, cy, jr, ie);
     if (n > steps / 2) { eSum += energyIn(s); eN++; }
+    if (db < 0.12 && !wasOpen) opens.push(n);
+    if (db >= 0.12 && wasOpen) opens.push(-n);
+    wasOpen = db < 0.12;
     // where the pulse is: the angle of the most e on the track's centre line
     let best = -1, at = 0;
     for (let a = 0; a < 360; a += 3) { const t = a * Math.PI / 180, v = s[(Math.round(cy + ringR * Math.sin(t)) * N + Math.round(cx + ringR * Math.cos(t))) * S4 + ie]; if (v > best) { best = v; at = a; } }
@@ -92,6 +109,7 @@ export default async function (cfg: { steps?: number; every?: number; video?: nu
         mix: [{ ri: ib, lo: 0, hi: 0.3, color: [200, 200, 190] }, { ri: iu, lo: 0, hi: 0.4, abs: true, color: [60, 150, 255] }, { ri: ie, lo: 0, hi: 1, color: [255, 90, 40] }] });
     }
   }
+  log(`door ${opens.map((n) => (n > 0 ? `opened ${n}` : `closed ${-n}`)).join(', ')}`);
   log(`mean energy inside over the second half: ${(eSum / eN).toExponential(2)}`);
   await saveFrame('pulse-door.png', l, { ri: ib, lo: 0, hi: 1, scale: 1, caption: `step ${steps}`, mix: [{ ri: ib, lo: 0, hi: 0.3, color: [200, 200, 190] }, { ri: iu, lo: 0, hi: 0.4, abs: true, color: [60, 150, 255] }, { ri: ie, lo: 0, hi: 1, color: [255, 90, 40] }] });
 }
