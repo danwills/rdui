@@ -208,14 +208,18 @@ async function init() {
     };
     const time = async (k: number) => Math.min(await once(k), await once(k));
     await once(cycle); // (warm up)
+    const budget = 900 / s.afapFps, cap = 5000;
     let k = cycle, t = await time(k), t2 = await time(2 * k);
-    while ((t2 < 1.5 * t || t2 < 20) && k < 4096) {
+    // (bailing out once it's clearly fast enough: even counting the submit's fixed cost as steps, 2k steps fit so
+    // many to a frame that the cap is reached)
+    const clearlyFast = () => (budget * 2 * k) / t2 >= cap;
+    while ((t2 < 1.5 * t || t2 < 20) && k < 4096 && !clearlyFast()) {
       k *= 2;
       t = t2;
       t2 = await time(2 * k);
     }
-    const perStep = Math.max(1e-5, (t2 - t) / k);
-    s.stepsPerFrame = Math.min(5000, Math.max(cycle, Math.round((900 / s.afapFps) / perStep / cycle) * cycle));
+    const perStep = clearlyFast() ? budget / cap : Math.max(1e-5, (t2 - t) / k);
+    s.stepsPerFrame = Math.min(cap, Math.max(cycle, Math.round(budget / perStep / cycle) * cycle));
     s.gpuShare = 0.98;
     ui.sync();
     return s.stepsPerFrame;
