@@ -275,7 +275,7 @@ export async function saveFrame(name: string, lab: Lab, o: Parameters<typeof ren
 
 /** A frame of the field: reagent ri (lo-hi) in the lab palette, optionally tinted, as an image data URL. */
 export async function renderFrame(
-  lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string; hsv?: boolean; rgb?: [number, number, number]; fleck?: 'hsv' | 'oklch'; hueShape?: number; hueOffset?: number },
+  lab: Lab, o: { ri: number; lo: number; hi: number; ti?: number; tlo?: number; thi?: number; scale?: number; caption?: string; boxes?: { x: number; y: number; w: number; h: number; label?: string; color?: string }[]; outline?: string; hsv?: boolean; rgb?: [number, number, number]; fleck?: 'hsv' | 'oklch'; hueShape?: number; hueOffset?: number; mix?: { ri: number; lo: number; hi: number; color: [number, number, number]; abs?: boolean }[] },
 ) {
   const { state, params } = await lab.read();
   const N = lab.N, S4 = lab.layout.S * 4, P4 = lab.layout.P * 4, sc = o.scale ?? 2;
@@ -284,7 +284,15 @@ export async function renderFrame(
   for (let i = 0; i < N * N; i++) {
     const v = (state[i * S4 + o.ri] - o.lo) / (o.hi - o.lo);
     let [r, g, b] = pal(v);
-    if (o.rgb) {
+    if (o.mix) {
+      // reagents added up, each (lo-hi, or its size against hi with abs) times its own colour
+      [r, g, b] = [8, 10, 16];
+      for (const m of o.mix) {
+        const x = state[i * S4 + m.ri], t = Math.max(0, Math.min(1, m.abs ? Math.abs(x) / m.hi : (x - m.lo) / (m.hi - m.lo)));
+        r += m.color[0] * t; g += m.color[1] * t; b += m.color[2] * t;
+      }
+      [r, g, b] = [r, g, b].map((c) => Math.min(255, c)) as [number, number, number];
+    } else if (o.rgb) {
       // three reagents (lo-hi each) as red, green and blue, the edges (where each is mid-way) brightened
       const u = o.rgb.map((k) => Math.max(0, Math.min(1, (state[i * S4 + k] - o.lo) / (o.hi - o.lo))));
       const e = Math.max(...u.map((x) => 4 * x * (1 - x)));
